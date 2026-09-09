@@ -2,7 +2,7 @@
 
 这是可编译、可运行的触控原型。它调用游戏自身的 Mobile UI 状态设置器，并将 Windows 原生触点接入游戏已存在的 Unity 触控读取接口。本机触摸屏（1）与串流原生触控（2）共用同一实现。能否在当前运行环境完成移动、视角和技能同时操作，仍以游戏实测为准。
 
-当前版已适配 3.2，并保留 3.1 配置及自动提权。两版均已通过静态地址/字段校验、独立进程桥接测试与启动器只读检查；3.2 尚待真实游戏和串流多指实测。
+当前版保留 3.1、3.2 的已验证配置，并加入未知版本的运行时自动定位。触控桥与自动提权流程沿用旧版。两版均已通过静态校验、独立桥接与自动定位测试；真实游戏和串流多指仍需实测。
 
 按 GameAssembly.dll 的 SHA-256 自动选择配置，支持以下样本：
 
@@ -11,7 +11,9 @@
 3.2  2be366e9fca3b02d37e5285764590df6094b4ddc1dfb85ecd2320e326528f834
 ```
 
-未知哈希会退出，不会套用其他版本的地址。保留 `ZZZTouchLauncher.exe` 与 `ZZZTouchUI.dll` 在同一目录，更新测试版前先完全退出游戏。
+已知哈希使用已验证配置；未知哈希会扫描 GameAssembly 文件中的指令特征，并解析地址、字段偏移及调用关系。匹配唯一且交叉校验全部通过时自动继续，否则报错并停止。运行时只需要启动器和同目录 DLL，不需要 IDA、Python、Capstone 或 metadata Dump。
+
+保留 `ZZZTouchLauncher.exe` 与 `ZZZTouchUI.dll` 在同一目录，更新测试版前先完全退出游戏。版本更新后无需修改配置即可尝试启动，但编译器、内联或混淆变化可能使自动定位失败；不能保证以后所有版本都免更新。
 
 ## 测试
 
@@ -21,6 +23,9 @@
 # 仅检查文件版本，不启动或注入
 .\ZZZTouchLauncher.exe --probe
 
+# 强制测试自动定位，即使当前 DLL 属于已知版本；仅输出结果，不启动游戏
+.\ZZZTouchLauncher.exe --probe-auto
+
 # 已启动游戏时附加；没有游戏进程时默认启动 Client/3.2 中的游戏
 .\ZZZTouchLauncher.exe
 
@@ -29,7 +34,7 @@
 .\ZZZTouchLauncher.exe --game 'D:\Games\ZenlessZoneZero\ZenlessZoneZero.exe'
 ```
 
-也可以直接双击启动器。普通权限下执行启动、附加、开关或状态命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe` 无需提权。
+也可以直接双击启动器。普通权限下执行启动、附加、开关或状态命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe`、`--probe-auto` 无需提权。
 
 默认路径按项目目录布局寻找 `Client/3.2`；不存在时再寻找旧版目录。游戏安装在其他位置时使用 `--game`。为明确测试 3.2，可执行：
 
@@ -40,6 +45,8 @@
 程序使用普通 LoadLibrary 注入；若管理员权限下仍被客户端拒绝加载，应保留错误与日志用于判断。
 
 日志为 `logs\touch-<PID>.log`。3.2 应先出现 `Selected client profile 3.2`。`DLL loaded` 只表示 DLL 已加载；`READY` 表示输入接口已接入；还应出现 `Effective UI layout=1`。进入可操作场景后依次验证：单指点击、摇杆持续移动、另一指拖动视角、移动期间按技能、抬起全部手指后停止动作、切出再切回。
+
+未知版本显示 `Selected client profile auto`，并记录解析出的全部地址/字段。DLL 会独立解析实际模块文件，并在安装接口前核对九段已加载代码是否与扫描文件一致；代码不一致时停止。地址缓存仅保留在进程内，每次使用前重新核对文件 SHA-256。
 
 串流端必须向 Windows 传递原生触点。只将触屏映射为鼠标或手柄的模式没有独立多指信息，本原型不能从中还原多个触点。若使用 Moonlight/Sunshine，请在你的客户端中选择传递原生触控的模式；不同版本的选项名称可能不同。
 
@@ -57,6 +64,8 @@
 |---|---|
 | 没有日志 | 检查启动器报错、DLL 是否同目录、进程和权限 |
 | 有日志，没有 `READY` | 看版本校验、Unity 窗口或 icall 初始化错误 |
+| 启动器报告 `Automatic profile:` | 保留完整错误；指令特征、候选数量或结构校验不满足，不会猜测地址 |
+| `loaded code differs from scanned file` | 内存代码与扫描文件不同，本次自动定位不安装接口；保留日志 |
 | `READY`，但 UI 一直不是 1 | 保留日志；检查状态对象、游戏线程计时器和热更新分支 |
 | `WM_TOUCH`、`WM_POINTER`、`downs` 都不增长 | Windows 游戏窗口没有收到原生触点；检查串流触控模式、焦点 |
 | 消息增长，`downs` 不增长 | 事件可能是鼠标/笔、缺少按下阶段，或触点读取失败 |
@@ -69,12 +78,16 @@
 
 ## 已验证范围与构建
 
-构建脚本：`D:\WorkSpace\ZZZTouchUI\scripts\build_touch.ps1`，需要 VS 2022 C++ x64、CMake 和 Python 3.10+。脚本编译、运行测试、校验游戏版本并将两个二进制放到本目录；它不启动游戏。
+构建脚本：`D:\WorkSpace\ZZZTouchUI\scripts\build_touch.ps1`，需要 VS 2022 C++ x64、CMake、Python 3.10+ 和 Python Capstone 包（用于核对生成规则）。脚本使用保留的 3.1/3.2 样本运行测试，并将两个二进制放到本目录；它不启动游戏。直接使用 CMake 编译已提交的生成头文件不需要 Python 或 Capstone。
 
 `TouchState` 覆盖多指、坐标转换、按帧一致性、快速点击、ID 重用与容量；`TouchBridge31`、`TouchBridge32` 分别在独立进程的隐藏窗口及模拟接口表上测试生产桥接代码，包括原生接口回退、消息转发、重复事件源过滤、取消触点、主线程限制、UI 通知与恢复，以及两版不同的覆盖属性偏移。`profile-validation.json` 将每版 6 个接口槽、3 个 UI 函数的完整导出指令、状态字段及覆盖/默认值调用关系与原始 DLL 交叉核对。
 
 `LauncherElevation` 用模拟 Shell 验证 UAC 取消、错误、循环防护与参数保留，并启动自有测试进程核对真实 CRT 参数解析和退出码传递。覆盖含空格、中文、引号和尾部反斜杠的参数，不弹出真实 UAC。
 
+`ProfileDiscovery31`、`ProfileDiscovery32` 强制绕过已知哈希配置，从文件指令独立推导全部 15 个地址/字段，再与人工配置逐项比较；还验证未知哈希路径、内容变化后的缓存失效、16 类拒绝条件，以及加载代码核对。测试用例包括重复候选、错误属性 setter、Mobile 枚举变化、Touch ABI 变化、错误接口引用和非法 PE 范围。测试文件和内存片段只作为数据读取，不会加载或执行。
+
 这些检查不等价于真实触摸屏、串流链路或战斗场景验收。此版不改变云平台、服务器或账号设置；没有驱动组件或反作弊绕过功能。3.1 研究依据见 `analysis/touch/injection.md`，3.2 地址、字段变化和反编译证据见 `analysis/versions/3.2/touch-adaptation.md`。
 
 版本配置源文件为 `profiles/*.json`；修改后运行 `python scripts/generate_touch_profiles.py` 更新共享头文件。原可用版本的源码、分析及原始二进制保存在 Git 标签 `baseline-3.1`，原始二进制也保留在 `releases/baseline-3.1`。同一进程无法卸载后安全更新 DLL，回退测试前须完全退出游戏。
+
+自动定位规则来自保留的 3.1 样本，由 `scripts/generate_scan_patterns.py` 生成 `native/scan_patterns.hpp`。设计、校验结果与边界见 `analysis/runtime-resolution/README.md`。此前固定地址的双版本发布保存在 `client-3.2-static-validated` 标签和 `releases/client-3.2`；本功能在 `feature/runtime-resolution` 分支开发。
