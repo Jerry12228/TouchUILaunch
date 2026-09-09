@@ -26,6 +26,7 @@ void commit_page(uintptr_t rva) {
 void put_slot(uintptr_t rva,void* value) {commit_page(rva);*reinterpret_cast<void**>(assembly+rva)=value;}
 void put_function(uintptr_t rva,void* target) {
     commit_page(rva);
+    DWORD previous{};check(VirtualProtect(reinterpret_cast<void*>(assembly+(rva&~uintptr_t{4095})),4096,PAGE_READWRITE,&previous)!=FALSE,"make shared trampoline page writable");
     // mov rax, imm64; jmp rax, preserving all incoming ABI arguments.
     unsigned char code[12]={0x48,0xb8};std::memcpy(code+2,&target,8);code[10]=0xff;code[11]=0xe0;
     std::memcpy(reinterpret_cast<void*>(assembly+rva),code,sizeof(code));
@@ -35,31 +36,42 @@ void put_function(uintptr_t rva,void* target) {
 void test() {
     assembly=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,0x15b50000,MEM_RESERVE,PAGE_NOACCESS));
     check(assembly!=0,"reserve test table address space");
-    put_slot(profile::touch_count_slot,reinterpret_cast<void*>(native_count));
-    put_slot(profile::get_touch_slot,reinterpret_cast<void*>(native_touch));
-    put_slot(profile::touch_supported_slot,reinterpret_cast<void*>(native_supported));
-    put_slot(profile::frame_count_slot,reinterpret_cast<void*>(frame_count));
-    put_slot(profile::screen_width_slot,reinterpret_cast<void*>(screen_width));
-    put_slot(profile::screen_height_slot,reinterpret_cast<void*>(screen_height));
-    put_function(profile::get_layout_override,reinterpret_cast<void*>(get_override));
-    put_function(profile::set_layout_override,reinterpret_cast<void*>(set_override));
-    put_function(profile::get_effective_layout,reinterpret_cast<void*>(get_effective));
+    put_slot(active_profile->touch_count_slot,reinterpret_cast<void*>(native_count));
+    put_slot(active_profile->get_touch_slot,reinterpret_cast<void*>(native_touch));
+    put_slot(active_profile->touch_supported_slot,reinterpret_cast<void*>(native_supported));
+    put_slot(active_profile->frame_count_slot,reinterpret_cast<void*>(frame_count));
+    put_slot(active_profile->screen_width_slot,reinterpret_cast<void*>(screen_width));
+    put_slot(active_profile->screen_height_slot,reinterpret_cast<void*>(screen_height));
+    put_function(active_profile->get_layout_override,reinterpret_cast<void*>(get_override));
+    put_function(active_profile->set_layout_override,reinterpret_cast<void*>(set_override));
+    put_function(active_profile->get_effective_layout,reinterpret_cast<void*>(get_effective));
     std::array<unsigned char,256> klass{};klass[203]=1;
     uintptr_t property=reinterpret_cast<uintptr_t>(klass.data());
-    std::array<uintptr_t,20> provider{};provider[16]=reinterpret_cast<uintptr_t>(&property);provider[17]=reinterpret_cast<uintptr_t>(&property);
-    std::vector<uintptr_t> pool(profile::ui_state_offset/sizeof(uintptr_t)+1);
+    // Independent fixtures from the two IDA analyses. In 3.2 +128 must NOT pass
+    // readiness: the actual override property moved to +152.
+    const bool newer=std::string_view(active_profile->version)=="3.2";
+    const size_t override_index=newer?19:16;
+    std::array<uintptr_t,24> provider{};
+    provider[override_index]=reinterpret_cast<uintptr_t>(&property);provider[17]=reinterpret_cast<uintptr_t>(&property);
+    std::vector<uintptr_t> pool((newer?189544:186816)/sizeof(uintptr_t)+1);
     pool.back()=reinterpret_cast<uintptr_t>(provider.data());
-    put_slot(profile::ui_class_slot,klass.data());put_slot(profile::static_reference_pool,pool.data());
+    put_slot(active_profile->ui_class_slot,klass.data());put_slot(active_profile->static_reference_pool,pool.data());
     check(ready_ui_provider()==reinterpret_cast<uintptr_t>(provider.data()),"UI provider readiness");
+    provider[override_index]=0;
+    check(!ready_ui_provider(),"missing override property must block UI calls");
+    provider[override_index]=reinterpret_cast<uintptr_t>(&property);
+    provider[17]=0;
+    check(!ready_ui_provider(),"missing default property must block UI calls");
+    provider[17]=reinterpret_cast<uintptr_t>(&property);
     enable_event=CreateEventW(nullptr,TRUE,TRUE,nullptr);ready_event=CreateEventW(nullptr,TRUE,FALSE,nullptr);
     WNDCLASSW wc{};wc.lpfnWndProc=host_proc;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"ZZZTouchOwnedTestWindow";
     check(RegisterClassW(&wc)!=0,"register owned test window");
     HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"Touch bridge test",WS_OVERLAPPEDWINDOW,0,0,800,600,nullptr,nullptr,wc.hInstance,nullptr);
     check(hwnd!=nullptr&&install_window(hwnd),"subclass owned hidden window");
     check(install_icalls(),"atomic icall installation");
-    auto count=reinterpret_cast<IntGetter>(slot_value(profile::touch_count_slot));
-    auto get=reinterpret_cast<TouchGetter>(slot_value(profile::get_touch_slot));
-    auto supported=reinterpret_cast<BoolGetter>(slot_value(profile::touch_supported_slot));
+    auto count=reinterpret_cast<IntGetter>(slot_value(active_profile->touch_count_slot));
+    auto get=reinterpret_cast<TouchGetter>(slot_value(active_profile->get_touch_slot));
+    auto supported=reinterpret_cast<BoolGetter>(slot_value(active_profile->touch_supported_slot));
     touch::UnityTouch value{};
     check(count()==1&&!supported(),"disabled passthrough to native input");get(0,&value);check(value.finger_id==900,"native GetTouch passthrough");
     enabled=true;last_ui_check=0;
@@ -82,15 +94,21 @@ void test() {
     // A later external layout edit must survive disable.
     enabled=true;last_ui_check=0;maintain_ui();fake_override=3;enabled=false;last_ui_check=0;maintain_ui();
     check(fake_override==3,"do not overwrite another writer's layout during restore");
-    check(!exchange_slot(profile::touch_count_slot,reinterpret_cast<void*>(native_count),reinterpret_cast<void*>(native_supported)),"compare/exchange rejects a stale expected pointer");
-    check(slot_value(profile::touch_count_slot)==reinterpret_cast<void*>(hooked_count),"failed compare/exchange preserves hook");
+    check(!exchange_slot(active_profile->touch_count_slot,reinterpret_cast<void*>(native_count),reinterpret_cast<void*>(native_supported)),"compare/exchange rejects a stale expected pointer");
+    check(slot_value(active_profile->touch_count_slot)==reinterpret_cast<void*>(hooked_count),"failed compare/exchange preserves hook");
     DWORD old_thread=window_thread.load();window_thread=old_thread+1;enabled=true;last_ui_check=0;maintain_ui();
     check(fake_override==3,"UI setter prohibited on non-window thread");window_thread=old_thread;enabled=false;
     DestroyWindow(hwnd);check(!game_window.load(),"owned window destruction disables bridge");
     CloseHandle(enable_event);CloseHandle(ready_event);VirtualFree(reinterpret_cast<void*>(assembly),0,MEM_RELEASE);
 }
 }
-int main() {
-    try {test();std::cout<<"Production icall bridge, ABI, frame consistency, event-source deduplication, cancellation, native fallback, UI notifications/restoration and window forwarding: PASS\n";return 0;}
+int main(int argc,char** argv) {
+    try {
+        check(!profile::find("")&&!profile::find(std::string(64,'0')),"unknown hashes rejected");
+        check(argc==2,"pass the client version to test");
+        for(const auto& build:profile::builds)if(std::string_view(argv[1])==build.version)active_profile=profile::find(build.sha256);
+        check(active_profile!=nullptr,"requested test profile exists");
+        test();std::cout<<"Client "<<active_profile->version<<": production icall bridge, ABI, frame consistency, event-source deduplication, cancellation, native fallback, UI notifications/restoration and window forwarding: PASS\n";return 0;
+    }
     catch(const std::exception& ex){std::cerr<<"FAIL: "<<ex.what()<<"\n";return 1;}
 }

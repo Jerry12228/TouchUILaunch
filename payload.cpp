@@ -11,6 +11,8 @@
 namespace {
 HMODULE self_module{};
 uintptr_t assembly{};
+// Selected once from the loaded DLL hash, before publishing the window/hooks.
+const profile::Build* active_profile{};
 std::atomic<bool> enabled{false}, hooks_ready{false}, ui_fault{false};
 std::atomic<HWND> game_window{};
 std::atomic<DWORD> window_thread{};
@@ -79,10 +81,11 @@ void cancel_contacts();
 uintptr_t ready_ui_provider() {
     uintptr_t klass{},pool{},provider{},property{},default_property{},property_class{};
     unsigned char initialized{};
-    if(!read_at(assembly+profile::ui_class_slot,klass)||!read_at(klass+203,initialized)||!initialized)return 0;
-    if(!read_at(assembly+profile::static_reference_pool,pool)||!read_at(pool+profile::ui_state_offset,provider))return 0;
-    if(!read_at(provider+128,property)||!read_at(property,property_class)||!property_class)return 0;
-    if(!read_at(provider+136,default_property)||!read_at(default_property,property_class)||!property_class)return 0;
+    if(!active_profile)return 0;
+    if(!read_at(assembly+active_profile->ui_class_slot,klass)||!read_at(klass+active_profile->class_initialized_offset,initialized)||!initialized)return 0;
+    if(!read_at(assembly+active_profile->static_reference_pool,pool)||!read_at(pool+active_profile->ui_state_offset,provider))return 0;
+    if(!read_at(provider+active_profile->override_property_offset,property)||!read_at(property,property_class)||!property_class)return 0;
+    if(!read_at(provider+active_profile->default_property_offset,default_property)||!read_at(default_property,property_class)||!property_class)return 0;
     return provider;
 }
 int memory_fault_filter(DWORD code) {
@@ -93,7 +96,7 @@ bool call_layout_get(uintptr_t rva,int* value) {
     __except(memory_fault_filter(GetExceptionCode())) {return false;}
 }
 bool call_layout_set(int value) {
-    __try {reinterpret_cast<void(*)(int,void*,void*)>(assembly+profile::set_layout_override)(value,nullptr,nullptr);return true;}
+    __try {reinterpret_cast<void(*)(int,void*,void*)>(assembly+active_profile->set_layout_override)(value,nullptr,nullptr);return true;}
     __except(memory_fault_filter(GetExceptionCode())) {return false;}
 }
 void maintain_ui() {
@@ -115,7 +118,7 @@ void maintain_ui() {
     if(!provider)return;
     in_ui_call=true;
     int before{},after{};
-    bool ok=call_layout_get(profile::get_layout_override,&before);
+    bool ok=call_layout_get(active_profile->get_layout_override,&before);
     if(ok&&enabled.load()) {
         if(provider!=changed_provider)changed_provider=0;
         if(before!=1) {
@@ -132,7 +135,7 @@ void maintain_ui() {
         }
         changed_provider=0;
     }
-    if(ok)ok=call_layout_get(profile::get_effective_layout,&after);
+    if(ok)ok=call_layout_get(active_profile->get_effective_layout,&after);
     if(ok&&effective_layout.exchange(after)!=after)log("Effective UI layout=%d (1=Mobile, 2=PC)",after);
     if(!ok) {
         ui_fault=true;enabled=false;ResetEvent(enable_event);ResetEvent(ready_event);cancel_contacts();
@@ -255,21 +258,21 @@ bool install_window(HWND hwnd) {
     return true;
 }
 bool install_icalls() {
-    original_count=reinterpret_cast<IntGetter>(slot_value(profile::touch_count_slot));
-    original_touch=reinterpret_cast<TouchGetter>(slot_value(profile::get_touch_slot));
-    original_supported=reinterpret_cast<BoolGetter>(slot_value(profile::touch_supported_slot));
-    get_frame=reinterpret_cast<IntGetter>(slot_value(profile::frame_count_slot));
-    get_width=reinterpret_cast<IntGetter>(slot_value(profile::screen_width_slot));
-    get_height=reinterpret_cast<IntGetter>(slot_value(profile::screen_height_slot));
+    original_count=reinterpret_cast<IntGetter>(slot_value(active_profile->touch_count_slot));
+    original_touch=reinterpret_cast<TouchGetter>(slot_value(active_profile->get_touch_slot));
+    original_supported=reinterpret_cast<BoolGetter>(slot_value(active_profile->touch_supported_slot));
+    get_frame=reinterpret_cast<IntGetter>(slot_value(active_profile->frame_count_slot));
+    get_width=reinterpret_cast<IntGetter>(slot_value(active_profile->screen_width_slot));
+    get_height=reinterpret_cast<IntGetter>(slot_value(active_profile->screen_height_slot));
     for(auto p:{reinterpret_cast<void*>(original_count),reinterpret_cast<void*>(original_touch),reinterpret_cast<void*>(original_supported),reinterpret_cast<void*>(get_frame),reinterpret_cast<void*>(get_width),reinterpret_cast<void*>(get_height)})
         if(!executable_pointer(p))return false;
-    if(!exchange_slot(profile::get_touch_slot,reinterpret_cast<void*>(original_touch),reinterpret_cast<void*>(hooked_touch)))return false;
-    if(!exchange_slot(profile::touch_supported_slot,reinterpret_cast<void*>(original_supported),reinterpret_cast<void*>(hooked_supported))) {
-        exchange_slot(profile::get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));return false;
+    if(!exchange_slot(active_profile->get_touch_slot,reinterpret_cast<void*>(original_touch),reinterpret_cast<void*>(hooked_touch)))return false;
+    if(!exchange_slot(active_profile->touch_supported_slot,reinterpret_cast<void*>(original_supported),reinterpret_cast<void*>(hooked_supported))) {
+        exchange_slot(active_profile->get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));return false;
     }
-    if(!exchange_slot(profile::touch_count_slot,reinterpret_cast<void*>(original_count),reinterpret_cast<void*>(hooked_count))) {
-        exchange_slot(profile::touch_supported_slot,reinterpret_cast<void*>(hooked_supported),reinterpret_cast<void*>(original_supported));
-        exchange_slot(profile::get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));return false;
+    if(!exchange_slot(active_profile->touch_count_slot,reinterpret_cast<void*>(original_count),reinterpret_cast<void*>(hooked_count))) {
+        exchange_slot(active_profile->touch_supported_slot,reinterpret_cast<void*>(hooked_supported),reinterpret_cast<void*>(original_supported));
+        exchange_slot(active_profile->get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));return false;
     }
     hooks_ready=true;
     log("ICall bridge installed: count=%p touch=%p supported=%p",reinterpret_cast<void*>(original_count),reinterpret_cast<void*>(original_touch),reinterpret_cast<void*>(original_supported));
@@ -286,7 +289,9 @@ void worker() {
     for(int i=0;i<600&&!module;++i){module=GetModuleHandleW(L"GameAssembly.dll");if(!module)Sleep(200);}
     if(!module){log("ERROR: GameAssembly.dll not loaded after 120 s");return;}
     log("Verifying GameAssembly SHA-256...");
-    if(file_sha256(module_path(module))!=profile::sha256){log("ERROR: unsupported GameAssembly version; no hooks installed");return;}
+    active_profile=profile::find(file_sha256(module_path(module)));
+    if(!active_profile){log("ERROR: unsupported GameAssembly version; no hooks installed");return;}
+    log("Selected client profile %s, SHA-256=%s",active_profile->version,active_profile->sha256);
     assembly=reinterpret_cast<uintptr_t>(module);
     enable_event=CreateEventW(nullptr,TRUE,TRUE,enable_event_name(GetCurrentProcessId()).c_str());
     if(!enable_event){log("ERROR: enable event creation failed: %lu",GetLastError());return;}
@@ -306,12 +311,12 @@ void worker() {
     for(;;) {
         const bool requested=WaitForSingleObject(enable_event,0)==WAIT_OBJECT_0&&!ui_fault.load()&&game_window.load()!=nullptr&&!reported_conflict;
         if(enabled.exchange(requested)!=requested){if(!requested)cancel_contacts();log("Bridge enabled=%d; UI change will run on game thread",requested);}
-        if(!reported_conflict&&(slot_value(profile::touch_count_slot)!=reinterpret_cast<void*>(hooked_count)||slot_value(profile::get_touch_slot)!=reinterpret_cast<void*>(hooked_touch)||slot_value(profile::touch_supported_slot)!=reinterpret_cast<void*>(hooked_supported))) {
+        if(!reported_conflict&&(slot_value(active_profile->touch_count_slot)!=reinterpret_cast<void*>(hooked_count)||slot_value(active_profile->get_touch_slot)!=reinterpret_cast<void*>(hooked_touch)||slot_value(active_profile->touch_supported_slot)!=reinterpret_cast<void*>(hooked_supported))) {
             reported_conflict=true;ResetEvent(enable_event);ResetEvent(ready_event);enabled=false;cancel_contacts();
             log("ERROR: another writer changed the icall table. Bridge disabled; restart game to retry.");
-            exchange_slot(profile::touch_count_slot,reinterpret_cast<void*>(hooked_count),reinterpret_cast<void*>(original_count));
-            exchange_slot(profile::get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));
-            exchange_slot(profile::touch_supported_slot,reinterpret_cast<void*>(hooked_supported),reinterpret_cast<void*>(original_supported));
+            exchange_slot(active_profile->touch_count_slot,reinterpret_cast<void*>(hooked_count),reinterpret_cast<void*>(original_count));
+            exchange_slot(active_profile->get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));
+            exchange_slot(active_profile->touch_supported_slot,reinterpret_cast<void*>(hooked_supported),reinterpret_cast<void*>(original_supported));
         }
         const auto now=GetTickCount64();
         if(now-last_status>=5000) {

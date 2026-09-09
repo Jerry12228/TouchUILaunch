@@ -34,8 +34,9 @@ std::vector<DWORD> find_games() {
 void verify_assembly(const fs::path& path) {
     std::wcout<<L"Checking GameAssembly: "<<path<<L"\n";
     auto hash=file_sha256(path);
-    if(hash!=profile::sha256)throw std::runtime_error("Unsupported GameAssembly SHA-256: "+hash+". No injection performed.");
-    std::cout<<"Supported build: "<<hash<<"\n";
+    const auto* build=profile::find(hash);
+    if(!build)throw std::runtime_error("Unsupported GameAssembly SHA-256: "+hash+". No injection performed.");
+    std::cout<<"Supported client "<<build->version<<": "<<hash<<"\n";
 }
 DWORD start_game(const fs::path& path) {
     if(_wcsicmp(path.filename().c_str(),L"ZenlessZoneZero.exe")!=0||!fs::is_regular_file(path))throw std::runtime_error("--game must name an existing ZenlessZoneZero.exe");
@@ -94,7 +95,13 @@ void usage() {
 int wmain(int argc,wchar_t** argv) {
     try {
         fs::path own_dir=fs::path(module_path()).parent_path();
-        fs::path game=fs::weakly_canonical(own_dir/L".."/L".."/L"ZenlessZoneZero Game"/L"ZenlessZoneZero.exe");
+        const auto root=fs::weakly_canonical(own_dir/L".."/L"..");
+        fs::path game=root/L"Client"/L"3.2"/L"ZenlessZoneZero.exe";
+        if(!fs::is_regular_file(game)) {
+            for(const auto& relative:{fs::path(L"Client/ZenlessZoneZero Game/ZenlessZoneZero.exe"),fs::path(L"ZenlessZoneZero Game/ZenlessZoneZero.exe")}) {
+                if(fs::is_regular_file(root/relative)){game=root/relative;break;}
+            }
+        }
         fs::path payload=own_dir/L"ZZZTouchUI.dll";
         DWORD pid{};std::wstring action=L"enable";bool explicit_game{},explicit_action{},elevation_relaunch{};
         std::vector<std::wstring> forwarded_args;
