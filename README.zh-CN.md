@@ -2,11 +2,12 @@
 
 这是可编译、可运行的触控原型。它调用游戏自身的 Mobile UI 状态设置器，并将 Windows 原生触点接入游戏已存在的 Unity 触控读取接口。本机触摸屏（1）与串流原生触控（2）共用同一实现。能否在当前运行环境完成移动、视角和技能同时操作，仍以游戏实测为准。
 
-当前版保留 3.1、3.2 的固定配置，未知版本使用短特征、指令解码和调用关系自动定位。2.6、3.1、3.2 的全部 15 项解析结果均通过人工证据核对。触控桥与自动提权流程沿用旧版；真实游戏和串流多指仍需实测。
+当前版保留 3.1、3.2 的固定配置，未知版本使用短特征、指令解码、接口数据流及调用关系自动定位。2.5、2.6、3.1、3.2 的全部 15 项解析结果均通过人工证据核对。触控桥与自动提权流程沿用旧版；真实游戏和串流多指仍需实测。
 
 按 GameAssembly.dll 的 SHA-256 自动选择配置，支持以下样本：
 
 ```text
+2.5  69142459d5559677ac7f4c38ae88f568dc62ea41e2017e266f23889f33074ceb  自动解析
 2.6  8547fc8a2aaa6b509a4ac4e3b8ddf65997afd52f3f7c3652917d0effe2625e1a  自动解析
 3.1  4cba5d52c5fbfd478d2a9ec217075f82216780d56ad1bd1e85e4f724dcce30b4
 3.2  2be366e9fca3b02d37e5285764590df6094b4ddc1dfb85ecd2320e326528f834
@@ -79,16 +80,16 @@
 
 ## 已验证范围与构建
 
-构建脚本：`D:\WorkSpace\ZZZTouchUI\scripts\build_touch.ps1`，需要 VS 2022 C++ x64、CMake、Python 3.11+ 和 Python Capstone 包（用于核对生成规则）。脚本使用保留的 2.6/3.1/3.2 样本运行测试，并复制两个二进制和第三方许可证；它不启动游戏。直接使用 CMake 编译不需要 Python 或 Capstone，HDE64 指令解码器静态编入 EXE/DLL。
+构建脚本：`D:\WorkSpace\ZZZTouchUI\scripts\build_touch.ps1`，需要 VS 2022 C++ x64、CMake、Python 3.11+ 和 Python Capstone 包（用于核对生成规则）。脚本使用保留的 2.5/2.6/3.1/3.2 样本运行测试，并复制两个二进制和第三方许可证；它不启动游戏。直接使用 CMake 编译不需要 Python 或 Capstone，HDE64 指令解码器静态编入 EXE/DLL。
 
 `TouchState` 覆盖多指、坐标转换、按帧一致性、快速点击、ID 重用与容量；`TouchBridge31`、`TouchBridge32` 分别在独立进程的隐藏窗口及模拟接口表上测试生产桥接代码，包括原生接口回退、消息转发、重复事件源过滤、取消触点、主线程限制、UI 通知与恢复，以及两版不同的覆盖属性偏移。`profile-validation.json` 将每版 6 个接口槽、3 个 UI 函数的完整导出指令、状态字段及覆盖/默认值调用关系与原始 DLL 交叉核对。
 
 `LauncherElevation` 用模拟 Shell 验证 UAC 取消、错误、循环防护与参数保留，并启动自有测试进程核对真实 CRT 参数解析和退出码传递。覆盖含空格、中文、引号和尾部反斜杠的参数，不弹出真实 UAC。
 
-`ProfileDiscovery26`、`ProfileDiscovery31`、`ProfileDiscovery32` 自动推导全部 15 项并与人工配置比较；2.6 没有加入生产固定哈希表。每版另有 21 类错误/重复/ABI/关系拒绝测试，验证未知哈希、缓存失效、加载代码核对、无关短特征过滤、setter 移址后重新定位及截断指令拒绝。测试文件和内存片段不加载或执行。
+`ProfileDiscovery25`、`ProfileDiscovery26`、`ProfileDiscovery31`、`ProfileDiscovery32` 自动推导全部 15 项并与人工配置比较；2.5/2.6 没有加入生产固定哈希表。每版另有 27 类错误/重复/ABI/关系拒绝测试，验证未知哈希、缓存失效、加载代码核对、无关短特征过滤、setter 移址后重新定位及截断指令拒绝，并覆盖结果成员换序、独立加载/计算换序和调用寄存器替换。测试文件和内存片段不加载或执行。
 
 这些检查不等价于真实触摸屏、串流链路或战斗场景验收。此版不改变云平台、服务器或账号设置；没有驱动组件或反作弊绕过功能。3.1 研究依据见 `analysis/touch/injection.md`，3.2 地址、字段变化和反编译证据见 `analysis/versions/3.2/touch-adaptation.md`。
 
 版本配置源文件为 `profiles/*.json`；修改后运行 `python scripts/generate_touch_profiles.py` 更新共享头文件。原可用版本的源码、分析及原始二进制保存在 Git 标签 `baseline-3.1`，原始二进制也保留在 `releases/baseline-3.1`。同一进程无法卸载后安全更新 DLL，回退测试前须完全退出游戏。
 
-短布局特征和 Unity 规则仍来自保留的 3.1 样本；属性及调用形式解析已根据 2.6/3.1/3.2 的证据扩展。设计、验证和边界见 `analysis/runtime-resolution/short-signatures.md`。原固定地址发布保存在 `releases/client-3.2`，原自动定位 v1 保存在 `releases/runtime-resolution-v1`；当前改进位于 `feature/short-signature-resolution`，分发须保留 `THIRD-PARTY-NOTICES.txt`。
+短布局特征和 Unity 规则仍来自保留的 3.1 样本；接口派发以数据来源识别成员角色，覆盖 2.5/2.6/3.1/3.2 的证据。设计、验证和边界见 `analysis/runtime-resolution/dataflow-dispatch.md`。原固定地址发布保存在 `releases/client-3.2`，原自动定位 v1/v2 保存在 `releases/runtime-resolution-v1`、`releases/runtime-resolution-v2`；当前改进位于 `feature/dataflow-resolution`，分发须保留 `THIRD-PARTY-NOTICES.txt`。

@@ -45,7 +45,7 @@ struct Ins {
     bool jump()const{return h.opcode==0xe9 || h.opcode==0xeb;}
     bool indirect_call()const{return h.opcode==0xff && h.modrm_reg==2;}
     bool ret()const{return h.opcode==0xc3;}
-    bool nop()const{return h.opcode==0x90 || (h.opcode==0x0f && h.opcode2==0x1f);}
+    bool nop()const{return (h.opcode==0x90 && !h.rex_b) || (h.opcode==0x0f && h.opcode2==0x1f);}
     bool push()const{return h.opcode>=0x50 && h.opcode<=0x57;}
     bool pop()const{return h.opcode>=0x58 && h.opcode<=0x5f;}
     int stack_reg()const{return (h.opcode&7)+8*h.rex_b;}

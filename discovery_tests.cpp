@@ -5,6 +5,11 @@
 #include <functional>
 
 namespace {
+constexpr profile::Build golden25{
+    "2.5", "69142459d5559677ac7f4c38ae88f568dc62ea41e2017e266f23889f33074ceb",
+    0x4f43f80,0x4f43fa0,0x4f43f88,0x4f41b40,0x4f3d8b0,0x4f3d8b8,
+    0x4f87fa0,0x4e93b48,0x3d9a0,0x7862010,0x7862130,0x786fc80,0xcb,0x68,0x70
+};
 // Independent 2.6 IDA evidence: analysis/versions/2.6. Test-only golden data;
 // this hash is deliberately absent from the production fixed profile table.
 constexpr profile::Build golden26{
@@ -89,6 +94,68 @@ Fixture compact(const discovery::Image& source,const discovery::Result& found) {
     }
     return f;
 }
+std::vector<discovery::x64::Ins> dispatch_instructions(const discovery::Image& image,const discovery::Property& p) {
+    discovery::x64::Cursor c(image,p.invocation.slow_start,p.invocation.invoke-p.invocation.slow_start);
+    std::vector<discovery::x64::Ins> result;while(c.at<c.end)result.push_back(c.take());return result;
+}
+void swap_result_words(Fixture& f,const discovery::Property& p,bool reads=true,bool writes=true) {
+    const discovery::Image image(f.bytes);const auto instructions=dispatch_instructions(image,p);
+    int32_t temporary=INT32_MAX;size_t changed{};
+    for(const auto& i:instructions)if(i.base()==4 && (i.mov_load() || i.mov_store()))temporary=std::min(temporary,i.disp());
+    for(const auto& i:instructions)if(i.base()==4 && ((reads && i.mov_load())||(writes && i.mov_store()))) {
+        check(i.displacement_size()==1 && (i.disp()==temporary || i.disp()==temporary+8),"fixture result pair");
+        put<uint8_t>(f.bytes,f.offset(i.displacement_at()),static_cast<uint8_t>(temporary+8-(i.disp()-temporary)));++changed;
+    }
+    check(changed==size_t(reads?2:0)+size_t(writes?2:0),"result-word mutation covers each path");
+}
+void reorder_result_loads(Fixture& f,const discovery::Property& p) {
+    const discovery::Image image(f.bytes);const auto a=discovery::x64::decode(image,p.invocation.slow_start);
+    const auto b=discovery::x64::decode(image,a.next());
+    check(a.mov_load() && b.mov_load() && a.base()==4 && b.base()==4 && a.reg()!=b.reg(),"independent result loads");
+    const auto old=image.view(a.at,a.h.len+b.h.len);std::vector<uint8_t> replacement(old.begin()+a.h.len,old.end());
+    replacement.insert(replacement.end(),old.begin(),old.begin()+a.h.len);
+    std::copy(replacement.begin(),replacement.end(),f.bytes.begin()+f.offset(a.at));
+}
+void reorder_fast_calculation(Fixture& f,const discovery::Property& p) {
+    const discovery::Image image(f.bytes);auto instructions=dispatch_instructions(image,p);
+    auto at=std::find_if(instructions.begin(),instructions.end(),[&](auto& i){return i.at>=p.invocation.fast_start && i.mov_load() && i.index()>=0;});
+    check(at!=instructions.end() && instructions.end()-at>=4,"fast calculation fixture");
+    const auto a=at[0],b=at[1],c=at[2],d=at[3];
+    check(b.mov_store() && c.h.opcode==0x0f && c.h.opcode2==0xb7 && d.h.opcode==0x01 && c.reg()!=a.reg() && c.reg()!=a.base() && c.reg()!=a.index(),"independent fast calculation");
+    const auto first=image.view(a.at,c.at-a.at),second=image.view(c.at,d.next()-c.at);
+    std::vector<uint8_t> replacement(second.begin(),second.end());replacement.insert(replacement.end(),first.begin(),first.end());
+    std::copy(replacement.begin(),replacement.end(),f.bytes.begin()+f.offset(a.at));
+}
+void rename_call_register(Fixture& f,const discovery::Property& p) {
+    const discovery::Image image(f.bytes);const auto call=discovery::x64::decode(image,p.invocation.invoke);
+    const int previous=call.rm();constexpr int replacement=11;size_t changed{};
+    for(const auto& i:dispatch_instructions(image,p))if((i.mov_load() || i.mov_store()) && i.reg()==previous) {
+        check((f.bytes[f.offset(i.at)]&0xf8)==0x48,"64-bit move REX fixture");
+        f.bytes[f.offset(i.at)]|=4;
+        f.bytes[f.offset(i.at+2)]=static_cast<uint8_t>((i.h.modrm&~0x38)|((replacement&7)<<3));++changed;
+    }
+    check(changed==3,"rename function value's load/load/store uses only");
+    check(call.h.len==2 || call.h.len==3,"register-call fixture encoding");
+    if(call.h.len==2)check(image.view(call.next(),1)[0]==0x90,"consume post-call NOP for REX prefix");
+    const std::array<uint8_t,3> bytes{0x41,0xff,0xd3};
+    std::copy(bytes.begin(),bytes.end(),f.bytes.begin()+f.offset(call.at));
+}
+void dispatch_variations(const Fixture& original,const discovery::Result& found) {
+    const discovery::Image base(original.bytes);
+    const std::array properties{discovery::property(base,found.build.get_layout_override,false),
+        discovery::property(base,found.default_getter,false),discovery::property(base,found.build.set_layout_override,true)};
+    for(int variation=0;variation<4;++variation) {
+        Fixture changed=original;
+        for(const auto& p:properties) {
+            if(variation==0)swap_result_words(changed,p);
+            if(variation==1)reorder_result_loads(changed,p);
+            if(variation==2)reorder_fast_calculation(changed,p);
+            if(variation==3)rename_call_register(changed,p);
+        }
+        equal_profile(discovery::discover(discovery::Image(changed.bytes)).build,found.build);
+    }
+    std::cout<<"PASS: result member permutation, independent load order, independent calculation order and call-register renaming.\n";
+}
 void negatives(const Fixture& original,const discovery::Result& found) {
     const discovery::Image base(original.bytes);
     const auto fallback=discovery::property(base,found.default_getter,false);
@@ -152,6 +219,29 @@ void negatives(const Fixture& original,const discovery::Result& found) {
     rejected("overlapping virtual sections",[&](Fixture& f){put<uint32_t>(f.bytes,0x188+40+12,*reinterpret_cast<const uint32_t*>(f.bytes.data()+0x188+12));});
     rejected("malformed PE section count",[&](Fixture& f){put<uint16_t>(f.bytes,0x86,0xffff);});
     rejected("no PE header",[&](Fixture& f){f.bytes.resize(20);});
+    rejected("only slow result roles swapped",[&](Fixture& f){swap_result_words(f,override,true,false);});
+    rejected("different default result layout",[&](Fixture& f){swap_result_words(f,fallback);});
+    rejected("aliased direct result words",[&](Fixture& f){
+        auto ins=dispatch_instructions(base,override);std::vector<discovery::x64::Ins> stores;
+        for(auto& i:ins)if(i.mov_store() && i.base()==4)stores.push_back(i);
+        check(stores.size()==2,"two result stores");put<uint8_t>(f.bytes,f.offset(stores[1].displacement_at()),static_cast<uint8_t>(stores[0].disp()));
+    });
+    rejected("call context as function",[&](Fixture& f){
+        auto call=discovery::x64::decode(base,override.invocation.invoke);
+        if(call.h.len==3)f.bytes[f.offset(call.at)]&=0xfe;
+        f.bytes[f.offset(call.next()-1)]=0xd2;
+    });
+    rejected("read beyond lookup result",[&](Fixture& f){
+        auto load=discovery::x64::decode(base,override.invocation.slow_start);
+        put<uint8_t>(f.bytes,f.offset(load.displacement_at()),static_cast<uint8_t>(load.disp()+16));
+    });
+    rejected("lost setter input value",[&](Fixture& f){
+        auto ins=dispatch_instructions(base,setter);bool changed{};
+        for(auto& i:ins)if(i.at>=setter.invocation.join && i.h.opcode==0x89 && i.rm()==2) {
+            f.bytes[f.offset(i.next()-1)]=0xca;changed=true;
+        }
+        check(changed,"setter argument mutation");
+    });
     std::cout<<"Rejected "<<count<<" malformed, ambiguous, ABI-changing or inconsistent fixtures.\n";
 }
 void variations(const Fixture& original,const discovery::Result& found) {
@@ -169,6 +259,8 @@ void variations(const Fixture& original,const discovery::Result& found) {
     Fixture truncated=original;truncated.bytes[truncated.offset(0x100fff)]=0xe8;
     bool rejected{};try{(void)discovery::x64::decode(discovery::Image(truncated.bytes),0x100fff);}catch(const std::runtime_error&){rejected=true;}
     check(rejected,"decoder must not consume padding outside the section");
+    Fixture exchange=original;exchange.bytes[exchange.offset(0x100000)]=0x41;exchange.bytes[exchange.offset(0x100001)]=0x90;
+    check(!discovery::x64::decode(discovery::Image(exchange.bytes),0x100000).nop(),"REX-prefixed register exchange is not a NOP");
     std::cout<<"PASS: unrelated short anchor ignored; relocated setter rediscovered; truncated instruction rejected.\n";
 }
 void save(const std::filesystem::path& path,const Fixture& f) {
@@ -194,9 +286,10 @@ void live_code(const discovery::Result& result,size_t image_size) {
 }
 void test(const std::filesystem::path& path) {
     const auto fixed=discovery::resolve(path);
-    const bool older=std::string(fixed.build.sha256)==golden26.sha256;
-    check(older?fixed.automatic:!fixed.automatic,"2.6 must use automatic discovery; known profiles must stay fixed");
-    const auto& expected=older?golden26:fixed.build;
+    const auto* older=std::string(fixed.build.sha256)==golden25.sha256?&golden25:
+        std::string(fixed.build.sha256)==golden26.sha256?&golden26:nullptr;
+    check(older?fixed.automatic:!fixed.automatic,"2.5/2.6 must use automatic discovery; known profiles must stay fixed");
+    const auto& expected=older?*older:fixed.build;
     const auto automatic=discovery::resolve(path,true);
     check(automatic.automatic,"forced discovery must bypass the hash table");
     equal_profile(automatic.build,expected);
@@ -206,6 +299,7 @@ void test(const std::filesystem::path& path) {
     equal_profile(reduced.build,expected);
     negatives(fixture,reduced);
     variations(fixture,reduced);
+    dispatch_variations(fixture,reduced);
     live_code(reduced,discovery::Image(fixture.bytes).image_size);
     const auto owned=std::filesystem::current_path()/("discovery-owned-"+std::to_string(GetCurrentProcessId())+".dll");
     check(!std::filesystem::exists(owned),"owned fixture path already exists");
