@@ -58,7 +58,7 @@ inline void print_json(std::ostream& out,const Result& result) {
     out<<"\n  },\n  \"setter_candidates\": "<<result.setter_candidates<<"\n}\n";
 }
 inline void validate_loaded_code(uintptr_t base,const Result& result) {
-    require(result.automatic && result.code_checks.size()==9,"missing live-code evidence");
+    require(result.automatic && result.code_checks.size()>=9 && result.code_checks.size()<=64,"missing live-code evidence");
     for(const auto& check:result.code_checks) {
         require(base<=UINTPTR_MAX-check.rva,"module address overflow");
         std::vector<uint8_t> actual(check.bytes.size());SIZE_T read{};

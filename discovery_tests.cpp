@@ -5,6 +5,13 @@
 #include <functional>
 
 namespace {
+// Independent 2.6 IDA evidence: analysis/versions/2.6. Test-only golden data;
+// this hash is deliberately absent from the production fixed profile table.
+constexpr profile::Build golden26{
+    "2.6", "8547fc8a2aaa6b509a4ac4e3b8ddf65997afd52f3f7c3652917d0effe2625e1a",
+    0x4916a68,0x4916a88,0x4916a70,0x4913c38,0x4910500,0x4910508,
+    0x4950e90,0x4885c60,0x295a8,0xb10d400,0xb109140,0xb103be0,0xcb,0x70,0x60
+};
 void check(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
 template<class T> void put(std::vector<uint8_t>& bytes,size_t at,T value) {
     check(at<=bytes.size() && sizeof(T)<=bytes.size()-at,"fixture write bounds");
@@ -25,20 +32,31 @@ struct Fixture {
         put<int32_t>(bytes,offset(at+opcode_size),static_cast<int32_t>(delta));
     }
 };
+void clone_function(Fixture& f,const discovery::Image& source,uintptr_t from,size_t size,uintptr_t to) {
+    auto data=source.view(from,size);std::copy(data.begin(),data.end(),f.bytes.begin()+f.offset(to));
+    discovery::x64::Cursor cursor(source,from,size);
+    while(cursor.at<cursor.end) {
+        auto ins=cursor.take();const auto clone=to+(ins.at-from);
+        if(ins.base()==discovery::x64::rip) {
+            const auto delta=int64_t(ins.storage(source))-int64_t(clone+ins.h.len);
+            check(delta>=INT32_MIN && delta<=INT32_MAX,"clone RIP displacement range");
+            put<int32_t>(f.bytes,f.offset(clone+(ins.displacement_at()-ins.at)),static_cast<int32_t>(delta));
+        }
+        if(ins.call() || ins.jump()) {
+            const auto target=ins.relative(source);
+            if(target<from || target>=from+size) {
+                check(ins.immediate_size()==4,"clone external branch displacement width");
+                f.rel(clone,ins.h.len-4,target);
+            }
+        }
+    }
+}
 Fixture compact(const discovery::Image& source,const discovery::Result& found) {
     std::map<uintptr_t,bool> pages;
     auto code=[&](uintptr_t address,size_t size) {
         for(uintptr_t page=address&~uintptr_t{4095};page<address+size;page+=4096)pages[page]=true;
     };
-    code(found.input_region,scan_rules::input_region.bytes.size());
-    code(found.screen_region,scan_rules::screen_region.bytes.size());
-    code(found.frame_region,scan_rules::frame_region.bytes.size());
-    code(found.touch_loop,0x400);
-    code(found.device_selector,scan_rules::device_selector.bytes.size());
-    code(found.build.get_effective_layout,scan_rules::effective_layout.bytes.size());
-    code(found.build.get_layout_override,scan_rules::layout_getter.bytes.size());
-    code(found.default_getter,scan_rules::layout_getter.bytes.size());
-    for(auto setter:source.find(scan_rules::layout_setter))code(setter,scan_rules::layout_setter.bytes.size());
+    for(const auto& check:found.code_checks)code(check.rva,check.bytes.size());
     for(const auto& field:profile::fields) {
         const std::string name=field.name;
         if(name.ends_with("_slot") || name=="static_reference_pool")pages[(found.build.*(field.value))&~uintptr_t{4095}]=false;
@@ -48,25 +66,34 @@ Fixture compact(const discovery::Image& source,const discovery::Result& found) {
     const uintptr_t spare=0x100000;
     check(!pages.contains(spare),"spare page collision");pages[spare]=true;
     check(pages.size()<80,"fixture section count");
+    struct Run {uintptr_t page;size_t count;bool executable;};std::vector<Run> runs;
+    for(auto [page,executable]:pages) {
+        if(!runs.empty() && runs.back().executable==executable && runs.back().page+runs.back().count*4096==page)++runs.back().count;
+        else runs.push_back({page,1,executable});
+    }
     Fixture f;f.bytes.resize(4096+pages.size()*4096);
     put<uint16_t>(f.bytes,0,0x5a4d);put<uint32_t>(f.bytes,0x3c,0x80);
     put<uint32_t>(f.bytes,0x80,0x4550);put<uint16_t>(f.bytes,0x84,0x8664);
-    put<uint16_t>(f.bytes,0x86,static_cast<uint16_t>(pages.size()));put<uint16_t>(f.bytes,0x94,0xf0);
+    put<uint16_t>(f.bytes,0x86,static_cast<uint16_t>(runs.size()));put<uint16_t>(f.bytes,0x94,0xf0);
     put<uint16_t>(f.bytes,0x98,0x20b);put<uint32_t>(f.bytes,0x98+56,source.image_size);put<uint32_t>(f.bytes,0x98+60,4096);
-    size_t index{};
-    for(auto [page,executable]:pages) {
-        const size_t header=0x188+index*40,raw=4096+index*4096;
-        put<uint32_t>(f.bytes,header+8,4096);put<uint32_t>(f.bytes,header+12,static_cast<uint32_t>(page));
-        put<uint32_t>(f.bytes,header+16,4096);put<uint32_t>(f.bytes,header+20,static_cast<uint32_t>(raw));
+    size_t index{},raw=4096;
+    for(auto [page,count,executable]:runs) {
+        const size_t header=0x188+index*40,length=count*4096;
+        put<uint32_t>(f.bytes,header+8,static_cast<uint32_t>(length));put<uint32_t>(f.bytes,header+12,static_cast<uint32_t>(page));
+        put<uint32_t>(f.bytes,header+16,static_cast<uint32_t>(length));put<uint32_t>(f.bytes,header+20,static_cast<uint32_t>(raw));
         put<uint32_t>(f.bytes,header+36,executable?0x60000020:0xc0000040);
-        if(executable && page!=spare) {
-            auto bytes=source.view(page,4096);std::copy(bytes.begin(),bytes.end(),f.bytes.begin()+raw);
+        for(size_t offset=0;offset<length;offset+=4096)if(executable && page+offset!=spare) {
+            auto bytes=source.view(page+offset,4096);std::copy(bytes.begin(),bytes.end(),f.bytes.begin()+raw+offset);
         }
-        ++index;
+        ++index;raw+=length;
     }
     return f;
 }
 void negatives(const Fixture& original,const discovery::Result& found) {
+    const discovery::Image base(original.bytes);
+    const auto fallback=discovery::property(base,found.default_getter,false);
+    const auto override=discovery::property(base,found.build.get_layout_override,false);
+    const auto setter=discovery::property(base,found.build.set_layout_override,true);
     size_t count{};
     auto rejected=[&](const char* label,const std::function<void(Fixture&)>& mutate) {
         Fixture copy=original;mutate(copy);
@@ -87,25 +114,62 @@ void negatives(const Fixture& original,const discovery::Result& found) {
         auto at=std::search(f.bytes.begin()+start,f.bytes.begin()+start+105,copy.begin(),copy.end());
         check(at!=f.bytes.begin()+start+105,"find Touch ABI fixture mutation");at[2]=0x44;
     });
-    rejected("different default provider",[&](Fixture& f){put<uint32_t>(f.bytes,f.offset(found.default_getter+0x30),static_cast<uint32_t>(found.build.ui_state_offset+8));});
-    rejected("wrong setter property",[&](Fixture& f){put<uint32_t>(f.bytes,f.offset(found.build.set_layout_override+0x50),static_cast<uint32_t>(found.build.default_property_offset));});
-    rejected("ambiguous setter",[&](Fixture& f){
-        auto from=f.offset(found.build.set_layout_override),to=f.offset(0x100000);
-        std::copy_n(f.bytes.data()+from,scan_rules::layout_setter.bytes.size(),f.bytes.data()+to);
-        auto prop=discovery::property(discovery::Image(original.bytes),found.build.get_layout_override,false);
-        f.rel(0x100000+0x22,3,prop.klass);f.rel(0x100000+0x36,3,prop.pool);f.rel(0x100000+0x5d,3,prop.interface_slot);
+    rejected("different default provider",[&](Fixture& f){put<uint32_t>(f.bytes,f.offset(fallback.pool_offset_at),static_cast<uint32_t>(found.build.ui_state_offset+8));});
+    rejected("wrong setter property",[&](Fixture& f){
+        if(setter.field_size==1)put<uint8_t>(f.bytes,f.offset(setter.field_at),static_cast<uint8_t>(found.build.default_property_offset));
+        else put<uint32_t>(f.bytes,f.offset(setter.field_at),static_cast<uint32_t>(found.build.default_property_offset));
     });
-    rejected("wrong touch-loop count consumer",[&](Fixture& f){f.rel(found.touch_loop+0x2bf,2,found.build.screen_width_slot);});
-    rejected("changed Mobile enum",[&](Fixture& f){f.bytes[f.offset(found.device_selector+0xd4)]=5;});
+    rejected("ambiguous setter",[&](Fixture& f){
+        clone_function(f,base,found.build.set_layout_override,setter.main_size,0x100000);
+        // The clone must really validate as the same setter before exercising
+        // ambiguity rejection; a broken clone would not test uniqueness.
+        check(discovery::same_owner(setter,discovery::property(discovery::Image(f.bytes),0x100000,true)),"cloned setter owner");
+    });
+    rejected("wrong touch-loop count consumer",[&](Fixture& f){f.rel(found.loop_count_call,2,found.build.screen_width_slot);});
+    rejected("changed Mobile enum",[&](Fixture& f){f.bytes[f.offset(found.mobile_value_at)]=5;});
+    rejected("changed PC enum",[&](Fixture& f){f.bytes[f.offset(found.pc_value_at)]=5;});
+    rejected("wrong setter interface slot",[&](Fixture& f){
+        discovery::x64::Cursor cursor(base,found.build.set_layout_override,setter.main_size);bool changed{};
+        while(cursor.at<cursor.end){const auto ins=cursor.take();if(ins.immediate(9,1)){put<uint32_t>(f.bytes,f.offset(ins.next()-4),0);changed=true;}}
+        check(changed,"setter interface slot mutation found");
+    });
+    rejected("wrong property interface identity",[&](Fixture& f){f.rel(override.interface_load,3,override.pool);});
+    rejected("GetTouch receives the wrong index",[&](Fixture& f){
+        const auto argument=discovery::x64::decode(base,found.loop_get_touch_call-5);
+        check(argument.h.opcode==0x89 && argument.h.len==2,"GetTouch argument fixture instruction");
+        f.bytes[f.offset(argument.at+1)]^=8;
+    });
+    rejected("ambiguous validated choice",[&](Fixture& f){
+        const auto original_choice=discovery::choice(base,found.build.get_effective_layout,found.build.get_effective_layout+0x26);
+        clone_function(f,base,original_choice.fn,original_choice.size,0x100000);
+        check(discovery::choice(discovery::Image(f.bytes),0x100000,0x100026).override_getter==original_choice.override_getter,"cloned layout choice");
+    });
     rejected("aliased intrinsic slots",[&](Fixture& f){f.rel(found.screen_region+0x30,3,found.build.screen_width_slot);});
     rejected("nonzero icall storage",[&](Fixture& f){f.bytes[f.offset(found.build.get_touch_slot)]=1;});
-    rejected("invalid class layout",[&](Fixture& f){put<uint32_t>(f.bytes,f.offset(found.build.get_layout_override+0x1b),0xfffffff0);});
+    rejected("invalid class layout",[&](Fixture& f){put<uint32_t>(f.bytes,f.offset(override.initialized_at),0xfffffff0);});
     rejected("target in unmapped image gap",[&](Fixture& f){f.rel(found.frame_region,3,0x200000);});
     rejected("truncated raw section",[&](Fixture& f){f.bytes.resize(f.bytes.size()-1);});
     rejected("overlapping virtual sections",[&](Fixture& f){put<uint32_t>(f.bytes,0x188+40+12,*reinterpret_cast<const uint32_t*>(f.bytes.data()+0x188+12));});
     rejected("malformed PE section count",[&](Fixture& f){put<uint16_t>(f.bytes,0x86,0xffff);});
     rejected("no PE header",[&](Fixture& f){f.bytes.resize(20);});
     std::cout<<"Rejected "<<count<<" malformed, ambiguous, ABI-changing or inconsistent fixtures.\n";
+}
+void variations(const Fixture& original,const discovery::Result& found) {
+    const discovery::Image base(original.bytes);
+    Fixture unrelated=original;
+    auto core=base.view(found.build.get_effective_layout+0x26,0x31);
+    std::copy(core.begin(),core.end(),unrelated.bytes.begin()+unrelated.offset(0x100026));
+    equal_profile(discovery::discover(discovery::Image(unrelated.bytes)).build,found.build);
+    Fixture moved=original;
+    const auto setter=discovery::property(base,found.build.set_layout_override,true);
+    clone_function(moved,base,found.build.set_layout_override,setter.main_size,0x100000);
+    moved.bytes[moved.offset(found.build.set_layout_override)]=0xcc;
+    auto expected=found.build;expected.set_layout_override=0x100000;
+    equal_profile(discovery::discover(discovery::Image(moved.bytes)).build,expected);
+    Fixture truncated=original;truncated.bytes[truncated.offset(0x100fff)]=0xe8;
+    bool rejected{};try{(void)discovery::x64::decode(discovery::Image(truncated.bytes),0x100fff);}catch(const std::runtime_error&){rejected=true;}
+    check(rejected,"decoder must not consume padding outside the section");
+    std::cout<<"PASS: unrelated short anchor ignored; relocated setter rediscovered; truncated instruction rejected.\n";
 }
 void save(const std::filesystem::path& path,const Fixture& f) {
     std::ofstream out(path,std::ios::binary|std::ios::trunc);out.write(reinterpret_cast<const char*>(f.bytes.data()),static_cast<std::streamsize>(f.bytes.size()));
@@ -130,15 +194,18 @@ void live_code(const discovery::Result& result,size_t image_size) {
 }
 void test(const std::filesystem::path& path) {
     const auto fixed=discovery::resolve(path);
-    check(!fixed.automatic,"fixture baseline must be a known client");
+    const bool older=std::string(fixed.build.sha256)==golden26.sha256;
+    check(older?fixed.automatic:!fixed.automatic,"2.6 must use automatic discovery; known profiles must stay fixed");
+    const auto& expected=older?golden26:fixed.build;
     const auto automatic=discovery::resolve(path,true);
     check(automatic.automatic,"forced discovery must bypass the hash table");
-    equal_profile(automatic.build,fixed.build);
+    equal_profile(automatic.build,expected);
     Fixture fixture;
     {discovery::MappedFile file(path);fixture=compact(discovery::Image(file.bytes()),automatic);}
     const auto reduced=discovery::discover(discovery::Image(fixture.bytes));
-    equal_profile(reduced.build,fixed.build);
+    equal_profile(reduced.build,expected);
     negatives(fixture,reduced);
+    variations(fixture,reduced);
     live_code(reduced,discovery::Image(fixture.bytes).image_size);
     const auto owned=std::filesystem::current_path()/("discovery-owned-"+std::to_string(GetCurrentProcessId())+".dll");
     check(!std::filesystem::exists(owned),"owned fixture path already exists");
@@ -146,7 +213,7 @@ void test(const std::filesystem::path& path) {
         save(owned,fixture);
         const auto unknown=discovery::resolve(owned);
         check(unknown.automatic && !profile::find(unknown.build.sha256),"unknown file hash must use discovery");
-        equal_profile(unknown.build,fixed.build);
+        equal_profile(unknown.build,expected);
         fixture.bytes[fixture.offset(reduced.input_region)]^=1;save(owned,fixture);
         bool failed{};try{(void)discovery::resolve(owned);}catch(const std::runtime_error&){failed=true;}
         check(failed,"content changes must invalidate cached addresses");

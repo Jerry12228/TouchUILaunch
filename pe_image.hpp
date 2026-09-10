@@ -95,16 +95,16 @@ public:
         for(size_t i=0;i<data.size();++i)if((data[i]&rule.mask[i])!=rule.bytes[i])return false;
         return true;
     }
-    std::vector<uintptr_t> find(const scan_rules::Pattern& rule,size_t limit=64)const {
+    std::vector<uintptr_t> find(const scan_rules::Pattern& rule,size_t limit=64,size_t minimum_fixed=64)const {
         require(rule.bytes.size()==rule.mask.size() && !rule.bytes.empty(),"invalid scan rule");
         size_t anchor{},length{},run{};
         for(size_t i=0;i<rule.mask.size();++i) {
             run=rule.mask[i]==255?run+1:0;
             if(run>length){length=run;anchor=i+1-run;}
         }
-        // The longest literal run accelerates search; the entire masked rule
-        // (at least 64 fixed bytes) determines acceptance, never the run alone.
-        require(length>=6 && std::count(rule.mask.begin(),rule.mask.end(),uint8_t{255})>=64,"scan rule lacks enough fixed bytes");
+        // Short anchors are candidates for instruction/relationship checks.
+        // Preserved Unity rules retain the default 64-byte requirement.
+        require(minimum_fixed>=8 && length>=2 && size_t(std::count(rule.mask.begin(),rule.mask.end(),uint8_t{255}))>=minimum_fixed,"scan rule lacks enough fixed bytes");
         std::vector<uintptr_t> result;
         for(const auto& s:sections) {
             if(!s.code() || s.raw_size<rule.bytes.size())continue;
