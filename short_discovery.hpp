@@ -5,17 +5,17 @@
 
 namespace discovery {
 struct Result {
-    struct CodeCheck { uintptr_t rva; std::vector<uint8_t> bytes; };
-    profile::Build build{};bool automatic{};
+    struct CodeEvidence { uintptr_t rva; std::vector<uint8_t> bytes; };
+    profile::Build build{};
     uintptr_t input_region{},screen_region{},frame_region{},touch_loop{},device_selector{},default_getter{};
     uintptr_t loop_count_call{},loop_get_touch_call{},mobile_value_at{},pc_value_at{};
     size_t setter_candidates{};
-    std::vector<CodeCheck> code_checks;
+    std::vector<CodeEvidence> code_evidence;
 };
 inline void evidence(const Image& image,Result& r,uintptr_t at,size_t size) {
     image.code(at,size);auto data=image.view(at,size);
-    require(size>0 && size<=4096 && r.code_checks.size()<64,"invalid code evidence size");
-    r.code_checks.push_back({at,{data.begin(),data.end()}});
+    require(size>0 && size<=4096 && r.code_evidence.size()<64,"invalid code evidence size");
+    r.code_evidence.push_back({at,{data.begin(),data.end()}});
 }
 struct Choice {
     uintptr_t fn{},override_getter{},default_getter{},klass{},initialized{};
@@ -142,7 +142,7 @@ inline MobileBranch mobile_branch(const Image& image,uintptr_t call,bool helper,
     return {call,destination,helper?helper_enum:condition.next()-1,helper?target.relative(image):0,c.at-call,exit.at-destination};
 }
 inline Result discover(const Image& image) {
-    Result r;r.automatic=true;auto& p=r.build;p.version="auto";
+    Result r;auto& p=r.build;
     r.input_region=image.unique(scan_rules::input_region);r.screen_region=image.unique(scan_rules::screen_region);r.frame_region=image.unique(scan_rules::frame_region);
     p.get_touch_slot=image.relative(r.input_region+0x70,{0x48,0x8b,0x05});image.expect(r.input_region+0x77,{0x48,0xff,0xe0});
     p.touch_count_slot=image.relative(r.input_region+0x220,{0x48,0xff,0x25});p.touch_supported_slot=image.relative(r.input_region+0x230,{0x48,0xff,0x25});
@@ -196,7 +196,7 @@ inline Result discover(const Image& image) {
     const auto [consumers,branch]=*loops.begin();r.touch_loop=branch.call;r.loop_count_call=consumers.first;r.loop_get_touch_call=consumers.second;
     r.pc_value_at=branch.helper?helpers.at(branch.helper).compare_at:branch.enum_at;
     const std::set<uintptr_t> slots{p.touch_count_slot,p.get_touch_slot,p.touch_supported_slot,p.frame_count_slot,p.screen_width_slot,p.screen_height_slot,p.ui_class_slot,p.static_reference_pool};
-    require(slots.size()==8,"detected storage slots alias");for(auto slot:slots)image.zero_slot(slot);
+    require(slots.size()==8,"detected storage slots alias");for(auto slot:slots)image.slot(slot);
     evidence(image,r,r.input_region,scan_rules::input_region.bytes.size());evidence(image,r,r.screen_region,scan_rules::screen_region.bytes.size());evidence(image,r,r.frame_region,scan_rules::frame_region.bytes.size());
     evidence(image,r,current.fn,current.size);evidence(image,r,p.get_layout_override,override.main_size);evidence(image,r,r.default_getter,fallback.main_size);evidence(image,r,p.set_layout_override,setter.main_size);
     evidence(image,r,r.touch_loop-5,r.loop_get_touch_call+6-(r.touch_loop-5));

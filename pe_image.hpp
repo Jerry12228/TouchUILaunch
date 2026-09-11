@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cstdint>
 #include <cstring>
+#include <functional>
 #include <limits>
 #include <span>
 #include <stdexcept>
@@ -19,9 +20,12 @@ struct Section {
     bool data()const{return (flags&0xc0000000)==0xc0000000 && !(flags&0x20000000);}
 };
 
-// A bounded view of a raw PE file, never a loaded or executable DLL.
+// One RVA interface for raw files and captured module code. Neither executes code.
 class Image {
     std::span<const uint8_t> bytes_;
+    using Reader=std::function<void(uintptr_t,std::span<uint8_t>)>;
+    Reader memory_read_;
+    std::vector<std::vector<uint8_t>> code_;
     template<class T> T raw(size_t offset)const {
         require(offset<=bytes_.size() && sizeof(T)<=bytes_.size()-offset,"truncated PE read");
         T value{};std::memcpy(&value,bytes_.data()+offset,sizeof(T));return value;
@@ -29,7 +33,7 @@ class Image {
 public:
     uint32_t image_size{};
     std::vector<Section> sections;
-    explicit Image(std::span<const uint8_t> bytes):bytes_(bytes) {
+    explicit Image(std::span<const uint8_t> bytes,Reader memory_read={}):bytes_(bytes),memory_read_(std::move(memory_read)) {
         require(raw<uint16_t>(0)==0x5a4d,"missing DOS signature");
         const size_t pe=raw<uint32_t>(0x3c);
         require(raw<uint32_t>(pe)==0x4550 && raw<uint16_t>(pe+4)==0x8664,"expected x64 PE");
@@ -39,27 +43,40 @@ public:
         require(raw<uint16_t>(opt)==0x20b,"expected PE32+");
         image_size=raw<uint32_t>(opt+56);
         const auto headers=raw<uint32_t>(opt+60);
-        require(image_size>0 && image_size<=0x80000000 && headers<=bytes_.size(),"invalid PE size");
+        require(image_size>0 && image_size<=0x80000000 && headers<=image_size && headers<=bytes_.size(),"invalid PE size");
         require(opt+optional_size+size_t(count)*40<=headers,"section table outside headers");
         for(size_t i=0;i<count;++i) {
             const size_t at=opt+optional_size+i*40;
             Section s{raw<uint32_t>(at+12),std::max(raw<uint32_t>(at+8),raw<uint32_t>(at+16)),raw<uint32_t>(at+20),raw<uint32_t>(at+16),raw<uint32_t>(at+36)};
             require(s.rva>=headers && uint64_t(s.rva)+s.size<=image_size,"section outside image");
-            require(!s.raw_size || (s.raw>=headers && uint64_t(s.raw)+s.raw_size<=bytes_.size()),"section outside file");
+            require(memory_read_ || !s.raw_size || (s.raw>=headers && uint64_t(s.raw)+s.raw_size<=bytes_.size()),"section outside file");
             for(const auto& prev:sections) {
                 require(uint64_t(s.rva)+s.size<=prev.rva || uint64_t(prev.rva)+prev.size<=s.rva,"overlapping virtual sections");
-                require(!s.raw_size || !prev.raw_size || uint64_t(s.raw)+s.raw_size<=prev.raw || uint64_t(prev.raw)+prev.raw_size<=s.raw,"overlapping raw sections");
+                require(memory_read_ || !s.raw_size || !prev.raw_size || uint64_t(s.raw)+s.raw_size<=prev.raw || uint64_t(prev.raw)+prev.raw_size<=s.raw,"overlapping raw sections");
             }
             sections.push_back(s);
         }
+        if(memory_read_) {
+            code_.resize(sections.size());
+            for(size_t i=0;i<sections.size();++i)if(sections[i].code()) {
+                code_[i].resize(sections[i].size);
+                memory_read_(sections[i].rva,code_[i]);
+            }
+            bytes_={}; // Header bytes belong to the caller; all metadata is now copied.
+        }
     }
+    size_t backed_size(const Section& s)const{return memory_read_?s.size:s.raw_size;}
     const Section* section(uintptr_t rva,size_t length)const {
         for(const auto& s:sections)if(rva>=s.rva && rva-s.rva<=s.size && length<=s.size-(rva-s.rva))return &s;
         return nullptr;
     }
     std::span<const uint8_t> view(uintptr_t rva,size_t length)const {
         auto s=section(rva,length);
-        require(s && rva-s->rva<=s->raw_size && length<=s->raw_size-(rva-s->rva),"RVA is not file-backed");
+        require(s && rva-s->rva<=backed_size(*s) && length<=backed_size(*s)-(rva-s->rva),"RVA is not captured/backed");
+        if(memory_read_) {
+            require(s->code(),"only code is available in the module snapshot");
+            return std::span<const uint8_t>(code_[s-sections.data()]).subspan(rva-s->rva,length);
+        }
         return bytes_.subspan(s->raw+rva-s->rva,length);
     }
     template<class T> T read(uintptr_t rva)const {
@@ -69,9 +86,13 @@ public:
         auto s=section(rva,length);require(s && s->code(),"target is not read-only executable code");
         (void)view(rva,length);
     }
-    void zero_slot(uintptr_t rva)const {
+    void slot(uintptr_t rva)const {
         const auto* s=section(rva,8);
         require(rva%8==0 && s && s->data(),"slot is not aligned writable data");
+        if(memory_read_) {
+            uint8_t bytes[8]{};memory_read_(rva,bytes);
+            return; // Initialized pointers are checked for readiness by the hook/UI flow.
+        }
         for(size_t i=0;i<8;++i) {
             const auto offset=rva-s->rva+i;
             require(offset>=s->raw_size || bytes_[s->raw+offset]==0,"slot is not initially zero");
@@ -90,7 +111,7 @@ public:
     }
     bool matches(uintptr_t rva,const scan_rules::Pattern& rule)const {
         auto s=section(rva,rule.bytes.size());
-        if(!s || !s->code() || rva-s->rva>s->raw_size || rule.bytes.size()>s->raw_size-(rva-s->rva))return false;
+        if(!s || !s->code() || rva-s->rva>backed_size(*s) || rule.bytes.size()>backed_size(*s)-(rva-s->rva))return false;
         auto data=view(rva,rule.bytes.size());
         for(size_t i=0;i<data.size();++i)if((data[i]&rule.mask[i])!=rule.bytes[i])return false;
         return true;
@@ -107,10 +128,10 @@ public:
         require(minimum_fixed>=8 && length>=2 && size_t(std::count(rule.mask.begin(),rule.mask.end(),uint8_t{255}))>=minimum_fixed,"scan rule lacks enough fixed bytes");
         std::vector<uintptr_t> result;
         for(const auto& s:sections) {
-            if(!s.code() || s.raw_size<rule.bytes.size())continue;
-            const auto* data=bytes_.data()+s.raw;
+            if(!s.code() || backed_size(s)<rule.bytes.size())continue;
+            const auto* data=view(s.rva,backed_size(s)).data();
             size_t pos=anchor;
-            const size_t last=s.raw_size-rule.bytes.size()+anchor;
+            const size_t last=backed_size(s)-rule.bytes.size()+anchor;
             while(pos<=last) {
                 auto hit=static_cast<const uint8_t*>(std::memchr(data+pos,rule.bytes[anchor],last-pos+1));
                 if(!hit)break;

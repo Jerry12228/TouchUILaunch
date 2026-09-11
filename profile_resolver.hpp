@@ -1,69 +1,76 @@
 #pragma once
+#include <windows.h>
 #include "discover_profile.hpp"
-#include "win_util.hpp"
-#include <map>
-#include <mutex>
-#include <ostream>
 
 namespace discovery {
-class MappedFile {
-    Handle file_,mapping_;
-    const uint8_t* view_{};
-    size_t size_{};
+// A capture failure is fatal, unlike a rejected candidate. Keep it outside
+// runtime_error so the matcher's candidate-rejection handlers cannot hide it.
+class MemoryReadError final:public std::exception {
+    std::string message_;
 public:
-    explicit MappedFile(const std::filesystem::path& path) {
-        // Disallow writes/replacement for the duration of hashing and scanning.
-        file_.value=CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr);
-        require(file_.value!=INVALID_HANDLE_VALUE,"cannot open a stable read-only DLL file (Windows error "+std::to_string(GetLastError())+")");
-        LARGE_INTEGER length{};
-        require(GetFileSizeEx(file_,&length) && length.QuadPart>0 && length.QuadPart<=0xffffffff,"invalid DLL file size");
-        size_=static_cast<size_t>(length.QuadPart);
-        mapping_.value=CreateFileMappingW(file_,nullptr,PAGE_READONLY,0,0,nullptr);
-        require(mapping_.value!=nullptr,"cannot create read-only file mapping");
-        view_=static_cast<const uint8_t*>(MapViewOfFile(mapping_,FILE_MAP_READ,0,0,0));
-        require(view_!=nullptr,"cannot map DLL data");
-    }
-    ~MappedFile(){if(view_)UnmapViewOfFile(view_);}
-    MappedFile(const MappedFile&)=delete;
-    MappedFile& operator=(const MappedFile&)=delete;
-    std::span<const uint8_t> bytes()const{return {view_,size_};}
+    explicit MemoryReadError(std::string message):message_("Automatic profile: "+std::move(message)){}
+    const char* what()const noexcept override{return message_.c_str();}
 };
-inline Result resolve(const std::filesystem::path& path,bool force_automatic=false) {
-    const auto hash=file_sha256(path);
-    if(const auto* known=profile::find(hash);known && !force_automatic) {
-        Result result;result.build=*known;return result;
+inline void require_memory(bool condition,const std::string& message) {
+    if(!condition)throw MemoryReadError(message);
+}
+// No file/path/hash API: every byte comes from the current process.
+struct ModuleReader {
+    uintptr_t base;
+    void operator()(uintptr_t rva,std::span<uint8_t> target)const {
+        require_memory(base && rva<=UINTPTR_MAX-base && target.size()<=UINTPTR_MAX-(base+rva),"module address overflow");
+        size_t done{};
+        while(done<target.size()) {
+            const auto address=base+rva+done;
+            MEMORY_BASIC_INFORMATION region{};
+            require_memory(VirtualQuery(reinterpret_cast<const void*>(address),&region,sizeof(region))==sizeof(region),"cannot query module memory at RVA "+std::to_string(rva+done));
+            constexpr DWORD readable=PAGE_READONLY|PAGE_READWRITE|PAGE_WRITECOPY|PAGE_EXECUTE_READ|PAGE_EXECUTE_READWRITE|PAGE_EXECUTE_WRITECOPY;
+            // AllocationBase prevents a bad section from reading a neighbor.
+            require_memory(reinterpret_cast<uintptr_t>(region.AllocationBase)==base && region.State==MEM_COMMIT &&
+                !(region.Protect&(PAGE_GUARD|PAGE_NOACCESS)) && (region.Protect&readable),"unreadable or incomplete module range at RVA "+std::to_string(rva+done));
+            const auto offset=address-reinterpret_cast<uintptr_t>(region.BaseAddress);
+            require_memory(offset<region.RegionSize,"invalid module memory region");
+            const auto length=std::min(target.size()-done,region.RegionSize-offset);
+            SIZE_T count{};
+            const auto success=ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<const void*>(address),target.data()+done,length,&count);
+            const auto error=success?ERROR_PARTIAL_COPY:GetLastError();
+            require_memory(success && count==length,"module read failed at RVA "+std::to_string(rva+done)+" (Windows error "+std::to_string(error)+")");
+            done+=length;
+        }
     }
-    MappedFile file(path);
-    require(file_sha256(path)==hash,"DLL changed while preparing discovery");
-    // Only process-local results are cached; the file is rehashed on every use.
-    static std::mutex mutex;
-    static std::map<std::string,Result> cache;
-    std::lock_guard lock(mutex);
-    if(auto it=cache.find(hash);it!=cache.end())return it->second;
-    Result result=discover(Image(file.bytes()));
-    require(hash.size()==64,"invalid content hash");
-    std::copy(hash.begin(),hash.end(),result.build.sha256);
-    result.build.sha256[64]=0;
-    cache.emplace(hash,result);
+    template<class T> T read(uintptr_t rva)const {
+        T value{};(*this)(rva,{reinterpret_cast<uint8_t*>(&value),sizeof(value)});return value;
+    }
+};
+// Also used on owned, non-executable simulated mappings. Keep the allocation
+// alive while matching: slot readability is checked against live memory.
+inline Image capture_module(uintptr_t base) {
+    const ModuleReader read{base};
+    require(read.read<uint16_t>(0)==0x5a4d,"missing loaded DOS signature");
+    const auto pe=read.read<uint32_t>(0x3c);
+    require(pe>=64 && pe<=0x100000-24,"invalid loaded PE offset");
+    require(read.read<uint32_t>(pe)==0x4550 && read.read<uint16_t>(pe+4)==0x8664,"expected loaded x64 PE");
+    const auto optional_size=read.read<uint16_t>(pe+20);
+    require(optional_size>=112,"truncated loaded optional header");
+    const auto headers=read.read<uint32_t>(pe+24+60);
+    require(headers>=pe+24+optional_size && headers<=0x100000,"invalid loaded header size");
+    std::vector<uint8_t> bytes(headers);read(0,bytes);
+    return Image(bytes,read);
+}
+using Progress=void(*)(const char*);
+inline Result resolve_module(HMODULE module,Progress progress=nullptr) {
+    require(module!=nullptr,"null GameAssembly module");
+    if(progress)progress("retain module for process lifetime");
+    HMODULE retained{};
+    // Installed callbacks remain resident until process exit. Match that lifetime
+    // even if worker initialization throws after installing one of the hooks.
+    require(GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS|GET_MODULE_HANDLE_EX_FLAG_PIN,
+        reinterpret_cast<LPCWSTR>(module),&retained) && retained==module,"cannot retain GameAssembly module");
+    if(progress)progress("capture loaded PE headers and all readable code sections");
+    const auto image=capture_module(reinterpret_cast<uintptr_t>(retained));
+    if(progress)progress("match anchors, decode instructions and validate dataflow");
+    auto result=discover(image);
+    if(progress)progress("resolved all 15 fields from memory");
     return result;
-}
-inline void print_json(std::ostream& out,const Result& result) {
-    const auto& p=result.build;
-    out<<"{\n  \"mode\": \""<<(result.automatic?"automatic":"known")<<"\",\n  \"sha256\": \""<<p.sha256<<"\",\n  \"version\": \""<<p.version<<"\",\n  \"values\": {\n";
-    bool first=true;
-    for(const auto& field:profile::fields) {
-        if(!first)out<<",\n";first=false;
-        out<<"    \""<<field.name<<"\": \"0x"<<std::hex<<p.*(field.value)<<std::dec<<"\"";
-    }
-    out<<"\n  },\n  \"setter_candidates\": "<<result.setter_candidates<<"\n}\n";
-}
-inline void validate_loaded_code(uintptr_t base,const Result& result) {
-    require(result.automatic && result.code_checks.size()>=9 && result.code_checks.size()<=64,"missing live-code evidence");
-    for(const auto& check:result.code_checks) {
-        require(base<=UINTPTR_MAX-check.rva,"module address overflow");
-        std::vector<uint8_t> actual(check.bytes.size());SIZE_T read{};
-        require(ReadProcessMemory(GetCurrentProcess(),reinterpret_cast<const void*>(base+check.rva),actual.data(),actual.size(),&read) && read==actual.size(),"cannot read loaded code before hook installation");
-        require(actual==check.bytes,"loaded code differs from scanned file; no hooks installed");
-    }
 }
 }

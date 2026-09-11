@@ -1,5 +1,5 @@
 #include "profile.hpp"
-#include "profile_resolver.hpp"
+#include "file_probe.hpp"
 #include "win_util.hpp"
 #include "elevation.hpp"
 #include <tlhelp32.h>
@@ -32,16 +32,12 @@ std::vector<DWORD> find_games() {
     if(Process32FirstW(snap,&entry))do {if(_wcsicmp(entry.szExeFile,L"ZenlessZoneZero.exe")==0)result.push_back(entry.th32ProcessID);}while(Process32NextW(snap,&entry));
     return result;
 }
-void verify_assembly(const fs::path& path,bool force_automatic=false) {
+void probe_assembly(const fs::path& path) {
     std::wcout<<L"Checking GameAssembly: "<<path<<L"\n";
-    const auto resolution=discovery::resolve(path,force_automatic);
-    const auto& build=resolution.build;
-    std::cout<<(resolution.automatic?"Automatically resolved client ":"Supported client ")<<build.version<<": "<<build.sha256<<"\n";
-    if(resolution.automatic)discovery::print_json(std::cout,resolution);
+    discovery::print_json(std::cout,discovery::probe_file(path));
 }
 DWORD start_game(const fs::path& path) {
     if(_wcsicmp(path.filename().c_str(),L"ZenlessZoneZero.exe")!=0||!fs::is_regular_file(path))throw std::runtime_error("--game must name an existing ZenlessZoneZero.exe");
-    verify_assembly(path.parent_path()/L"GameAssembly.dll");
     std::wstring command=L"\""+path.wstring()+L"\"";
     STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION info{};
     if(!CreateProcessW(path.c_str(),command.data(),nullptr,nullptr,FALSE,0,nullptr,path.parent_path().c_str(),&startup,&info))throw std::runtime_error("CreateProcess failed, Windows error "+std::to_string(GetLastError()));
@@ -65,7 +61,6 @@ void inject(DWORD pid,const fs::path& payload) {
     if(_wcsicmp(process_path(process).filename().c_str(),L"ZenlessZoneZero.exe")!=0)throw std::runtime_error("Target process identity changed");
     auto assembly=find_module(pid,L"GameAssembly.dll");
     if(!assembly)throw std::runtime_error("GameAssembly module disappeared");
-    verify_assembly(assembly->path);
     const auto text=payload.wstring();SIZE_T bytes=(text.size()+1)*sizeof(wchar_t);
     auto loader=remote_load_library(pid);
     void* remote=VirtualAllocEx(process,nullptr,bytes,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
@@ -85,7 +80,7 @@ void inject(DWORD pid,const fs::path& payload) {
 void usage() {
     std::cout<<"ZZZTouchLauncher (Windows x64, experimental)\n"
         "  --probe [--game <ZenlessZoneZero.exe>]   Verify files only; never launch/inject\n"
-        "  --probe-auto [--game <path>]            Test automatic discovery, even for known hashes\n"
+        "  --probe-auto [--game <path>]            Compatibility alias for --probe\n"
         "  [--pid N | --game <path>] [--enable]   Attach, or launch if no game is running\n"
         "  --disable [--pid N]                    Restore layout and pass through input\n"
         "  --status [--pid N]                     Read module/event status only\n"
@@ -122,7 +117,7 @@ int wmain(int argc,wchar_t** argv) {
         if(action==L"probe"||action==L"probe-auto") {
             if(pid)throw std::runtime_error("--probe checks files; use --status --pid to inspect a running game");
             if(!fs::is_regular_file(game))throw std::runtime_error("Game executable not found; specify --game");
-            verify_assembly(game.parent_path()/L"GameAssembly.dll",action==L"probe-auto");
+            probe_assembly(game.parent_path()/L"GameAssembly.dll");
             if(!fs::is_regular_file(payload))throw std::runtime_error("Payload DLL missing");
             std::wcout<<L"Payload: "<<payload<<L"\nProbe passed. No game process was launched or modified.\n";return 0;
         }
@@ -151,7 +146,6 @@ int wmain(int argc,wchar_t** argv) {
             assembly=find_module(pid,L"GameAssembly.dll");
         }
         if(!assembly)throw std::runtime_error("GameAssembly module unavailable");
-        verify_assembly(assembly->path);
         auto loaded=find_module(pid,payload.filename());
         if(loaded&&_wcsicmp(loaded->path.c_str(),payload.c_str())!=0)throw std::runtime_error("Another ZZZTouchUI.dll is already loaded; restart game before using this build");
         if(action==L"enable"&&!loaded)inject(pid,payload);

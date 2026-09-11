@@ -67,9 +67,9 @@ struct Ins {
 inline Ins decode(const Image& image,uintptr_t at) {
     image.code(at);
     const auto* section=image.section(at,1);
-    const auto available=std::min<size_t>(15,section->raw_size-(at-section->rva));
+    const auto available=std::min<size_t>(15,image.backed_size(*section)-(at-section->rva));
     // HDE may look ahead while decoding malformed input. A padded local buffer
-    // keeps those reads bounded; never accept a length beyond file-backed bytes.
+    // keeps those reads bounded; never accept a length beyond captured bytes.
     std::array<uint8_t,32> padded{};
     auto data=image.view(at,available);std::copy(data.begin(),data.end(),padded.begin());
     Ins result;result.at=at;hde64_disasm(padded.data(),&result.h);
@@ -90,8 +90,8 @@ struct Cursor {
 inline std::vector<uintptr_t> calls_to(const Image& image,uintptr_t target,bool indirect=false) {
     std::vector<uintptr_t> hits;
     for(const auto& s:image.sections) {
-        if(!s.code() || s.raw_size<6)continue;
-        auto data=image.view(s.rva,s.raw_size);
+        if(!s.code() || image.backed_size(s)<6)continue;
+        auto data=image.view(s.rva,image.backed_size(s));
         const size_t length=indirect?6:5;
         for(size_t pos=0;pos+length<=data.size();++pos) {
             const bool match=indirect?(data[pos]==0xff && data[pos+1]==0x15):data[pos]==0xe8;
@@ -106,8 +106,8 @@ inline std::vector<uintptr_t> calls_to(const Image& image,uintptr_t target,bool 
 inline std::vector<uintptr_t> loads_from(const Image& image,uintptr_t target) {
     std::vector<uintptr_t> hits;
     for(const auto& s:image.sections) {
-        if(!s.code() || s.raw_size<7)continue;
-        auto data=image.view(s.rva,s.raw_size);
+        if(!s.code() || image.backed_size(s)<7)continue;
+        auto data=image.view(s.rva,image.backed_size(s));
         for(size_t pos=0;pos+7<=data.size();++pos) {
             if((data[pos]&0xf8)!=0x48 || data[pos+1]!=0x8b || (data[pos+2]&0xc7)!=5)continue;
             int32_t displacement{};std::memcpy(&displacement,data.data()+pos+3,4);

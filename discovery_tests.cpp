@@ -1,22 +1,13 @@
 // Read-only tests against supplied DLL bytes plus small, non-executable fixtures.
-#include "profile_resolver.hpp"
+#include "file_probe.hpp"
+#include "test_module.hpp"
+#include "test_profiles.hpp"
+#include <map>
 #include <fstream>
 #include <iostream>
 #include <functional>
 
 namespace {
-constexpr profile::Build golden25{
-    "2.5", "69142459d5559677ac7f4c38ae88f568dc62ea41e2017e266f23889f33074ceb",
-    0x4f43f80,0x4f43fa0,0x4f43f88,0x4f41b40,0x4f3d8b0,0x4f3d8b8,
-    0x4f87fa0,0x4e93b48,0x3d9a0,0x7862010,0x7862130,0x786fc80,0xcb,0x68,0x70
-};
-// Independent 2.6 IDA evidence: analysis/versions/2.6. Test-only golden data;
-// this hash is deliberately absent from the production fixed profile table.
-constexpr profile::Build golden26{
-    "2.6", "8547fc8a2aaa6b509a4ac4e3b8ddf65997afd52f3f7c3652917d0effe2625e1a",
-    0x4916a68,0x4916a88,0x4916a70,0x4913c38,0x4910500,0x4910508,
-    0x4950e90,0x4885c60,0x295a8,0xb10d400,0xb109140,0xb103be0,0xcb,0x70,0x60
-};
 void check(bool ok,const char* message){if(!ok)throw std::runtime_error(message);}
 template<class T> void put(std::vector<uint8_t>& bytes,size_t at,T value) {
     check(at<=bytes.size() && sizeof(T)<=bytes.size()-at,"fixture write bounds");
@@ -61,7 +52,7 @@ Fixture compact(const discovery::Image& source,const discovery::Result& found) {
     auto code=[&](uintptr_t address,size_t size) {
         for(uintptr_t page=address&~uintptr_t{4095};page<address+size;page+=4096)pages[page]=true;
     };
-    for(const auto& check:found.code_checks)code(check.rva,check.bytes.size());
+    for(const auto& check:found.code_evidence)code(check.rva,check.bytes.size());
     for(const auto& field:profile::fields) {
         const std::string name=field.name;
         if(name.ends_with("_slot") || name=="static_reference_pool")pages[(found.build.*(field.value))&~uintptr_t{4095}]=false;
@@ -267,54 +258,75 @@ void save(const std::filesystem::path& path,const Fixture& f) {
     std::ofstream out(path,std::ios::binary|std::ios::trunc);out.write(reinterpret_cast<const char*>(f.bytes.data()),static_cast<std::streamsize>(f.bytes.size()));
     check(bool(out),"write owned fixture");
 }
-void live_code(const discovery::Result& result,size_t image_size) {
-    auto base=reinterpret_cast<uintptr_t>(VirtualAlloc(nullptr,image_size,MEM_RESERVE,PAGE_NOACCESS));
-    check(base!=0,"reserve owned live-code fixture");
-    try {
-        for(const auto& entry:result.code_checks) {
-            for(uintptr_t page=entry.rva&~uintptr_t{4095};page<entry.rva+entry.bytes.size();page+=4096)
-                check(VirtualAlloc(reinterpret_cast<void*>(base+page),4096,MEM_COMMIT,PAGE_READWRITE)!=nullptr,"commit owned live-code page");
-            std::memcpy(reinterpret_cast<void*>(base+entry.rva),entry.bytes.data(),entry.bytes.size());
-        }
-        // These pages are never executable or called; only ReadProcessMemory runs.
-        discovery::validate_loaded_code(base,result);
-        *reinterpret_cast<uint8_t*>(base+result.build.get_layout_override+0x40)^=8;
-        bool rejected{};try{discovery::validate_loaded_code(base,result);}catch(const std::runtime_error&){rejected=true;}
-        check(rejected,"live-code field changes must be rejected before hooks");
-    } catch(...) {VirtualFree(reinterpret_cast<void*>(base),0,MEM_RELEASE);throw;}
-    VirtualFree(reinterpret_cast<void*>(base),0,MEM_RELEASE);
+void memory_views(const Fixture& fixture,const discovery::Result& found) {
+    test_module::Mapping first(fixture.bytes),second(fixture.bytes);
+    check(first.base!=second.base,"different simultaneous ASLR bases");
+    const discovery::Image file(fixture.bytes);
+    const auto owner=discovery::property(file,found.build.get_layout_override,false);
+    for(const auto& field:profile::fields) {
+        const std::string name=field.name;
+        if(name.ends_with("_slot") || name=="static_reference_pool")second.put<uintptr_t>(found.build.*(field.value),second.base+0x1230);
+    }
+    second.put<uintptr_t>(owner.interface_slot,second.base+0x1240);
+    equal_profile(discovery::discover(discovery::capture_module(first.base)).build,found.build);
+    equal_profile(discovery::discover(discovery::capture_module(second.base)).build,found.build);
+    // Live slots are valid structurally even before readiness, independently of value.
+    second.put<uintptr_t>(found.build.ui_class_slot,~uintptr_t{});
+    equal_profile(discovery::discover(discovery::capture_module(second.base)).build,found.build);
+    for(auto slot: {owner.interface_slot,found.build.get_touch_slot}) {
+        // Include an interface slot read inside candidate validation: a memory
+        // fault must propagate rather than look like an ordinary bad candidate.
+        second.protect(slot&~uintptr_t{4095},4096,PAGE_NOACCESS);
+        bool failed{};try{(void)discovery::discover(discovery::capture_module(second.base));}catch(const discovery::MemoryReadError&){failed=true;}
+        check(failed,"unreadable live slot must fail discovery");
+        second.protect(slot&~uintptr_t{4095},4096,PAGE_READWRITE);
+    }
+    std::cout<<"PASS: two ASLR bases; initialized nonzero slots; unreadable slot rejected.\n";
 }
 void test(const std::filesystem::path& path) {
-    const auto fixed=discovery::resolve(path);
-    const auto* older=std::string(fixed.build.sha256)==golden25.sha256?&golden25:
-        std::string(fixed.build.sha256)==golden26.sha256?&golden26:nullptr;
-    check(older?fixed.automatic:!fixed.automatic,"2.5/2.6 must use automatic discovery; known profiles must stay fixed");
-    const auto& expected=older?*older:fixed.build;
-    const auto automatic=discovery::resolve(path,true);
-    check(automatic.automatic,"forced discovery must bypass the hash table");
+    const auto probe=discovery::probe_file(path);
+    const test_profile::Oracle* oracle{};
+    for(const auto& row:test_profile::oracles)if(probe.sha256==row.sha256)oracle=&row;
+    check(oracle!=nullptr,"supplied sample must match an independent test oracle");
+    const auto& expected=oracle->build;
+    const auto& automatic=probe.resolution;
     equal_profile(automatic.build,expected);
     Fixture fixture;
-    {discovery::MappedFile file(path);fixture=compact(discovery::Image(file.bytes()),automatic);}
+    {
+        discovery::MappedFile file(path);
+        fixture=compact(discovery::Image(file.bytes()),automatic);
+        test_module::Mapping full(file.bytes());
+        equal_profile(discovery::discover(discovery::capture_module(full.base)).build,expected);
+    }
+    std::cout<<"PASS: full file and simulated loaded views match all 15 manual fields.\n";
     const auto reduced=discovery::discover(discovery::Image(fixture.bytes));
     equal_profile(reduced.build,expected);
     negatives(fixture,reduced);
     variations(fixture,reduced);
     dispatch_variations(fixture,reduced);
-    live_code(reduced,discovery::Image(fixture.bytes).image_size);
+    memory_views(fixture,reduced);
     const auto owned=std::filesystem::current_path()/("discovery-owned-"+std::to_string(GetCurrentProcessId())+".dll");
     check(!std::filesystem::exists(owned),"owned fixture path already exists");
     try {
         save(owned,fixture);
-        const auto unknown=discovery::resolve(owned);
-        check(unknown.automatic && !profile::find(unknown.build.sha256),"unknown file hash must use discovery");
-        equal_profile(unknown.build,expected);
+        const auto unknown=discovery::probe_file(owned);
+        for(const auto& row:test_profile::oracles)check(unknown.sha256!=row.sha256,"fixture must have an unknown hash");
+        equal_profile(unknown.resolution.build,expected);
+        test_module::Mapping loaded(fixture.bytes);
+        std::filesystem::remove(owned);
+        check(!std::filesystem::exists(owned),"backing DLL removed before memory resolution");
+        equal_profile(discovery::discover(discovery::capture_module(loaded.base)).build,expected);
+        // Mutate only the loaded code: this must fail, regardless of good file bytes.
+        loaded.put<uint8_t>(reduced.input_region,0xcc);
+        bool failed{};try{(void)discovery::discover(discovery::capture_module(loaded.base));}catch(const std::runtime_error&){failed=true;}
+        check(failed,"loaded code must be the source of truth");
         fixture.bytes[fixture.offset(reduced.input_region)]^=1;save(owned,fixture);
-        bool failed{};try{(void)discovery::resolve(owned);}catch(const std::runtime_error&){failed=true;}
-        check(failed,"content changes must invalidate cached addresses");
+        failed=false;try{(void)discovery::probe_file(owned);}catch(const std::runtime_error&){failed=true;}
+        check(failed,"a fresh probe must read current bytes");
     } catch(...) {std::filesystem::remove(owned);throw;}
     std::filesystem::remove(owned);
-    discovery::print_json(std::cout,automatic);
-    std::cout<<"PASS: known profile preserved; all 15 fields independently discovered; unknown hash, cache invalidation and loaded-code checks passed.\n";
+    discovery::print_json(std::cout,probe);
+    std::cout<<"PASS: unknown hash accepted; deleted backing file; memory-only mutation rejected; fresh probe rescans.\n";
 }
 }
 int wmain(int argc,wchar_t** argv) {

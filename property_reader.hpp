@@ -84,7 +84,7 @@ inline Property property(const Image& image,uintptr_t fn,bool setter) {
     require(p.initialized>=64 && p.initialized<1024,"invalid class initialized offset");
     require(table.disp()>=0 && table.disp()<1024 && table.disp()%8==0,"invalid interface table layout");
     require(p.klass!=p.pool && p.klass!=p.interface_slot && p.pool!=p.interface_slot,"property storage aliases");
-    image.zero_slot(p.klass);image.zero_slot(p.pool);image.zero_slot(p.interface_slot);
+    image.slot(p.klass);image.slot(p.pool);image.slot(p.interface_slot);
     return p;
 }
 }

@@ -1,11 +1,13 @@
 // Exercises the production bridge inside this test process. It neither loads nor
 // opens the game. Only a hidden, owned window and synthetic icall table are used.
 #include "payload.cpp"
+#include "test_profiles.hpp"
 #include <iostream>
 #include <cstring>
 
 namespace {
 void check(bool value,const char* why){if(!value)throw std::runtime_error(why);}
+std::string_view client_version;
 int fake_frame=1,fake_override=2,ui_notifications{},forwarded_messages{};
 int native_count(){return 1;}
 void native_touch(int index,touch::UnityTouch* out){*out={};out->finger_id=900+index;}
@@ -49,7 +51,7 @@ void test() {
     uintptr_t property=reinterpret_cast<uintptr_t>(klass.data());
     // Independent fixtures from the two IDA analyses. In 3.2 +128 must NOT pass
     // readiness: the actual override property moved to +152.
-    const bool newer=std::string_view(active_profile->version)=="3.2";
+    const bool newer=client_version=="3.2";
     const size_t override_index=newer?19:16;
     std::array<uintptr_t,24> provider{};
     provider[override_index]=reinterpret_cast<uintptr_t>(&property);provider[17]=reinterpret_cast<uintptr_t>(&property);
@@ -104,11 +106,11 @@ void test() {
 }
 int main(int argc,char** argv) {
     try {
-        check(!profile::find("")&&!profile::find(std::string(64,'0')),"unknown hashes rejected");
         check(argc==2,"pass the client version to test");
-        for(const auto& build:profile::builds)if(std::string_view(argv[1])==build.version)active_profile=profile::find(build.sha256);
+        client_version=argv[1];
+        for(const auto& oracle:test_profile::oracles)if(client_version==oracle.version)active_profile=&oracle.build;
         check(active_profile!=nullptr,"requested test profile exists");
-        test();std::cout<<"Client "<<active_profile->version<<": production icall bridge, ABI, frame consistency, event-source deduplication, cancellation, native fallback, UI notifications/restoration and window forwarding: PASS\n";return 0;
+        test();std::cout<<"Client "<<client_version<<": production icall bridge, ABI, frame consistency, event-source deduplication, cancellation, native fallback, UI notifications/restoration and window forwarding: PASS\n";return 0;
     }
     catch(const std::exception& ex){std::cerr<<"FAIL: "<<ex.what()<<"\n";return 1;}
 }

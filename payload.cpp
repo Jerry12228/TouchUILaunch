@@ -12,7 +12,7 @@
 namespace {
 HMODULE self_module{};
 uintptr_t assembly{};
-// Selected once from the loaded DLL hash, before publishing the window/hooks.
+// Resolved once from module memory, before publishing the window/hooks.
 const profile::Build* active_profile{};
 profile::Build resolved_profile{};
 std::atomic<bool> enabled{false}, hooks_ready{false}, ui_fault{false};
@@ -290,16 +290,11 @@ void worker() {
     HMODULE module{};
     for(int i=0;i<600&&!module;++i){module=GetModuleHandleW(L"GameAssembly.dll");if(!module)Sleep(200);}
     if(!module){log("ERROR: GameAssembly.dll not loaded after 120 s");return;}
-    log("Resolving GameAssembly profile (known hash or automatic discovery)...");
-    const auto resolution=discovery::resolve(module_path(module));
-    if(resolution.automatic)discovery::validate_loaded_code(reinterpret_cast<uintptr_t>(module),resolution);
+    log("Resolving loaded GameAssembly.dll at base=%p",module);
+    const auto resolution=discovery::resolve_module(module,[](const char* stage){log("Resolver: %s",stage);});
     resolved_profile=resolution.build;
     active_profile=&resolved_profile;
-    log("Selected client profile %s, SHA-256=%s",active_profile->version,active_profile->sha256);
-    if(resolution.automatic) {
-        log("Automatic discovery passed; loaded code matches file. Override property offset=%llu",static_cast<unsigned long long>(active_profile->override_property_offset));
-        for(const auto& field:profile::fields)log("profile %s=0x%llx",field.name,static_cast<unsigned long long>(active_profile->*(field.value)));
-    }
+    for(const auto& field:profile::fields)log("profile %s=0x%llx",field.name,static_cast<unsigned long long>(active_profile->*(field.value)));
     assembly=reinterpret_cast<uintptr_t>(module);
     enable_event=CreateEventW(nullptr,TRUE,TRUE,enable_event_name(GetCurrentProcessId()).c_str());
     if(!enable_event){log("ERROR: enable event creation failed: %lu",GetLastError());return;}
