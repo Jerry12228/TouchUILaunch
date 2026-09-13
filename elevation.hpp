@@ -54,7 +54,6 @@ inline DWORD relaunch(const std::wstring& executable,const std::vector<std::wstr
     if(!execute(&info)) {
         const auto error=GetLastError();
         if(error==ERROR_CANCELLED) {
-            std::cerr<<"Administrator approval canceled. No game action was performed.\n";
             return ERROR_CANCELLED;
         }
         throw std::runtime_error("Administrator relaunch failed, Windows error "+std::to_string(error));

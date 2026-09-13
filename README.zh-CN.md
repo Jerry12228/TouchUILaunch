@@ -6,7 +6,7 @@
 
 注入 DLL 等待模块加载，保留模块至进程退出，读取内存 PE 头及可读代码节，在初始化时解析一次。正常运行不读取磁盘 GameAssembly，不计算文件哈希，不进行磁盘／内存代码比对。内存中的接口槽、类槽和引用池可以已经非零；实际就绪状态仍由接口安装与 UI 初始化流程检查。
 
-匹配唯一、调用关系和边界检查全部通过时继续，否则记录错误并停止。运行时只需要启动器和同目录 DLL，不需要 IDA、Python、Capstone 或 metadata Dump。`--probe` 从文件使用同一匹配器解析并输出 SHA-256，仅用于只读诊断；未知哈希不影响解析资格。`--probe-auto` 是其兼容别名。
+匹配唯一、调用关系和边界检查全部通过时继续，否则停止（携带 `--log` 时记录错误）。运行时只需要启动器和同目录 DLL，不需要 IDA、Python、Capstone 或 metadata Dump。`--probe` 从文件使用同一匹配器解析，携带 `--log` 时输出 SHA-256，仅用于只读诊断；未知哈希不影响解析资格。`--probe-auto` 是其兼容别名。
 
 保留 `ZZZTouchLauncher.exe` 与 `ZZZTouchUI.dll` 在同一目录，更新测试版前先完全退出游戏。版本更新后无需修改配置即可尝试启动，但编译器、内联或混淆变化可能使自动定位失败；不能保证以后所有版本都免更新。
 
@@ -16,20 +16,22 @@
 
 ```powershell
 # 只读解析文件并输出 SHA-256，不启动或注入
-.\ZZZTouchLauncher.exe --probe
+.\ZZZTouchLauncher.exe --probe --log
 
 # --probe 的兼容别名
-.\ZZZTouchLauncher.exe --probe-auto
+.\ZZZTouchLauncher.exe --probe-auto --log
 
 # 已启动游戏时附加；没有游戏进程时默认启动 Client/3.2 中的游戏
 .\ZZZTouchLauncher.exe
 
-# 可选：指定 PID，或指定另一处游戏（两者不要同时传入）
-.\ZZZTouchLauncher.exe --pid 12345
+# 开启控制台和 DLL 文件日志
+.\ZZZTouchLauncher.exe --log
+
+# 可选：指定另一处游戏
 .\ZZZTouchLauncher.exe --game 'D:\Games\ZenlessZoneZero\ZenlessZoneZero.exe'
 ```
 
-也可以直接双击启动器。普通权限下执行启动、附加、开关或状态命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe`、`--probe-auto` 无需提权。
+也可以直接双击启动器。普通权限下执行启动或附加命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe`、`--probe-auto` 无需提权。
 
 默认路径按项目目录布局寻找 `Client/3.2`；不存在时再寻找旧版目录。游戏安装在其他位置时使用 `--game`。为明确测试 3.2，可执行：
 
@@ -39,25 +41,19 @@
 
 程序使用普通 LoadLibrary 注入；若管理员权限下仍被客户端拒绝加载，应保留错误与日志用于判断。
 
-日志为 `logs\touch-<PID>.log`。先出现模块基址 `Resolving loaded GameAssembly.dll at base=...`，随后是 `Resolver:` 阶段和全部 15 项解析结果。`DLL loaded` 只表示 DLL 已加载；`READY` 表示输入接口已接入；还应出现 `Effective UI layout=1`。进入可操作场景后依次验证：单指点击、摇杆持续移动、另一指拖动视角、移动期间按技能、抬起全部手指后停止动作、切出再切回。
+默认不输出控制台日志，也不创建日志目录或文件；需要诊断时添加 `--log`（包括 `--probe`）。`--help` 始终显示帮助，失败仍返回非零退出码。DLL 日志为 `logs\touch-<PID>.log`。再次运行启动器时，是否携带 `--log` 会更新当前游戏进程的日志开关；开启后从后续日志开始记录。先出现模块基址 `Resolving loaded GameAssembly.dll at base=...`，随后是 `Resolver:` 阶段和全部 15 项解析结果。`DLL loaded` 只表示 DLL 已加载；`READY` 表示输入接口已接入；还应出现 `Effective UI layout=1`。进入可操作场景后依次验证：单指点击、摇杆持续移动、另一指拖动视角、移动期间按技能、抬起全部手指后停止动作、切出再切回。
 
 所有版本都应出现 `resolved all 15 fields from memory`。读取失败会报告对应 RVA，范围不完整时不会用磁盘补齐。解析结果只用于当前进程；版本升级或替换测试版后需完全退出游戏再启动。
 
 串流端必须向 Windows 传递原生触点。只将触屏映射为鼠标或手柄的模式没有独立多指信息，本原型不能从中还原多个触点。若使用 Moonlight/Sunshine，请在你的客户端中选择传递原生触控的模式；不同版本的选项名称可能不同。
 
-```powershell
-.\ZZZTouchLauncher.exe --status
-.\ZZZTouchLauncher.exe --disable
-.\ZZZTouchLauncher.exe --enable
-```
-
-`--status` 显示 DLL 是否加载、接口是否就绪及开关请求状态。`--disable` 在游戏窗口线程恢复由本工具设置的 UI 覆盖值，并发送触点取消；若其他代码已改写布局，不覆盖那次修改。DLL 保留在进程内，完全退出游戏即可卸载。工具自身不写入游戏文件或持久配置，UI 设置器引发的游戏内部通知仍需实测确认。
+不再提供指定 PID、状态查询或运行时启停参数。多个游戏进程同时运行时，可用 `--game` 按路径筛选；仍有多个匹配进程时需关闭多余实例。触控在初始化完成后自动启用，故障时停止桥接。DLL 保留在进程内，完全退出游戏即可卸载。工具自身不写入游戏文件或持久配置，UI 设置器引发的游戏内部通知仍需实测确认。
 
 ## 根据日志定位
 
 | 现象 | 下一步 |
 |---|---|
-| 没有日志 | 检查启动器报错、DLL 是否同目录、进程和权限 |
+| 没有日志 | 先确认携带 `--log`，再检查启动器报错、DLL 是否同目录、进程和权限 |
 | 有日志，没有 `READY` | 看内存解析、Unity 窗口或 icall 初始化错误 |
 | 日志或只读探测报告 `Automatic profile:` | 保留完整错误；指令特征、候选数量或结构校验不满足，不会猜测地址 |
 | `unreadable or incomplete module range` / `module read failed` | 代码或槽所在页面无法完整读取；保留 RVA、解析阶段和完整日志 |

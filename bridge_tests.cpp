@@ -4,9 +4,45 @@
 #include "test_profiles.hpp"
 #include <iostream>
 #include <cstring>
+#include <fstream>
 
 namespace {
 void check(bool value,const char* why){if(!value)throw std::runtime_error(why);}
+void test_logging() {
+    const auto dir=std::filesystem::path(module_path()).parent_path()/L"logs";
+    const auto path=dir/(L"touch-"+std::to_wstring(GetCurrentProcessId())+L".log");
+    check(!std::filesystem::exists(path),"logging test requires a fresh PID log path");
+    const bool had_dir=std::filesystem::exists(dir);
+    log("must not appear without a logging event");
+    const auto name=log_event_name(GetCurrentProcessId());
+    {
+        Handle launcher(CreateEventW(nullptr,TRUE,FALSE,name.c_str()));
+        check(launcher.value!=nullptr,"create launcher's logging event");
+        logging_event.value=OpenEventW(SYNCHRONIZE,FALSE,name.c_str());
+        check(logging_event.value!=nullptr,"DLL retains logging event");
+        log("must not appear when logging is disabled");
+        check(!logfile&&!std::filesystem::exists(path),"default logging creates no file");
+        check(std::filesystem::exists(dir)==had_dir,"default logging creates no directory");
+        check(SetEvent(launcher)!=FALSE,"enable logging");
+    }
+    log("enabled after launcher exit");
+    check(logfile&&std::filesystem::file_size(path)>0,"logging survives launcher exit");
+    const auto size=std::filesystem::file_size(path);
+    Handle launcher(OpenEventW(EVENT_MODIFY_STATE,FALSE,name.c_str()));
+    check(launcher.value&&ResetEvent(launcher),"subsequent launch disables logging");
+    log("must not appear after disabling logging");
+    check(!logfile&&std::filesystem::file_size(path)==size,"disabled logging closes file and writes nothing");
+    check(SetEvent(launcher)!=FALSE,"re-enable logging");
+    log("logging resumed");
+    check(std::filesystem::file_size(path)>size,"logging resumes by appending");
+    ResetEvent(launcher);log("must not appear");
+    std::ifstream stream(path);
+    const std::string text((std::istreambuf_iterator<char>(stream)),{});
+    check(text.find("must not appear")==std::string::npos,"disabled messages never reach disk");
+    stream.close();std::filesystem::remove(path);
+    if(!had_dir)std::filesystem::remove(dir);
+    CloseHandle(logging_event.value);logging_event.value=nullptr;
+}
 std::string_view client_version;
 int fake_frame=1,fake_override=2,ui_notifications{},forwarded_messages{};
 int native_count(){return 1;}
@@ -65,7 +101,6 @@ void test() {
     provider[17]=0;
     check(!ready_ui_provider(),"missing default property must block UI calls");
     provider[17]=reinterpret_cast<uintptr_t>(&property);
-    enable_event=CreateEventW(nullptr,TRUE,TRUE,nullptr);ready_event=CreateEventW(nullptr,TRUE,FALSE,nullptr);
     WNDCLASSW wc{};wc.lpfnWndProc=host_proc;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"ZZZTouchOwnedTestWindow";
     check(RegisterClassW(&wc)!=0,"register owned test window");
     HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"Touch bridge test",WS_OVERLAPPEDWINDOW,0,0,800,600,nullptr,nullptr,wc.hInstance,nullptr);
@@ -101,7 +136,7 @@ void test() {
     DWORD old_thread=window_thread.load();window_thread=old_thread+1;enabled=true;last_ui_check=0;maintain_ui();
     check(fake_override==3,"UI setter prohibited on non-window thread");window_thread=old_thread;enabled=false;
     DestroyWindow(hwnd);check(!game_window.load(),"owned window destruction disables bridge");
-    CloseHandle(enable_event);CloseHandle(ready_event);VirtualFree(reinterpret_cast<void*>(assembly),0,MEM_RELEASE);
+    VirtualFree(reinterpret_cast<void*>(assembly),0,MEM_RELEASE);
 }
 }
 int main(int argc,char** argv) {
@@ -110,6 +145,7 @@ int main(int argc,char** argv) {
         client_version=argv[1];
         for(const auto& oracle:test_profile::oracles)if(client_version==oracle.version)active_profile=&oracle.build;
         check(active_profile!=nullptr,"requested test profile exists");
+        test_logging();
         test();std::cout<<"Client "<<client_version<<": production icall bridge, ABI, frame consistency, event-source deduplication, cancellation, native fallback, UI notifications/restoration and window forwarding: PASS\n";return 0;
     }
     catch(const std::exception& ex){std::cerr<<"FAIL: "<<ex.what()<<"\n";return 1;}
