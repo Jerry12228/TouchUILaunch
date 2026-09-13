@@ -7,6 +7,7 @@
 #include <algorithm>
 
 namespace fs=std::filesystem;
+bool log_enabled{};
 struct Module {uintptr_t base{};fs::path path;};
 std::vector<Module> modules(DWORD pid) {
     Handle snap(CreateToolhelp32Snapshot(TH32CS_SNAPMODULE|TH32CS_SNAPMODULE32,pid));
@@ -32,10 +33,10 @@ std::vector<DWORD> find_games() {
     return result;
 }
 void verify_assembly(const fs::path& path) {
-    std::wcout<<L"Checking GameAssembly: "<<path<<L"\n";
+    if(log_enabled)std::wcout<<L"Checking GameAssembly: "<<path<<L"\n";
     auto hash=file_sha256(path);
     if(hash!=profile::sha256)throw std::runtime_error("Unsupported GameAssembly SHA-256: "+hash+". No injection performed.");
-    std::cout<<"Supported build: "<<hash<<"\n";
+    if(log_enabled)std::cout<<"Supported build: "<<hash<<"\n";
 }
 DWORD start_game(const fs::path& path) {
     if(_wcsicmp(path.filename().c_str(),L"ZenlessZoneZero.exe")!=0||!fs::is_regular_file(path))throw std::runtime_error("--game must name an existing ZenlessZoneZero.exe");
@@ -44,7 +45,7 @@ DWORD start_game(const fs::path& path) {
     STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION info{};
     if(!CreateProcessW(path.c_str(),command.data(),nullptr,nullptr,FALSE,0,nullptr,path.parent_path().c_str(),&startup,&info))throw std::runtime_error("CreateProcess failed, Windows error "+std::to_string(GetLastError()));
     Handle thread(info.hThread);Handle process(info.hProcess);
-    std::cout<<"Started game, PID "<<info.dwProcessId<<"\n";return info.dwProcessId;
+    if(log_enabled)std::cout<<"Started game, PID "<<info.dwProcessId<<"\n";return info.dwProcessId;
 }
 void* remote_load_library(DWORD pid) {
     auto local=GetProcAddress(GetModuleHandleW(L"kernel32.dll"),"LoadLibraryW");
@@ -78,67 +79,68 @@ void inject(DWORD pid,const fs::path& payload) {
     // GetExitCodeThread truncates a 64-bit HMODULE. Verify the actual module instead.
     auto loaded=find_module(pid,payload.filename());
     if(!loaded||_wcsicmp(loaded->path.c_str(),payload.c_str())!=0)throw std::runtime_error("Payload module was not loaded at the expected path");
-    std::cout<<"DLL loaded. Initializing input hooks...\n";
+    if(log_enabled)std::cout<<"DLL loaded. Initializing input hooks...\n";
 }
 void usage() {
     std::cout<<"ZZZTouchLauncher (Windows x64, experimental)\n"
         "  --probe [--game <ZenlessZoneZero.exe>]   Verify files only; never launch/inject\n"
-        "  [--pid N | --game <path>] [--enable]   Attach, or launch if no game is running\n"
-        "  --disable [--pid N]                    Restore layout and pass through input\n"
-        "  --status [--pid N]                     Read module/event status only\n"
+        "  [--game <path>]                       Attach, or launch if no game is running\n"
+        "  --log                                 Enable console and DLL file logs\n"
         "  --help                                Show this help\n"
         "Game commands request Windows administrator approval automatically when needed.\n"
         "--help and --probe run without requesting elevation.\n"
         "No anti-cheat bypass, driver installation or game-file modification.\n";
 }
 int wmain(int argc,wchar_t** argv) {
+    // Read the logging option before validation, including errors preceding --log.
+    for(int i=1;i<argc;++i) {
+        if(std::wstring_view(argv[i])==L"--game"&&i+1<argc){++i;continue;}
+        if(std::wstring_view(argv[i])==L"--log")log_enabled=true;
+    }
     try {
         fs::path own_dir=fs::path(module_path()).parent_path();
         fs::path game=fs::weakly_canonical(own_dir/L".."/L".."/L"ZenlessZoneZero Game"/L"ZenlessZoneZero.exe");
         fs::path payload=own_dir/L"ZZZTouchUI.dll";
-        DWORD pid{};std::wstring action=L"enable";bool explicit_game{},explicit_action{},elevation_relaunch{};
+        std::wstring action;bool explicit_game{},explicit_action{},elevation_relaunch{};
         std::vector<std::wstring> forwarded_args;
         for(int i=1;i<argc;++i) {
             std::wstring arg=argv[i];
             if(arg==L"--help"||arg==L"-h"){usage();return 0;}
             if(arg==elevation::relaunch_flag){if(elevation_relaunch)throw std::runtime_error("Duplicate elevation marker");elevation_relaunch=true;continue;}
             forwarded_args.push_back(arg);
-            if(arg==L"--pid"&&i+1<argc){std::wstring value=argv[++i];size_t parsed{};auto number=std::stoul(value,&parsed);if(parsed!=value.size()||!number)throw std::runtime_error("Invalid PID");pid=number;forwarded_args.push_back(value);}
-            else if(arg==L"--game"&&i+1<argc){game=fs::weakly_canonical(fs::absolute(argv[++i]));explicit_game=true;forwarded_args.push_back(game.wstring());}
-            else if(arg==L"--probe"||arg==L"--enable"||arg==L"--disable"||arg==L"--status") {
+            if(arg==L"--game"&&i+1<argc){game=fs::weakly_canonical(fs::absolute(argv[++i]));explicit_game=true;forwarded_args.push_back(game.wstring());}
+            else if(arg==L"--probe") {
                 if(explicit_action)throw std::runtime_error("Choose only one action");action=arg.substr(2);explicit_action=true;
+            } else if(arg==L"--log") {
+                // Already applied above; forwarded unchanged for UAC relaunch.
             } else throw std::runtime_error("Unknown or incomplete argument (use --help)");
         }
-        if(pid&&explicit_game)throw std::runtime_error("Use either --pid or --game");
         if(!profile::configured())throw std::runtime_error("Game offsets are not configured. Fill profile.hpp and rebuild before running.");
         if(action==L"probe") {
-            if(pid)throw std::runtime_error("--probe checks files; use --status --pid to inspect a running game");
             if(!fs::is_regular_file(game))throw std::runtime_error("Game executable not found; specify --game");
             verify_assembly(game.parent_path()/L"GameAssembly.dll");
             if(!fs::is_regular_file(payload))throw std::runtime_error("Payload DLL missing");
-            std::wcout<<L"Payload: "<<payload<<L"\nProbe passed. No game process was launched or modified.\n";return 0;
+            if(log_enabled)std::wcout<<L"Payload: "<<payload<<L"\nProbe passed. No game process was launched or modified.\n";return 0;
         }
         // Elevate the launcher before any game lookup, launch or injection, so the
         // parent cannot perform the action twice. The child verifies its token.
         if(elevation::needs_relaunch(elevation::is_elevated(),elevation_relaunch)) {
             forwarded_args.emplace_back(elevation::relaunch_flag);
-            std::cout<<"Requesting Windows administrator approval...\n"<<std::flush;
-            return static_cast<int>(elevation::relaunch(module_path(),forwarded_args,fs::current_path().wstring()));
+            if(log_enabled)std::cout<<"Requesting Windows administrator approval...\n"<<std::flush;
+            const auto result=elevation::relaunch(module_path(),forwarded_args,fs::current_path().wstring());
+            if(log_enabled&&result==ERROR_CANCELLED)std::cerr<<"Administrator approval canceled. No game action was performed.\n";
+            return static_cast<int>(result);
         }
-        if(!pid) {
-            auto games=find_games();
-            if(explicit_game)std::erase_if(games,[&](DWORD candidate){Handle p(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,candidate));return !p.value||_wcsicmp(process_path(p).c_str(),game.c_str())!=0;});
-            if(games.size()>1)throw std::runtime_error("Multiple game processes found; select --pid");
-            if(!games.empty())pid=games.front();
-            else if(action==L"enable")pid=start_game(game);
-            else {std::cout<<"No matching game is running.\n";return 1;}
-        }
+        auto games=find_games();
+        if(explicit_game)std::erase_if(games,[&](DWORD candidate){Handle p(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION,FALSE,candidate));return !p.value||_wcsicmp(process_path(p).c_str(),game.c_str())!=0;});
+        if(games.size()>1)throw std::runtime_error("Multiple game processes found; specify --game or close extra instances");
+        const DWORD pid=games.empty()?start_game(game):games.front();
         Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,FALSE,pid));
         if(!process.value)throw std::runtime_error("Cannot query game process, Windows error "+std::to_string(GetLastError()));
         if(_wcsicmp(process_path(process).filename().c_str(),L"ZenlessZoneZero.exe")!=0)throw std::runtime_error("PID does not belong to ZenlessZoneZero.exe");
         auto assembly=find_module(pid,L"GameAssembly.dll");
-        if(action==L"enable"&&!assembly)std::cout<<"Waiting for GameAssembly.dll (up to 120 s)...\n";
-        for(int i=0;action==L"enable"&&!assembly&&i<600;++i) {
+        if(!assembly&&log_enabled)std::cout<<"Waiting for GameAssembly.dll (up to 120 s)...\n";
+        for(int i=0;!assembly&&i<600;++i) {
             if(WaitForSingleObject(process,200)==WAIT_OBJECT_0)throw std::runtime_error("Game exited before GameAssembly loaded");
             assembly=find_module(pid,L"GameAssembly.dll");
         }
@@ -146,20 +148,21 @@ int wmain(int argc,wchar_t** argv) {
         verify_assembly(assembly->path);
         auto loaded=find_module(pid,payload.filename());
         if(loaded&&_wcsicmp(loaded->path.c_str(),payload.c_str())!=0)throw std::runtime_error("Another ZZZTouchUI.dll is already loaded; restart game before using this build");
-        if(action==L"enable"&&!loaded)inject(pid,payload);
-        HANDLE event{};
-        for(int i=0;i<(action==L"enable"?200:1)&&!event;++i){event=OpenEventW(SYNCHRONIZE|EVENT_MODIFY_STATE,FALSE,enable_event_name(pid).c_str());if(!event&&action==L"enable")Sleep(100);}
-        Handle event_handle(event);
-        if(action==L"status") {
-            Handle ready(OpenEventW(SYNCHRONIZE,FALSE,ready_event_name(pid).c_str()));
-            std::cout<<"PID="<<pid<<" DLL="<<(loaded?"loaded":"absent")<<" hooks_ready="<<(ready.value&&WaitForSingleObject(ready,0)==WAIT_OBJECT_0?"yes":"no")<<" requested_enabled="<<(event?(WaitForSingleObject(event,0)==WAIT_OBJECT_0?"yes":"no"):"unavailable")<<"\n";
-        } else {
-            if(!event)throw std::runtime_error("Payload control event unavailable; inspect logs (DLL may have rejected initialization)");
-            BOOL ok=action==L"disable"?ResetEvent(event):SetEvent(event);
-            if(!ok)throw std::runtime_error("Cannot change payload control event");
-            std::cout<<(action==L"disable"?"Disable requested. Layout restoration occurs on game thread; DLL remains resident.\n":"Enable requested. This confirms the request only; inspect logs for READY and Effective UI layout=1.\n");
+        // The DLL retains this event after startup, so the latest launcher invocation
+        // controls logging even after this process exits (including an existing DLL).
+        Handle logging(CreateEventW(nullptr,TRUE,log_enabled,log_event_name(pid).c_str()));
+        if(!logging.value)throw std::runtime_error("Cannot create payload logging event");
+        if(!(log_enabled?SetEvent(logging):ResetEvent(logging)))throw std::runtime_error("Cannot configure payload logging");
+        if(!loaded)inject(pid,payload);
+        HANDLE started{};
+        for(int i=0;i<200&&!started;++i) {
+            started=OpenEventW(SYNCHRONIZE,FALSE,started_event_name(pid).c_str());
+            if(!started)Sleep(100);
         }
-        std::wcout<<L"Log: "<<own_dir/L"logs"/(L"touch-"+std::to_wstring(pid)+L".log")<<L"\n";
+        Handle started_handle(started);
+        if(!started)throw std::runtime_error("Payload startup unavailable; rerun with --log for diagnostics");
+        if(log_enabled)std::cout<<"Payload started. Input hooks and UI initialize asynchronously.\n";
+        if(log_enabled)std::wcout<<L"Log: "<<own_dir/L"logs"/(L"touch-"+std::to_wstring(pid)+L".log")<<L"\n";
         return 0;
-    } catch(const std::exception& ex){std::cerr<<"ERROR: "<<ex.what()<<"\n";return 2;}
+    } catch(const std::exception& ex){if(log_enabled)std::cerr<<"ERROR: "<<ex.what()<<"\n";return 2;}
 }

@@ -20,8 +20,8 @@ inline std::wstring module_path(HMODULE module=nullptr) {
     if(!n||n>=b.size())throw std::runtime_error("GetModuleFileName failed");
     return {b.data(),n};
 }
-inline std::wstring enable_event_name(DWORD pid) {return L"Local\\ZZZTouchUI.Enable."+std::to_wstring(pid);}
-inline std::wstring ready_event_name(DWORD pid) {return L"Local\\ZZZTouchUI.Ready."+std::to_wstring(pid);}
+inline std::wstring log_event_name(DWORD pid) {return L"Local\\ZZZTouchUI.Log."+std::to_wstring(pid);}
+inline std::wstring started_event_name(DWORD pid) {return L"Local\\ZZZTouchUI.Started."+std::to_wstring(pid);}
 inline std::string file_sha256(const std::filesystem::path& path) {
     Handle file(CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,nullptr));
     if(file.value==INVALID_HANDLE_VALUE)throw std::runtime_error("Cannot open file for SHA-256");

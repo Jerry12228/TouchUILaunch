@@ -17,14 +17,25 @@ std::atomic<DWORD> window_thread{};
 std::atomic<WNDPROC> previous_proc{};
 std::atomic<UINT_PTR> timer_id{};
 constexpr UINT_PTR requested_timer=0x5a5a7455;
-HANDLE enable_event{};
-HANDLE ready_event{};
+Handle logging_event;
+Handle started_event;
 bool touch_registration_added{};
 FILE* logfile{};
 std::mutex log_mutex;
 void log(const char* format,...) {
     std::lock_guard lock(log_mutex);
-    if(!logfile)return;
+    if(!logging_event.value||WaitForSingleObject(logging_event,0)!=WAIT_OBJECT_0) {
+        if(logfile){fclose(logfile);logfile=nullptr;}
+        return;
+    }
+    if(!logfile) try {
+        auto dir=std::filesystem::path(module_path(self_module)).parent_path()/L"logs";
+        std::error_code error;
+        std::filesystem::create_directories(dir,error);
+        if(error)return;
+        auto path=dir/(L"touch-"+std::to_wstring(GetCurrentProcessId())+L".log");
+        if(_wfopen_s(&logfile,path.c_str(),L"a")!=0)return;
+    } catch(const std::exception&) {return;}
     SYSTEMTIME t{};GetLocalTime(&t);
     fprintf(logfile,"%02u:%02u:%02u.%03u ",t.wHour,t.wMinute,t.wSecond,t.wMilliseconds);
     va_list ap;va_start(ap,format);vfprintf(logfile,format,ap);va_end(ap);
@@ -135,7 +146,7 @@ void maintain_ui() {
     if(ok)ok=call_layout_get(profile::get_effective_layout,&after);
     if(ok&&effective_layout.exchange(after)!=after)log("Effective UI layout=%d (1=Mobile, 2=PC)",after);
     if(!ok) {
-        ui_fault=true;enabled=false;ResetEvent(enable_event);ResetEvent(ready_event);cancel_contacts();
+        ui_fault=true;enabled=false;cancel_contacts();
         log("ERROR: native memory fault during UI call; UI calls disabled for this process. Restart game before retry.");
     }
     in_ui_call=false;
@@ -219,7 +230,7 @@ LRESULT CALLBACK window_proc(HWND hwnd,UINT message,WPARAM wparam,LPARAM lparam)
     } else if(message==WM_TIMER&&wparam==timer_id.load()) {
         maintain_ui();return 0;
     } else if(message==WM_NCDESTROY) {
-        cancel_contacts();enabled=false;ResetEvent(enable_event);ResetEvent(ready_event);
+        cancel_contacts();enabled=false;
         KillTimer(hwnd,timer_id.load());game_window=nullptr;
         log("Game window destroyed; bridge disabled. Restart game to attach again.");
     }
@@ -276,10 +287,10 @@ bool install_icalls() {
     return true;
 }
 void worker() {
-    auto dir=std::filesystem::path(module_path(self_module)).parent_path()/L"logs";
-    std::filesystem::create_directories(dir);
-    auto path=dir/(L"touch-"+std::to_wstring(GetCurrentProcessId())+L".log");
-    _wfopen_s(&logfile,path.c_str(),L"a");
+    logging_event.value=OpenEventW(SYNCHRONIZE,FALSE,log_event_name(GetCurrentProcessId()).c_str());
+    // Publish only after retaining the launcher's logging configuration.
+    started_event.value=CreateEventW(nullptr,TRUE,TRUE,started_event_name(GetCurrentProcessId()).c_str());
+    if(!started_event.value)return;
     log("ZZZTouchUI experimental build 1; pid=%lu",GetCurrentProcessId());
     if(!profile::configured()){log("ERROR: game offsets are not configured in profile.hpp; no hooks installed");return;}
     if(std::filesystem::path(module_path()).filename()!=L"ZenlessZoneZero.exe") {log("ERROR: unsupported process name");return;}
@@ -289,26 +300,23 @@ void worker() {
     log("Verifying GameAssembly SHA-256...");
     if(file_sha256(module_path(module))!=profile::sha256){log("ERROR: unsupported GameAssembly version; no hooks installed");return;}
     assembly=reinterpret_cast<uintptr_t>(module);
-    enable_event=CreateEventW(nullptr,TRUE,TRUE,enable_event_name(GetCurrentProcessId()).c_str());
-    if(!enable_event){log("ERROR: enable event creation failed: %lu",GetLastError());return;}
-    ready_event=CreateEventW(nullptr,TRUE,FALSE,ready_event_name(GetCurrentProcessId()).c_str());
-    if(!ready_event){ResetEvent(enable_event);log("ERROR: ready event creation failed");return;}
     WindowSearch search{};
     for(int i=0;i<600&&!search.result;++i){EnumWindows(find_window,reinterpret_cast<LPARAM>(&search));if(!search.result)Sleep(200);}
-    if(!search.result||!install_window(search.result)){ResetEvent(enable_event);log("ERROR: no usable game window after 120 s");return;}
+    if(!search.result||!install_window(search.result)){log("ERROR: no usable game window after 120 s");return;}
     bool installed=false;
     for(int i=0;i<600&&!installed;++i){installed=install_icalls();if(!installed)Sleep(200);}
-    if(!installed){ResetEvent(enable_event);log("ERROR: Unity icalls unresolved or table replacement failed after 120 s");return;}
-    enabled=WaitForSingleObject(enable_event,0)==WAIT_OBJECT_0;
-    SetEvent(ready_event);
+    if(!installed){log("ERROR: Unity icalls unresolved or table replacement failed after 120 s");return;}
+    enabled=!ui_fault.load()&&game_window.load()!=nullptr;
     log("READY: native Windows touch bridge enabled=%d. Awaiting UI provider and input.",enabled.load());
     ULONGLONG last_status{};
     bool reported_conflict{};
     for(;;) {
-        const bool requested=WaitForSingleObject(enable_event,0)==WAIT_OBJECT_0&&!ui_fault.load()&&game_window.load()!=nullptr&&!reported_conflict;
-        if(enabled.exchange(requested)!=requested){if(!requested)cancel_contacts();log("Bridge enabled=%d; UI change will run on game thread",requested);}
+        // A window can disappear concurrently with the initial enabled store.
+        if(enabled.load()&&(ui_fault.load()||game_window.load()==nullptr)) {
+            enabled=false;cancel_contacts();
+        }
         if(!reported_conflict&&(slot_value(profile::touch_count_slot)!=reinterpret_cast<void*>(hooked_count)||slot_value(profile::get_touch_slot)!=reinterpret_cast<void*>(hooked_touch)||slot_value(profile::touch_supported_slot)!=reinterpret_cast<void*>(hooked_supported))) {
-            reported_conflict=true;ResetEvent(enable_event);ResetEvent(ready_event);enabled=false;cancel_contacts();
+            reported_conflict=true;enabled=false;cancel_contacts();
             log("ERROR: another writer changed the icall table. Bridge disabled; restart game to retry.");
             exchange_slot(profile::touch_count_slot,reinterpret_cast<void*>(hooked_count),reinterpret_cast<void*>(original_count));
             exchange_slot(profile::get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));
@@ -325,7 +333,7 @@ void worker() {
     }
 }
 DWORD WINAPI worker_entry(void*) {
-    try {worker();}catch(const std::exception& ex){enabled=false;ResetEvent(enable_event);ResetEvent(ready_event);cancel_contacts();log("ERROR: worker stopped: %s",ex.what());}
+    try {worker();}catch(const std::exception& ex){enabled=false;cancel_contacts();log("ERROR: worker stopped: %s",ex.what());}
     return 0;
 }
 }
