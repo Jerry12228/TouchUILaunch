@@ -1,4 +1,5 @@
 #include "profile.hpp"
+#include "file_probe.hpp"
 #include "win_util.hpp"
 #include "elevation.hpp"
 #include <tlhelp32.h>
@@ -32,15 +33,13 @@ std::vector<DWORD> find_games() {
     if(Process32FirstW(snap,&entry))do {if(_wcsicmp(entry.szExeFile,L"ZenlessZoneZero.exe")==0)result.push_back(entry.th32ProcessID);}while(Process32NextW(snap,&entry));
     return result;
 }
-void verify_assembly(const fs::path& path) {
+void probe_assembly(const fs::path& path) {
     if(log_enabled)std::wcout<<L"Checking GameAssembly: "<<path<<L"\n";
-    auto hash=file_sha256(path);
-    if(hash!=profile::sha256)throw std::runtime_error("Unsupported GameAssembly SHA-256: "+hash+". No injection performed.");
-    if(log_enabled)std::cout<<"Supported build: "<<hash<<"\n";
+    const auto result=discovery::probe_file(path);
+    if(log_enabled)discovery::print_json(std::cout,result);
 }
 DWORD start_game(const fs::path& path) {
     if(_wcsicmp(path.filename().c_str(),L"ZenlessZoneZero.exe")!=0||!fs::is_regular_file(path))throw std::runtime_error("--game must name an existing ZenlessZoneZero.exe");
-    verify_assembly(path.parent_path()/L"GameAssembly.dll");
     std::wstring command=L"\""+path.wstring()+L"\"";
     STARTUPINFOW startup{};startup.cb=sizeof(startup);PROCESS_INFORMATION info{};
     if(!CreateProcessW(path.c_str(),command.data(),nullptr,nullptr,FALSE,0,nullptr,path.parent_path().c_str(),&startup,&info))throw std::runtime_error("CreateProcess failed, Windows error "+std::to_string(GetLastError()));
@@ -64,7 +63,6 @@ void inject(DWORD pid,const fs::path& payload) {
     if(_wcsicmp(process_path(process).filename().c_str(),L"ZenlessZoneZero.exe")!=0)throw std::runtime_error("Target process identity changed");
     auto assembly=find_module(pid,L"GameAssembly.dll");
     if(!assembly)throw std::runtime_error("GameAssembly module disappeared");
-    verify_assembly(assembly->path);
     const auto text=payload.wstring();SIZE_T bytes=(text.size()+1)*sizeof(wchar_t);
     auto loader=remote_load_library(pid);
     void* remote=VirtualAllocEx(process,nullptr,bytes,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
@@ -84,11 +82,12 @@ void inject(DWORD pid,const fs::path& payload) {
 void usage() {
     std::cout<<"ZZZTouchLauncher (Windows x64, experimental)\n"
         "  --probe [--game <ZenlessZoneZero.exe>]   Verify files only; never launch/inject\n"
+        "  --probe-auto [--game <path>]            Compatibility alias for --probe\n"
         "  [--game <path>]                       Attach, or launch if no game is running\n"
         "  --log                                 Enable console and DLL file logs\n"
         "  --help                                Show this help\n"
         "Game commands request Windows administrator approval automatically when needed.\n"
-        "--help and --probe run without requesting elevation.\n"
+        "--help, --probe and --probe-auto run without requesting elevation.\n"
         "No anti-cheat bypass, driver installation or game-file modification.\n";
 }
 int wmain(int argc,wchar_t** argv) {
@@ -99,7 +98,13 @@ int wmain(int argc,wchar_t** argv) {
     }
     try {
         fs::path own_dir=fs::path(module_path()).parent_path();
-        fs::path game=fs::weakly_canonical(own_dir/L".."/L".."/L"ZenlessZoneZero Game"/L"ZenlessZoneZero.exe");
+        const auto root=fs::weakly_canonical(own_dir/L".."/L"..");
+        fs::path game=root/L"Client"/L"3.2"/L"ZenlessZoneZero.exe";
+        if(!fs::is_regular_file(game)) {
+            for(const auto& relative:{fs::path(L"Client/ZenlessZoneZero Game/ZenlessZoneZero.exe"),fs::path(L"ZenlessZoneZero Game/ZenlessZoneZero.exe")}) {
+                if(fs::is_regular_file(root/relative)){game=root/relative;break;}
+            }
+        }
         fs::path payload=own_dir/L"ZZZTouchUI.dll";
         std::wstring action;bool explicit_game{},explicit_action{},elevation_relaunch{};
         std::vector<std::wstring> forwarded_args;
@@ -109,16 +114,15 @@ int wmain(int argc,wchar_t** argv) {
             if(arg==elevation::relaunch_flag){if(elevation_relaunch)throw std::runtime_error("Duplicate elevation marker");elevation_relaunch=true;continue;}
             forwarded_args.push_back(arg);
             if(arg==L"--game"&&i+1<argc){game=fs::weakly_canonical(fs::absolute(argv[++i]));explicit_game=true;forwarded_args.push_back(game.wstring());}
-            else if(arg==L"--probe") {
+            else if(arg==L"--probe"||arg==L"--probe-auto") {
                 if(explicit_action)throw std::runtime_error("Choose only one action");action=arg.substr(2);explicit_action=true;
             } else if(arg==L"--log") {
                 // Already applied above; forwarded unchanged for UAC relaunch.
             } else throw std::runtime_error("Unknown or incomplete argument (use --help)");
         }
-        if(!profile::configured())throw std::runtime_error("Game offsets are not configured. Fill profile.hpp and rebuild before running.");
-        if(action==L"probe") {
+        if(action==L"probe"||action==L"probe-auto") {
             if(!fs::is_regular_file(game))throw std::runtime_error("Game executable not found; specify --game");
-            verify_assembly(game.parent_path()/L"GameAssembly.dll");
+            probe_assembly(game.parent_path()/L"GameAssembly.dll");
             if(!fs::is_regular_file(payload))throw std::runtime_error("Payload DLL missing");
             if(log_enabled)std::wcout<<L"Payload: "<<payload<<L"\nProbe passed. No game process was launched or modified.\n";return 0;
         }
@@ -145,7 +149,6 @@ int wmain(int argc,wchar_t** argv) {
             assembly=find_module(pid,L"GameAssembly.dll");
         }
         if(!assembly)throw std::runtime_error("GameAssembly module unavailable");
-        verify_assembly(assembly->path);
         auto loaded=find_module(pid,payload.filename());
         if(loaded&&_wcsicmp(loaded->path.c_str(),payload.c_str())!=0)throw std::runtime_error("Another ZZZTouchUI.dll is already loaded; restart game before using this build");
         // The DLL retains this event after startup, so the latest launcher invocation

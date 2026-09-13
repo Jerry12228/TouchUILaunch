@@ -1,6 +1,5 @@
 #pragma once
 #include <windows.h>
-#include <bcrypt.h>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -22,20 +21,6 @@ inline std::wstring module_path(HMODULE module=nullptr) {
 }
 inline std::wstring log_event_name(DWORD pid) {return L"Local\\ZZZTouchUI.Log."+std::to_wstring(pid);}
 inline std::wstring started_event_name(DWORD pid) {return L"Local\\ZZZTouchUI.Started."+std::to_wstring(pid);}
-inline std::string file_sha256(const std::filesystem::path& path) {
-    Handle file(CreateFileW(path.c_str(),GENERIC_READ,FILE_SHARE_READ|FILE_SHARE_WRITE|FILE_SHARE_DELETE,nullptr,OPEN_EXISTING,FILE_FLAG_SEQUENTIAL_SCAN,nullptr));
-    if(file.value==INVALID_HANDLE_VALUE)throw std::runtime_error("Cannot open file for SHA-256");
-    BCRYPT_ALG_HANDLE alg{};BCRYPT_HASH_HANDLE hash{};
-    if(BCryptOpenAlgorithmProvider(&alg,BCRYPT_SHA256_ALGORITHM,nullptr,0)<0)throw std::runtime_error("BCrypt algorithm error");
-    if(BCryptCreateHash(alg,&hash,nullptr,0,nullptr,0,0)<0){BCryptCloseAlgorithmProvider(alg,0);throw std::runtime_error("BCrypt hash error");}
-    std::array<unsigned char,65536> data{};std::array<unsigned char,32> digest{};DWORD n{};bool ok=true;
-    for(;;){if(!ReadFile(file,data.data(),static_cast<DWORD>(data.size()),&n,nullptr)){ok=false;break;}if(!n)break;if(BCryptHashData(hash,data.data(),n,0)<0){ok=false;break;}}
-    if(BCryptFinishHash(hash,digest.data(),static_cast<ULONG>(digest.size()),0)<0)ok=false;
-    BCryptDestroyHash(hash);BCryptCloseAlgorithmProvider(alg,0);
-    if(!ok)throw std::runtime_error("File hash read failed");
-    const char* hex="0123456789abcdef";std::string result;
-    for(auto b:digest){result+=hex[b>>4];result+=hex[b&15];}return result;
-}
 inline bool executable_pointer(const void* pointer) {
     MEMORY_BASIC_INFORMATION mbi{};
     if(!pointer||pointer==reinterpret_cast<const void*>(~uintptr_t{})||!VirtualQuery(pointer,&mbi,sizeof(mbi)))return false;
