@@ -80,7 +80,7 @@ public:
         if(should_show_error(enabled_,relaunched,interactive,count)) {
             auto text=wide(message);
             if(!path_.empty())text+=L"\n\nLauncher log:\n"+path_.wstring();
-            MessageBoxW(nullptr,text.c_str(),L"ZZZTouchLauncher - launch failed",MB_OK|MB_ICONERROR);
+            MessageBoxW(nullptr,text.c_str(),L"TouchUILaunch - launch failed",MB_OK|MB_ICONERROR);
         }
     }
 };

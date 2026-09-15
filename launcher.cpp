@@ -51,7 +51,7 @@ void* remote_load_library(DWORD pid) {
     return reinterpret_cast<void*>(remote->base+offset);
 }
 void inject(DWORD pid,const fs::path& payload) {
-    if(!fs::is_regular_file(payload))throw std::runtime_error("ZZZTouchUI.dll must be beside the launcher");
+    if(!fs::is_regular_file(payload))throw std::runtime_error("TouchUILaunch.dll must be beside the launcher");
     Handle process(OpenProcess(PROCESS_CREATE_THREAD|PROCESS_QUERY_INFORMATION|PROCESS_VM_OPERATION|PROCESS_VM_WRITE|PROCESS_VM_READ|SYNCHRONIZE,FALSE,pid));
     if(!process.value)throw std::runtime_error("OpenProcess for injection failed, Windows error "+std::to_string(GetLastError()));
     // Recheck the handle's identity immediately before the mutation (PID reuse).
@@ -75,7 +75,7 @@ void inject(DWORD pid,const fs::path& payload) {
     if(log_enabled)std::cout<<"DLL loaded. Initializing input hooks...\n";
 }
 void usage() {
-    std::cout<<"ZZZTouchLauncher (Windows x64, experimental)\n"
+    std::cout<<"TouchUILaunch (Windows x64, experimental)\n"
         "  --GI | --SR | --ZZZ | --WW             Required: choose exactly one game\n"
         "  --game <exe>                          Required for GI/SR/WW; optional for ZZZ\n"
         "  --WW                                  Launch with -CloudGame -CloudGamePlatform=Android\n"
@@ -107,7 +107,7 @@ int wmain(int argc,wchar_t** argv) {
                 if(fs::is_regular_file(root/relative)){game=root/relative;break;}
             }
         }
-        fs::path payload=own_dir/L"ZZZTouchUI.dll";
+        fs::path payload=own_dir/L"TouchUILaunch.dll";
         std::wstring action;bool explicit_game{},explicit_action{};
         std::optional<game::Kind> selected;
         std::vector<std::wstring> forwarded_args;
@@ -148,7 +148,7 @@ int wmain(int argc,wchar_t** argv) {
             return static_cast<int>(result);
         }
         // Serialize launches of this game type, including launches from other tool copies.
-        const auto lock_name=L"Local\\ZZZTouchUI.Launch."+std::wstring(game::flag(*selected));
+        const auto lock_name=L"Local\\TouchUILaunch.Launch."+std::wstring(game::flag(*selected));
         Handle launch_lock(CreateMutexW(nullptr,FALSE,lock_name.c_str()));
         if(!launch_lock.value)throw std::runtime_error("Cannot create game launch mutex");
         const auto lock_result=WaitForSingleObject(launch_lock,0);

@@ -296,7 +296,7 @@ void worker() {
     // Publish only after retaining the launcher's logging configuration.
     started_event.value=CreateEventW(nullptr,TRUE,TRUE,started_event_name(GetCurrentProcessId()).c_str());
     if(!started_event.value)return;
-    log("ZZZTouchUI experimental build 1; pid=%lu",GetCurrentProcessId());
+    log("TouchUILaunch experimental build 1; pid=%lu",GetCurrentProcessId());
     if(std::filesystem::path(module_path()).filename()!=L"ZenlessZoneZero.exe") {log("ERROR: unsupported process name");return;}
     HMODULE module{};
     for(int i=0;i<600&&!module;++i){module=GetModuleHandleW(L"GameAssembly.dll");if(!module)Sleep(200);}

@@ -5,18 +5,18 @@
 GI／SR 按 `refs/Genshin_StarRail_fps_unlocker` 的移动 UI 逻辑移植，不包含帧率解锁、帧率控制或节能调帧。GI／SR 必须通过 `--game` 指定现有 EXE；GI 接受 `YuanShen.exe` 和 `GenshinImpact.exe`，SR 接受 `StarRail.exe`。路径与所选游戏必须一致。
 
 ```powershell
-.\ZZZTouchLauncher.exe --GI --game 'D:\Games\Genshin\YuanShen.exe' --log
-.\ZZZTouchLauncher.exe --GI --game 'D:\Games\Genshin\GenshinImpact.exe'
-.\ZZZTouchLauncher.exe --SR --game 'D:\Games\StarRail\StarRail.exe' --log
-.\ZZZTouchLauncher.exe --ZZZ --game 'D:\Games\ZZZ\ZenlessZoneZero.exe'
-.\ZZZTouchLauncher.exe --WW --game 'D:\Games\Wuthering Waves\Client\Binaries\Win64\Client-Win64-Shipping.exe'
+.\TouchUILaunch.exe --GI --game 'D:\Games\Genshin\YuanShen.exe' --log
+.\TouchUILaunch.exe --GI --game 'D:\Games\Genshin\GenshinImpact.exe'
+.\TouchUILaunch.exe --SR --game 'D:\Games\StarRail\StarRail.exe' --log
+.\TouchUILaunch.exe --ZZZ --game 'D:\Games\ZZZ\ZenlessZoneZero.exe'
+.\TouchUILaunch.exe --WW --game 'D:\Games\Wuthering Waves\Client\Binaries\Win64\Client-Win64-Shipping.exe'
 ```
 
-WW 必须通过 `--game` 指定鸣潮安装目录下的 `Client\Binaries\Win64\Client-Win64-Shipping.exe`。启动器以 EXE 所在目录为工作目录，直接启动游戏并自动添加 `-CloudGame -CloudGamePlatform=Android`，无需手工传入这两个游戏参数。WW 与其他游戏共用自动提权流程：普通权限下先请求 UAC，确认后启动；已经是管理员时直接继续。WW 不挂起主线程、不安装钩子，也不依赖 `ZZZTouchUI.dll`；触控 UI 由游戏自身的 Android 云游戏启动模式启用。`--log` 可查看启动路径、参数和进程 ID。
+WW 必须通过 `--game` 指定鸣潮安装目录下的 `Client\Binaries\Win64\Client-Win64-Shipping.exe`。启动器以 EXE 所在目录为工作目录，直接启动游戏并自动添加 `-CloudGame -CloudGamePlatform=Android`，无需手工传入这两个游戏参数。WW 与其他游戏共用自动提权流程：普通权限下先请求 UAC，确认后启动；已经是管理员时直接继续。WW 不挂起主线程、不安装钩子，也不依赖 `TouchUILaunch.dll`；触控 UI 由游戏自身的 Android 云游戏启动模式启用。`--log` 可查看启动路径、参数和进程 ID。
 
 GI／SR 以挂起主线程的方式创建进程，在恢复前完成模块加载和 UI 逻辑安装。GI 从主 EXE 的 `il2cpp` 节定位；旧布局使用 `<EXE名称>_Data\Native\UserAssembly.dll`。一次性钩子先恢复原代码及页面保护，调用原初始化函数，再调用 UI／输入设置器。SR 从 `GameAssembly.dll` 定位 UI 状态，独立任务每 500 毫秒将其设为 `2`。解析出的目标必须唯一且范围有效；GI 同一组函数／对象在多处出现时，逐一核对并归并相同目标，实际目标冲突仍会拒绝；准备失败只清理本次创建的进程，不结束已有游戏进程。
 
-GI／SR UI 执行代码编入启动器，无需加载 `ZZZTouchUI.dll`；其触控能力以参考项目为范围，没有接入 ZZZ 的 Windows 原生多指触控桥。`--log` 输出模块地址、解析结果及安装状态到控制台，并将启动器标准输出和错误同步写入同目录 `logs\launcher-<启动器PID>.log`。UAC 前后两个启动器进程各有日志，逐步记录创建进程、加载器初始化、模块读取、特征解析和钩子安装。独立的提权控制台发生错误时会弹窗显示原因及日志路径，重定向输出时不会弹窗。不创建 GI／SR DLL 日志。“installed”仅表示初始化逻辑已安装，不代表游戏内移动 UI 已实测成功。兼容范围限于参考项目覆盖的特征；已对本机 GI 7.0 EXE 和仓库 SR 样本进行只读解析；用户反馈 SR 已正常启动。GI 7.0 的多处等价调用特征现已修复，完整游戏内交互仍需实机确认。
+GI／SR UI 执行代码编入启动器，无需加载 `TouchUILaunch.dll`；其触控能力以参考项目为范围，没有接入 ZZZ 的 Windows 原生多指触控桥。`--log` 输出模块地址、解析结果及安装状态到控制台，并将启动器标准输出和错误同步写入同目录 `logs\launcher-<启动器PID>.log`。UAC 前后两个启动器进程各有日志，逐步记录创建进程、加载器初始化、模块读取、特征解析和钩子安装。独立的提权控制台发生错误时会弹窗显示原因及日志路径，重定向输出时不会弹窗。不创建 GI／SR DLL 日志。“installed”仅表示初始化逻辑已安装，不代表游戏内移动 UI 已实测成功。兼容范围限于参考项目覆盖的特征；已对本机 GI 7.0 EXE 和仓库 SR 样本进行只读解析；用户反馈 SR 已正常启动。GI 7.0 的多处等价调用特征现已修复，完整游戏内交互仍需实机确认。
 
 `--probe` 和 `--probe-auto` 仅适用于 `--ZZZ`；与 `--GI`／`--SR`／`--WW` 组合会报错，且不会请求 UAC 或启动游戏。无参数双击不会启动游戏，可建立带游戏选择参数的快捷方式。以下为 ZZZ 触控桥与诊断说明。
 
@@ -30,7 +30,7 @@ GI／SR UI 执行代码编入启动器，无需加载 `ZZZTouchUI.dll`；其触�
 
 匹配唯一、调用关系和边界检查全部通过时继续，否则停止（携带 `--log` 时记录错误）。运行时只需要启动器和同目录 DLL，不需要 IDA、Python、Capstone 或 metadata Dump。`--probe` 从文件使用同一匹配器解析，携带 `--log` 时输出 SHA-256，仅用于只读诊断；未知哈希不影响解析资格。`--probe-auto` 是其兼容别名。
 
-保留 `ZZZTouchLauncher.exe` 与 `ZZZTouchUI.dll` 在同一目录，更新测试版前先完全退出游戏。版本更新后无需修改配置即可尝试启动，但编译器、内联或混淆变化可能使自动定位失败；不能保证以后所有版本都免更新。
+保留 `TouchUILaunch.exe` 与 `TouchUILaunch.dll` 在同一目录，更新测试版前先完全退出游戏。版本更新后无需修改配置即可尝试启动，但编译器、内联或混淆变化可能使自动定位失败；不能保证以后所有版本都免更新。
 
 ## 测试
 
@@ -38,19 +38,19 @@ GI／SR UI 执行代码编入启动器，无需加载 `ZZZTouchUI.dll`；其触�
 
 ```powershell
 # 只读解析文件并输出 SHA-256，不启动或注入
-.\ZZZTouchLauncher.exe --ZZZ --probe --log
+.\TouchUILaunch.exe --ZZZ --probe --log
 
 # --probe 的兼容别名
-.\ZZZTouchLauncher.exe --ZZZ --probe-auto --log
+.\TouchUILaunch.exe --ZZZ --probe-auto --log
 
 # 启动默认 Client/3.2；已有 ZZZ 进程时拒绝启动
-.\ZZZTouchLauncher.exe --ZZZ
+.\TouchUILaunch.exe --ZZZ
 
 # 开启控制台和 DLL 文件日志
-.\ZZZTouchLauncher.exe --ZZZ --log
+.\TouchUILaunch.exe --ZZZ --log
 
 # 可选：指定另一处游戏
-.\ZZZTouchLauncher.exe --ZZZ --game 'D:\Games\ZenlessZoneZero\ZenlessZoneZero.exe'
+.\TouchUILaunch.exe --ZZZ --game 'D:\Games\ZenlessZoneZero\ZenlessZoneZero.exe'
 ```
 
 普通权限下执行 GI／SR／ZZZ／WW 的有效启动命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe`、`--probe-auto` 无需提权。
@@ -58,7 +58,7 @@ GI／SR UI 执行代码编入启动器，无需加载 `ZZZTouchUI.dll`；其触�
 默认路径按项目目录布局寻找 `Client/3.2`；不存在时再寻找旧版目录。游戏安装在其他位置时使用 `--game`。为明确测试 3.2，可执行：
 
 ```powershell
-.\ZZZTouchLauncher.exe --ZZZ --game 'D:\WorkSpace\ZZZTouchUI\Client\3.2\ZenlessZoneZero.exe'
+.\TouchUILaunch.exe --ZZZ --game 'D:\WorkSpace\ZZZTouchUI\Client\3.2\ZenlessZoneZero.exe'
 ```
 
 程序使用普通 LoadLibrary 注入；若管理员权限下仍被客户端拒绝加载，应保留错误与日志用于判断。

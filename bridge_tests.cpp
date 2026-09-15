@@ -101,7 +101,7 @@ void test() {
     provider[17]=0;
     check(!ready_ui_provider(),"missing default property must block UI calls");
     provider[17]=reinterpret_cast<uintptr_t>(&property);
-    WNDCLASSW wc{};wc.lpfnWndProc=host_proc;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"ZZZTouchOwnedTestWindow";
+    WNDCLASSW wc{};wc.lpfnWndProc=host_proc;wc.hInstance=GetModuleHandleW(nullptr);wc.lpszClassName=L"TouchUILaunchOwnedTestWindow";
     check(RegisterClassW(&wc)!=0,"register owned test window");
     HWND hwnd=CreateWindowExW(0,wc.lpszClassName,L"Touch bridge test",WS_OVERLAPPEDWINDOW,0,0,800,600,nullptr,nullptr,wc.hInstance,nullptr);
     check(hwnd!=nullptr&&install_window(hwnd),"subclass owned hidden window");
