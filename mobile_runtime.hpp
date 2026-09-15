@@ -6,18 +6,21 @@
 
 extern "C" const unsigned char GiUiBegin[],GiUiContext[],GiUiEnd[],SrUiBegin[],SrUiEnd[],UiLoadBegin[],UiLoadEnd[];
 namespace mobile {
+using Progress=std::function<void(std::string_view)>;
 inline void read(HANDLE process,uintptr_t at,std::span<uint8_t> bytes) {
     SIZE_T got{};
-    require(ReadProcessMemory(process,reinterpret_cast<const void*>(at),bytes.data(),bytes.size(),&got)&&got==bytes.size(),
-            "ReadProcessMemory failed ("+std::to_string(GetLastError())+")");
+    const auto success=ReadProcessMemory(process,reinterpret_cast<const void*>(at),bytes.data(),bytes.size(),&got);
+    const auto error=success?ERROR_PARTIAL_COPY:GetLastError();
+    require(success&&got==bytes.size(),"ReadProcessMemory failed ("+std::to_string(error)+")");
 }
 template<class T> T read(HANDLE process,uintptr_t at) {
     T value{};read(process,at,{reinterpret_cast<uint8_t*>(&value),sizeof(value)});return value;
 }
 inline void write(HANDLE process,uintptr_t at,const void* bytes,size_t size) {
     SIZE_T wrote{};
-    require(WriteProcessMemory(process,reinterpret_cast<void*>(at),bytes,size,&wrote)&&wrote==size,
-            "WriteProcessMemory failed ("+std::to_string(GetLastError())+")");
+    const auto success=WriteProcessMemory(process,reinterpret_cast<void*>(at),bytes,size,&wrote);
+    const auto error=success?ERROR_PARTIAL_COPY:GetLastError();
+    require(success&&wrote==size,"WriteProcessMemory failed ("+std::to_string(error)+")");
 }
 template<class T> void write(HANDLE process,uintptr_t at,const T& value){write(process,at,&value,sizeof(value));}
 inline void range(HANDLE process,uintptr_t at,size_t size,uintptr_t allocation,DWORD allowed) {
@@ -171,27 +174,37 @@ inline InstalledTask install_sr(HANDLE process,uintptr_t base,uintptr_t rva) {
     }
     throw std::runtime_error("Mobile UI: SR UI task startup timed out");
 }
-inline void initialize(game::Child& child,game::Kind kind,const std::filesystem::path& path,bool logging) {
+inline void initialize(game::Child& child,game::Kind kind,const std::filesystem::path& path,bool logging,const Progress& progress={}) {
+    const auto stage=[&](std::string_view message){if(progress)progress(message);else if(logging)std::cout<<"Stage: "<<message<<std::endl;};
+    stage("initialize suspended process loader");
     const auto process=child.info.hProcess;bootstrap(process);
     if(kind==game::Kind::SR) {
+        stage("SR: load GameAssembly.dll");
         const auto base=load_library(process,path.parent_path()/L"GameAssembly.dll");
-        const auto resolved=resolve_sr(capture(process,base));
+        stage("SR: capture loaded module");
+        const auto image=capture(process,base);
+        stage("SR: resolve UI state");
+        const auto resolved=resolve_sr(image);
         if(logging)std::cout<<"SR GameAssembly base=0x"<<std::hex<<base<<" UI state RVA=0x"<<resolved<<std::dec<<"\n";
-        install_sr(process,base,resolved);
+        stage("SR: install UI task");install_sr(process,base,resolved);
         if(logging)std::cout<<"SR mobile UI task installed (type 2, 500 ms). In-game UI is not yet verified.\n";
     } else {
+        stage("GI: locate main image");
         auto base=mapped_module(process,path.filename());require(base!=0,"GI main image missing");
+        stage("GI: capture main image");
         auto image=capture(process,base);
         const auto has_il2cpp=std::any_of(image.sections.begin(),image.sections.end(),[](const auto& section){return std::string_view(section.name,6)=="il2cpp";});
         if(!has_il2cpp) {
+            stage("GI: load legacy UserAssembly.dll");
             base=load_library(process,path.parent_path()/(path.stem().wstring()+L"_Data")/L"Native"/L"UserAssembly.dll");
-            image=capture(process,base);
+            stage("GI: capture UserAssembly.dll");image=capture(process,base);
         }
+        stage("GI: resolve UI functions and input object");
         const auto resolved=resolve_gi(image);
         if(logging)std::cout<<"GI "<<(has_il2cpp?"main image":"UserAssembly")<<" base=0x"<<std::hex<<base
             <<" init RVA=0x"<<resolved.init<<" UI RVA=0x"<<resolved.ui<<" input RVA=0x"<<resolved.input
             <<" class RVA=0x"<<resolved.klass<<" UI offset=0x"<<resolved.ui_offset<<" input offset=0x"<<resolved.input_offset<<std::dec<<"\n";
-        install_gi(process,base,resolved);
+        stage("GI: install initialization hook");install_gi(process,base,resolved);
         if(logging)std::cout<<"GI mobile UI initialization hook installed. In-game UI is not yet verified.\n";
     }
 }

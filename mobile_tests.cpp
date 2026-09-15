@@ -63,6 +63,24 @@ void resolver_tests() {
     Fixture gi;gi.gi();gi.put<uint32_t>(0x100a,3);rejects([&]{gi.resolve_gi();},"misaligned GI object offset rejected");
     gi.gi();gi.rel(0x1209,0x120d,0x4000);rejects([&]{gi.resolve_gi();},"out-of-image GI function rejected");
     gi.gi();gi.put<uint8_t>(0x1700,0xe9);rejects([&]{gi.resolve_gi();},"existing GI hook rejected");
+    // Real GI 7.0 has repeated call/access sites with identical targets.
+    Fixture repeated;repeated.gi();const auto expected=repeated.resolve_gi();
+    repeated.pattern(0x1800,mobile::gi_patterns[0]);repeated.rel(0x1803,0x1807,0x3000);repeated.put<uint32_t>(0x180a,0x20);
+    repeated.rel(0x1820,0x1824,0x1500);repeated.rel(0x1830,0x1834,0x1600);
+    for(const auto at:{uintptr_t(0x1900),uintptr_t(0x1a00),uintptr_t(0x1b00)}) {
+        repeated.pattern(at,mobile::gi_input);repeated.rel(at+3,at+7,0x3000);repeated.put<uint32_t>(at+16,0x28);
+    }
+    repeated.pattern(0x1c00,mobile::gi_init);repeated.rel(0x1c09,0x1c0d,0x1700);
+    check(repeated.resolve_gi()==expected,"equivalent GI sites collapse to one verified target set");
+    test_module::Mapping repeated_memory(repeated.bytes);
+    check(mobile::resolve_gi(mobile::capture(GetCurrentProcess(),repeated_memory.base))==expected,"repeated GI sites resolve in loaded memory");
+    repeated.rel(0x1820,0x1824,0x1550);rejects([&]{repeated.resolve_gi();},"different UI targets still rejected");
+    repeated.rel(0x1820,0x1824,0x1500);repeated.rel(0x1903,0x1907,0x3008);
+    rejects([&]{repeated.resolve_gi();},"different input class slot rejected");
+    repeated.rel(0x1903,0x1907,0x3000);repeated.put<uint32_t>(0x1910,0x30);
+    rejects([&]{repeated.resolve_gi();},"different input offset rejected");
+    repeated.put<uint32_t>(0x1910,0x28);repeated.rel(0x1c09,0x1c0d,0x1750);
+    rejects([&]{repeated.resolve_gi();},"different initializer targets still rejected");
     Fixture section;section.sr(0);std::memcpy(section.bytes.data()+0x188,".text\0",6);rejects([&]{section.resolve_sr();},"unrelated code section ignored");
     Fixture truncated;truncated.sr(0);truncated.bytes.resize(64);rejects([&]{truncated.resolve_sr();},"truncated image rejected");
 }
@@ -148,9 +166,16 @@ void child_tests() {
 }
 int wmain(int argc,wchar_t** argv) {
     try {
-        if(argc==2) {
-            std::ifstream file(std::filesystem::path(argv[1]),std::ios::binary);check(file.good(),"cannot read SR sample");
+        if(argc==2||(argc==3&&std::wstring_view(argv[1])==L"--gi-file")) {
+            const bool gi=argc==3;
+            std::ifstream file(std::filesystem::path(argv[gi?2:1]),std::ios::binary);check(file.good(),"cannot read game sample");
             const std::vector<uint8_t> bytes((std::istreambuf_iterator<char>(file)),{});
+            if(gi) {
+                const auto resolved=mobile::resolve_gi(discovery::Image(bytes));
+                std::cout<<"GI file: init=0x"<<std::hex<<resolved.init<<" ui=0x"<<resolved.ui<<" input=0x"<<resolved.input
+                    <<" class=0x"<<resolved.klass<<" ui_offset=0x"<<resolved.ui_offset<<" input_offset=0x"<<resolved.input_offset
+                    <<" (read only; no game code executed)\n";return 0;
+            }
             std::cout<<"SR sample UI state RVA=0x"<<std::hex<<mobile::resolve_sr(discovery::Image(bytes))<<" (read only; no game code executed)\n";return 0;
         }
         resolver_tests();gi_runtime_test(false);gi_runtime_test(true);sr_runtime_test();child_tests();

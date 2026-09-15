@@ -4,6 +4,7 @@
 #include "elevation.hpp"
 #include "game.hpp"
 #include "mobile_runtime.hpp"
+#include "launcher_log.hpp"
 #include <tlhelp32.h>
 #include <iostream>
 #include <optional>
@@ -79,7 +80,7 @@ void usage() {
         "  --game <exe>                          Required for GI/SR; optional for ZZZ\n"
         "  --ZZZ --probe [--game <exe>]           Verify files only; never launch/inject\n"
         "  --probe-auto                          Compatibility alias for --probe (ZZZ)\n"
-        "  --log                                 Console diagnostics; ZZZ also logs to file\n"
+        "  --log                                 Console + launcher file logs; ZZZ DLL log\n"
         "  --help                                Show this help\n"
         "Game commands request Windows administrator approval automatically when needed.\n"
         "--help, --probe and --probe-auto run without requesting elevation.\n"
@@ -92,8 +93,11 @@ int wmain(int argc,wchar_t** argv) {
         if(std::wstring_view(argv[i])==L"--game"&&i+1<argc){++i;continue;}
         if(std::wstring_view(argv[i])==L"--log")log_enabled=true;
     }
+    launcher_log::Session diagnostics(log_enabled);
+    bool elevation_relaunch{};
     try {
         fs::path own_dir=fs::path(module_path()).parent_path();
+        diagnostics.open(own_dir);
         const auto root=fs::weakly_canonical(own_dir/L".."/L"..");
         fs::path game=root/L"Client"/L"3.2"/L"ZenlessZoneZero.exe";
         if(!fs::is_regular_file(game)) {
@@ -102,7 +106,7 @@ int wmain(int argc,wchar_t** argv) {
             }
         }
         fs::path payload=own_dir/L"ZZZTouchUI.dll";
-        std::wstring action;bool explicit_game{},explicit_action{},elevation_relaunch{};
+        std::wstring action;bool explicit_game{},explicit_action{};
         std::optional<game::Kind> selected;
         std::vector<std::wstring> forwarded_args;
         for(int i=1;i<argc;++i) {
@@ -119,7 +123,9 @@ int wmain(int argc,wchar_t** argv) {
             } else throw std::runtime_error("Unknown or incomplete argument (use --help)");
         }
         game::validate(selected,game,explicit_game,!action.empty());
+        if(log_enabled)std::cout<<"Selected game: "<<launcher_log::utf8(game::flag(*selected))<<"; executable: "<<launcher_log::utf8(game.wstring())<<std::endl;
         if(action==L"probe"||action==L"probe-auto") {
+            diagnostics.stage("ZZZ: read-only file probe");
             if(!fs::is_regular_file(game))throw std::runtime_error("Game executable not found; specify --game");
             probe_assembly(game.parent_path()/L"GameAssembly.dll");
             if(!fs::is_regular_file(payload))throw std::runtime_error("Payload DLL missing");
@@ -129,11 +135,14 @@ int wmain(int argc,wchar_t** argv) {
         if(*selected==game::Kind::ZZZ&&!fs::is_regular_file(payload))throw std::runtime_error("Payload DLL missing");
         // Elevate the launcher before any launch or injection, so the
         // parent cannot perform the action twice. The child verifies its token.
+        diagnostics.stage("check administrator privileges");
         if(elevation::needs_relaunch(elevation::is_elevated(),elevation_relaunch)) {
+            diagnostics.stage("request administrator privileges");
             forwarded_args.emplace_back(elevation::relaunch_flag);
             if(log_enabled)std::cout<<"Requesting Windows administrator approval...\n"<<std::flush;
             const auto result=elevation::relaunch(module_path(),forwarded_args,fs::current_path().wstring());
             if(log_enabled&&result==ERROR_CANCELLED)std::cerr<<"Administrator approval canceled. No game action was performed.\n";
+            if(log_enabled&&result&&result!=ERROR_CANCELLED)std::cerr<<"ERROR: elevated launcher exited with code "<<result<<". See logs/launcher-*.log beside this executable.\n";
             return static_cast<int>(result);
         }
         // Serialize launches of this game type, including launches from other tool copies.
@@ -144,16 +153,21 @@ int wmain(int argc,wchar_t** argv) {
         if(lock_result!=WAIT_OBJECT_0&&lock_result!=WAIT_ABANDONED)throw std::runtime_error("Another launcher is starting this game");
         struct Unlock {HANDLE handle;~Unlock(){ReleaseMutex(handle);}} unlock{launch_lock};
         game::require_stopped(!find_games(*selected).empty());
+        diagnostics.stage("create new game process");
         game::Child child;child.start(game,*selected!=game::Kind::ZZZ);
         const DWORD pid=child.info.dwProcessId;
         if(log_enabled)std::cout<<"Started game, PID "<<pid<<"\n";
         if(*selected!=game::Kind::ZZZ) {
-            mobile::initialize(child,*selected,game,log_enabled);
-            child.resume();child.release();return 0;
+            mobile::initialize(child,*selected,game,log_enabled,[&](std::string_view stage){diagnostics.stage(stage);});
+            diagnostics.stage("resume game main thread");
+            child.resume();child.release();
+            if(log_enabled)std::cout<<"Game main thread resumed.\n";
+            return 0;
         }
         Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,FALSE,pid));
         if(!process.value)throw std::runtime_error("Cannot query game process, Windows error "+std::to_string(GetLastError()));
         if(_wcsicmp(process_path(process).filename().c_str(),L"ZenlessZoneZero.exe")!=0)throw std::runtime_error("PID does not belong to ZenlessZoneZero.exe");
+        diagnostics.stage("ZZZ: wait for GameAssembly.dll");
         auto assembly=find_module(pid,L"GameAssembly.dll");
         if(!assembly&&log_enabled)std::cout<<"Waiting for GameAssembly.dll (up to 120 s)...\n";
         for(int i=0;!assembly&&i<600;++i) {
@@ -166,7 +180,7 @@ int wmain(int argc,wchar_t** argv) {
         Handle logging(CreateEventW(nullptr,TRUE,log_enabled,log_event_name(pid).c_str()));
         if(!logging.value)throw std::runtime_error("Cannot create payload logging event");
         if(!(log_enabled?SetEvent(logging):ResetEvent(logging)))throw std::runtime_error("Cannot configure payload logging");
-        inject(pid,payload);
+        diagnostics.stage("ZZZ: load touch payload");inject(pid,payload);
         HANDLE started{};
         for(int i=0;i<200&&!started;++i) {
             started=OpenEventW(SYNCHRONIZE,FALSE,started_event_name(pid).c_str());
@@ -178,5 +192,5 @@ int wmain(int argc,wchar_t** argv) {
         if(log_enabled)std::wcout<<L"Log: "<<own_dir/L"logs"/(L"touch-"+std::to_wstring(pid)+L".log")<<L"\n";
         child.release();
         return 0;
-    } catch(const std::exception& ex){if(log_enabled)std::cerr<<"ERROR: "<<ex.what()<<"\n";return 2;}
+    } catch(const std::exception& ex){diagnostics.failure(ex.what(),elevation_relaunch);return 2;}
 }

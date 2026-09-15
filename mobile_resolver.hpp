@@ -40,9 +40,13 @@ inline std::vector<uintptr_t> matches(const discovery::Image& image,const Patter
     return candidates;
 }
 struct Match {uintptr_t at{};size_t variant{};};
-inline Match unique(const discovery::Image& image,std::span<const Pattern> patterns) {
+inline std::vector<Match> collect(const discovery::Image& image,std::span<const Pattern> patterns) {
     std::vector<Match> found;
     for(size_t i=0;i<patterns.size();++i)for(const auto at:matches(image,patterns[i]))found.push_back({at,i});
+    return found;
+}
+inline Match unique(const discovery::Image& image,std::span<const Pattern> patterns) {
+    const auto found=collect(image,patterns);
     require(found.size()==1,std::string(patterns.front().name)+": expected one match across variants, got "+std::to_string(found.size()));
     return found.front();
 }
@@ -57,9 +61,11 @@ inline uintptr_t resolve_sr(const discovery::Image& image) {
     require(ins.h.opcode==0xc7&&ins.h.modrm_reg==0&&ins.imm()==3&&!ins.h.rex_w,"invalid SR UI write");
     const auto target=ins.storage(image);data(image,target,4);return target;
 }
-struct GiResolution {uintptr_t init{},ui{},input{},klass{};uint32_t ui_offset{},input_offset{};};
-inline GiResolution resolve_gi(const discovery::Image& image) {
-    const auto match=unique(image,gi_patterns);
+struct GiResolution {
+    uintptr_t init{},ui{},input{},klass{};uint32_t ui_offset{},input_offset{};
+    bool operator==(const GiResolution&)const=default;
+};
+inline GiResolution gi_setters(const discovery::Image& image,Match match) {
     GiResolution result;
     result.klass=discovery::x64::decode(image,match.at).storage(image);data(image,result.klass,8);
     result.ui_offset=image.read<uint32_t>(match.at+10);
@@ -68,13 +74,33 @@ inline GiResolution resolve_gi(const discovery::Image& image) {
     require(call_ui.call()&&call_input.call(),"invalid GI setter calls");
     result.ui=call_ui.relative(image);result.input=call_input.relative(image);
     image.code(result.ui);image.code(result.input);
-    const auto object=unique(image,{&gi_input,1});
-    result.input_offset=image.read<uint32_t>(object.at+16);
+    return result;
+}
+inline GiResolution resolve_gi(const discovery::Image& image) {
+    // GI 7.0 repeats the same UI setter pair at two call sites and the same
+    // input object access at four sites. Require unique decoded targets, not
+    // a unique occurrence of an instruction sequence. Never take the first
+    // match when another site describes different functions/objects.
+    const auto setters=collect(image,gi_patterns);
+    require(!setters.empty(),"GI UI setters: no matching call sites");
+    auto result=gi_setters(image,setters.front());
+    for(const auto& match:setters)require(gi_setters(image,match)==result,"GI UI setters: conflicting decoded targets");
+    const auto objects=matches(image,gi_input);
+    require(!objects.empty(),"GI input object: no matching access sites");
+    result.input_offset=image.read<uint32_t>(objects.front()+16);
+    for(const auto at:objects) {
+        require(discovery::x64::decode(image,at).storage(image)==result.klass,"GI input object uses a different class slot");
+        require(image.read<uint32_t>(at+16)==result.input_offset,"GI input object: conflicting decoded offsets");
+    }
     for(const auto offset:{result.ui_offset,result.input_offset})require(offset>0&&offset<0x100000&&offset%8==0,"invalid GI object offset");
     require(result.ui_offset!=result.input_offset,"GI UI/input objects overlap");
-    const auto init=unique(image,{&gi_init,1});
-    const auto call=discovery::x64::decode(image,init.at+8);require(call.call(),"invalid GI initialization call");
-    result.init=call.relative(image);image.code(result.init,16);
+    const auto initializers=matches(image,gi_init);
+    require(!initializers.empty(),"GI initialization: no matching call sites");
+    for(const auto at:initializers) {
+        const auto call=discovery::x64::decode(image,at+8);require(call.call(),"invalid GI initialization call");
+        const auto target=call.relative(image);image.code(target,16);
+        require(!result.init||result.init==target,"GI initialization: conflicting decoded targets");result.init=target;
+    }
     require(result.init!=result.ui&&result.init!=result.input&&result.ui!=result.input,"GI functions overlap");
     // No trampoline: original bytes are restored before invoking the function.
     // Still reject an existing branch hook rather than overwrite another writer.
