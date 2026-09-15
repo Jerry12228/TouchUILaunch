@@ -1,6 +1,6 @@
-# GI／SR／ZZZ 移动 UI 测试版
+# GI／SR／ZZZ／WW 移动 UI 测试版
 
-启动时必须指定 `--GI`（原神）、`--SR`（星穹铁道）或 `--ZZZ`（绝区零）中的一个，参数顺序不限，不允许重复或组合。三款游戏均只支持通过本工具启动；所选游戏已运行时会报错，需先退出。运行中附加不符合初始化时序，已删除该无效分支。其他游戏类型的进程不影响所选游戏启动。
+启动时必须指定 `--GI`（原神）、`--SR`（星穹铁道）、`--ZZZ`（绝区零）或 `--WW`（鸣潮）中的一个，参数顺序不限，不允许重复或组合。四款游戏均只支持通过本工具启动；所选游戏已运行时会报错，需先退出。运行中附加不符合初始化时序，已删除该无效分支。其他游戏类型的进程不影响所选游戏启动。
 
 GI／SR 按 `refs/Genshin_StarRail_fps_unlocker` 的移动 UI 逻辑移植，不包含帧率解锁、帧率控制或节能调帧。GI／SR 必须通过 `--game` 指定现有 EXE；GI 接受 `YuanShen.exe` 和 `GenshinImpact.exe`，SR 接受 `StarRail.exe`。路径与所选游戏必须一致。
 
@@ -9,13 +9,16 @@ GI／SR 按 `refs/Genshin_StarRail_fps_unlocker` 的移动 UI 逻辑移植，不
 .\ZZZTouchLauncher.exe --GI --game 'D:\Games\Genshin\GenshinImpact.exe'
 .\ZZZTouchLauncher.exe --SR --game 'D:\Games\StarRail\StarRail.exe' --log
 .\ZZZTouchLauncher.exe --ZZZ --game 'D:\Games\ZZZ\ZenlessZoneZero.exe'
+.\ZZZTouchLauncher.exe --WW --game 'D:\Games\Wuthering Waves\Client\Binaries\Win64\Client-Win64-Shipping.exe'
 ```
+
+WW 必须通过 `--game` 指定鸣潮安装目录下的 `Client\Binaries\Win64\Client-Win64-Shipping.exe`。启动器以 EXE 所在目录为工作目录，直接启动游戏并自动添加 `-CloudGame -CloudGamePlatform=Android`，无需手工传入这两个游戏参数。WW 与其他游戏共用自动提权流程：普通权限下先请求 UAC，确认后启动；已经是管理员时直接继续。WW 不挂起主线程、不安装钩子，也不依赖 `ZZZTouchUI.dll`；触控 UI 由游戏自身的 Android 云游戏启动模式启用。`--log` 可查看启动路径、参数和进程 ID。
 
 GI／SR 以挂起主线程的方式创建进程，在恢复前完成模块加载和 UI 逻辑安装。GI 从主 EXE 的 `il2cpp` 节定位；旧布局使用 `<EXE名称>_Data\Native\UserAssembly.dll`。一次性钩子先恢复原代码及页面保护，调用原初始化函数，再调用 UI／输入设置器。SR 从 `GameAssembly.dll` 定位 UI 状态，独立任务每 500 毫秒将其设为 `2`。解析出的目标必须唯一且范围有效；GI 同一组函数／对象在多处出现时，逐一核对并归并相同目标，实际目标冲突仍会拒绝；准备失败只清理本次创建的进程，不结束已有游戏进程。
 
 GI／SR UI 执行代码编入启动器，无需加载 `ZZZTouchUI.dll`；其触控能力以参考项目为范围，没有接入 ZZZ 的 Windows 原生多指触控桥。`--log` 输出模块地址、解析结果及安装状态到控制台，并将启动器标准输出和错误同步写入同目录 `logs\launcher-<启动器PID>.log`。UAC 前后两个启动器进程各有日志，逐步记录创建进程、加载器初始化、模块读取、特征解析和钩子安装。独立的提权控制台发生错误时会弹窗显示原因及日志路径，重定向输出时不会弹窗。不创建 GI／SR DLL 日志。“installed”仅表示初始化逻辑已安装，不代表游戏内移动 UI 已实测成功。兼容范围限于参考项目覆盖的特征；已对本机 GI 7.0 EXE 和仓库 SR 样本进行只读解析；用户反馈 SR 已正常启动。GI 7.0 的多处等价调用特征现已修复，完整游戏内交互仍需实机确认。
 
-`--probe` 和 `--probe-auto` 仅适用于 `--ZZZ`；与 `--GI`／`--SR` 组合会报错，且不会请求 UAC 或启动游戏。无参数双击不会启动游戏，可建立带游戏选择参数的快捷方式。以下为 ZZZ 触控桥与诊断说明。
+`--probe` 和 `--probe-auto` 仅适用于 `--ZZZ`；与 `--GI`／`--SR`／`--WW` 组合会报错，且不会请求 UAC 或启动游戏。无参数双击不会启动游戏，可建立带游戏选择参数的快捷方式。以下为 ZZZ 触控桥与诊断说明。
 
 ## ZZZ 触控桥
 
@@ -50,7 +53,7 @@ GI／SR UI 执行代码编入启动器，无需加载 `ZZZTouchUI.dll`；其触�
 .\ZZZTouchLauncher.exe --ZZZ --game 'D:\Games\ZenlessZoneZero\ZenlessZoneZero.exe'
 ```
 
-普通权限下执行有效启动命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe`、`--probe-auto` 无需提权。
+普通权限下执行 GI／SR／ZZZ／WW 的有效启动命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe`、`--probe-auto` 无需提权。
 
 默认路径按项目目录布局寻找 `Client/3.2`；不存在时再寻找旧版目录。游戏安装在其他位置时使用 `--game`。为明确测试 3.2，可执行：
 
@@ -94,7 +97,9 @@ GI 启动窗口很快关闭时，先查看最新的 `logs\launcher-*.log`，其�
 
 GI／SR UI 片段使用随 VS C++ 工具链提供的 MASM x64 汇编器构建。Python 命令不可用时，可传入 `scripts\build_touch.ps1 -Python 'C:\path\to\python.exe'`。`MobileUI` 覆盖五种特征变体、文件与模拟模块视图、重复／越界拒绝，并在自有内存及自有子进程中执行生产 UI 代码，验证 GI 调用顺序和一次性恢复、SR 周期写入、挂起主线程期间加载系统 DLL、失败清理及成功恢复。仓库存在 `refs/HSR/GameAssembly.dll` 时额外运行 `MobileUIStarRailSample`，只读解析，不执行样本 DLL。
 
-实机待验收：GI／SR 分别退出后从启动器启动，检查进入游戏后的移动 UI、移动／视角／按钮操作，以及退出后再次启动；ZZZ 回归上述多指动作。测试记录需注明版本、游戏路径、日志和实际可用动作，不能用自动化测试代替实机结果。
+`validate_launcher_cli.py` 覆盖 WW 选择、重复／冲突参数、路径验证、诊断参数拒绝和已有进程检查，普通权限下验证提权失败时不启动游戏；管理员环境下用带空格及中文路径的自有测试 EXE 验证实际收到的两个游戏参数、工作目录与启动器退出后的子进程存活。`MobileUI` 在任意权限下验证 WW 参数与工作目录，`LauncherElevation` 使用模拟 Shell 验证包括 WW 在内的四种游戏选择参数保留。独立启动器测试目录不放置 DLL，自动化检查不请求真实 UAC。
+
+实机待验收：WW 检查移动 UI、移动／视角／按钮操作及触控输入；GI／SR 分别退出后从启动器启动，检查进入游戏后的移动 UI、移动／视角／按钮操作，以及退出后再次启动；ZZZ 回归上述多指动作。测试记录需注明版本、游戏路径、日志和实际可用动作，不能用自动化测试代替实机结果。
 
 
 构建脚本：`D:\WorkSpace\ZZZTouchUI\scripts\build_touch.ps1`，需要 VS 2022 C++ x64、CMake、Python 3.11+ 和 Python Capstone 包（用于核对生成规则）。脚本使用保留的 2.5/2.6/3.1/3.2 样本运行测试，并复制两个二进制和第三方许可证；它不启动游戏。直接使用 CMake 编译不需要 Python 或 Capstone，HDE64 指令解码器静态编入 EXE/DLL。
@@ -107,7 +112,7 @@ GI／SR UI 片段使用随 VS C++ 工具链提供的 MASM x64 汇编器构建。
 
 `MemoryReader` 覆盖文件偏移与 RVA 分离、跨页面指令、BSS、代码快照独立性，以及 17 类非法内存／PE 头拒绝条件。客户端模拟加载使用自有非执行内存，不调用 `LoadLibrary`，不执行客户端 DLL。`validate_memory_boundary.py` 检查内存解析器的源码依赖、正常路径的单次调用、诊断分支和发布导入；它不是操作系统级文件访问跟踪。
 
-这些检查不等价于真实触摸屏、串流链路或战斗场景验收。此版不改变云平台、服务器或账号设置；没有驱动组件或反作弊绕过功能。3.1 研究依据见 `analysis/touch/injection.md`，3.2 地址、字段变化和反编译证据见 `analysis/versions/3.2/touch-adaptation.md`。
+这些检查不等价于真实触摸屏、串流链路或战斗场景验收。WW 传入上述云游戏启动参数；工具不修改游戏持久配置、服务器或账号设置；没有驱动组件或反作弊绕过功能。3.1 研究依据见 `analysis/touch/injection.md`，3.2 地址、字段变化和反编译证据见 `analysis/versions/3.2/touch-adaptation.md`。
 
 人工基准保留在 `profiles/*.json` 与 `analysis/versions/2.5`、`analysis/versions/2.6`。`generate_touch_profiles.py` 分别生成不含地址值的生产字段结构和仅测试使用的 `test_profiles.hpp`；基准与哈希不编入发布程序。原可用版本保存在 `baseline-3.1` 标签和 `releases/baseline-3.1`，其后的固定地址与 v1/v2/v3 发布同样保留。同一进程无法卸载后安全更新 DLL，回退测试前须完全退出游戏。
 

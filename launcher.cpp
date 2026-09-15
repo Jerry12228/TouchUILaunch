@@ -76,13 +76,15 @@ void inject(DWORD pid,const fs::path& payload) {
 }
 void usage() {
     std::cout<<"ZZZTouchLauncher (Windows x64, experimental)\n"
-        "  --GI | --SR | --ZZZ                    Required: choose exactly one game\n"
-        "  --game <exe>                          Required for GI/SR; optional for ZZZ\n"
+        "  --GI | --SR | --ZZZ | --WW             Required: choose exactly one game\n"
+        "  --game <exe>                          Required for GI/SR/WW; optional for ZZZ\n"
+        "  --WW                                  Launch with -CloudGame -CloudGamePlatform=Android\n"
         "  --ZZZ --probe [--game <exe>]           Verify files only; never launch/inject\n"
         "  --probe-auto                          Compatibility alias for --probe (ZZZ)\n"
         "  --log                                 Console + launcher file logs; ZZZ DLL log\n"
         "  --help                                Show this help\n"
         "Game commands request Windows administrator approval automatically when needed.\n"
+        "WW starts with cloud UI arguments after elevation, without injection.\n"
         "--help, --probe and --probe-auto run without requesting elevation.\n"
         "Launch only: exit the selected game first. No attaching to running games.\n"
         "No anti-cheat bypass, driver installation or game-file modification.\n";
@@ -154,10 +156,18 @@ int wmain(int argc,wchar_t** argv) {
         struct Unlock {HANDLE handle;~Unlock(){ReleaseMutex(handle);}} unlock{launch_lock};
         game::require_stopped(!find_games(*selected).empty());
         diagnostics.stage("create new game process");
-        game::Child child;child.start(game,*selected!=game::Kind::ZZZ);
+        const bool mobile_patch=*selected==game::Kind::GI||*selected==game::Kind::SR;
+        const auto arguments=*selected==game::Kind::WW?L"-CloudGame -CloudGamePlatform=Android":L"";
+        if(log_enabled&&*selected==game::Kind::WW)std::cout<<"WW launch arguments: "<<launcher_log::utf8(arguments)<<std::endl;
+        game::Child child;child.start(game,mobile_patch,arguments);
         const DWORD pid=child.info.dwProcessId;
         if(log_enabled)std::cout<<"Started game, PID "<<pid<<"\n";
-        if(*selected!=game::Kind::ZZZ) {
+        if(*selected==game::Kind::WW) {
+            child.release();
+            diagnostics.stage("WW: game launched with Android cloud UI arguments");
+            return 0;
+        }
+        if(mobile_patch) {
             mobile::initialize(child,*selected,game,log_enabled,[&](std::string_view stage){diagnostics.stage(stage);});
             diagnostics.stage("resume game main thread");
             child.resume();child.release();

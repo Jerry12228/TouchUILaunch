@@ -48,7 +48,7 @@ void test() {
     try {elevation::relaunch(expected_exe,expected_args,expected_directory,fake_shell);}catch(const std::runtime_error& e){stopped=std::string(e.what()).find("error 5")!=std::string::npos;}
     check(stopped,"non-cancellation shell error is reported");
     shell_error=0;
-    for(const auto flag:{L"--GI",L"--SR",L"--ZZZ"}) {
+    for(const auto flag:{L"--GI",L"--SR",L"--ZZZ",L"--WW"}) {
         expected_args={L"--log",L"--game",L"D:\\游戏 目录\\example.exe",flag,elevation::relaunch_flag};
         check(elevation::relaunch(expected_exe,expected_args,expected_directory,fake_shell)==37,"preserve game selection and propagate elevated child exit code");
     }

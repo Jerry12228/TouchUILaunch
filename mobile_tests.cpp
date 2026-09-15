@@ -155,7 +155,13 @@ void child_tests() {
         game::Child child;child.start(path,true);child.resume();child.release();
         check(WaitForSingleObject(child.info.hProcess,5000)==WAIT_OBJECT_0&&GetExitCodeProcess(child.info.hProcess,&code)&&code==19,"successful child resumes and exits normally");
     }
-    for(auto kind:{game::Kind::GI,game::Kind::SR,game::Kind::ZZZ}) {
+    {
+        game::Child child;child.start(path,false,L"-CloudGame -CloudGamePlatform=Android");child.release();
+        check(WaitForSingleObject(child.info.hProcess,5000)==WAIT_OBJECT_0&&GetExitCodeProcess(child.info.hProcess,&code)&&code==0,
+              "WW child receives exact cloud arguments and executable working directory, without suspended initialization");
+        std::filesystem::remove(path.parent_path()/L"ww-launch-passed.txt");
+    }
+    for(auto kind:{game::Kind::GI,game::Kind::SR,game::Kind::ZZZ,game::Kind::WW}) {
         std::optional<game::Kind> selected;game::select(selected,kind);check(*selected==kind,"explicit selection");
         rejects([&]{game::select(selected,kind);},"duplicate selection rejected");
         rejects([&]{game::validate(selected,path,true,false);},"wrong executable rejected");
