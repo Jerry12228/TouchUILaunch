@@ -1,4 +1,23 @@
-# ZZZTouchUI 注入测试版
+# GI／SR／ZZZ 移动 UI 测试版
+
+启动时必须指定 `--GI`（原神）、`--SR`（星穹铁道）或 `--ZZZ`（绝区零）中的一个，参数顺序不限，不允许重复或组合。三款游戏均只支持通过本工具启动；所选游戏已运行时会报错，需先退出。运行中附加不符合初始化时序，已删除该无效分支。其他游戏类型的进程不影响所选游戏启动。
+
+GI／SR 按 `refs/Genshin_StarRail_fps_unlocker` 的移动 UI 逻辑移植，不包含帧率解锁、帧率控制或节能调帧。GI／SR 必须通过 `--game` 指定现有 EXE；GI 接受 `YuanShen.exe` 和 `GenshinImpact.exe`，SR 接受 `StarRail.exe`。路径与所选游戏必须一致。
+
+```powershell
+.\ZZZTouchLauncher.exe --GI --game 'D:\Games\Genshin\YuanShen.exe' --log
+.\ZZZTouchLauncher.exe --GI --game 'D:\Games\Genshin\GenshinImpact.exe'
+.\ZZZTouchLauncher.exe --SR --game 'D:\Games\StarRail\StarRail.exe' --log
+.\ZZZTouchLauncher.exe --ZZZ --game 'D:\Games\ZZZ\ZenlessZoneZero.exe'
+```
+
+GI／SR 以挂起主线程的方式创建进程，在恢复前完成模块加载和 UI 逻辑安装。GI 从主 EXE 的 `il2cpp` 节定位；旧布局使用 `<EXE名称>_Data\Native\UserAssembly.dll`。一次性钩子先恢复原代码及页面保护，调用原初始化函数，再调用 UI／输入设置器。SR 从 `GameAssembly.dll` 定位 UI 状态，独立任务每 500 毫秒将其设为 `2`。所有特征必须唯一且目标范围有效；准备失败只清理本次创建的进程，不结束已有游戏进程。
+
+GI／SR UI 执行代码编入启动器，无需加载 `ZZZTouchUI.dll`；其触控能力以参考项目为范围，没有接入 ZZZ 的 Windows 原生多指触控桥。`--log` 输出模块地址、解析结果及安装状态到控制台，不创建 GI／SR DLL 日志。“installed”仅表示初始化逻辑已安装，不代表游戏内移动 UI 已实测成功。兼容范围限于参考项目覆盖的特征；当前没有 GI 实机或样本验证，SR 已做本地样本只读定位，三款游戏的本次实机回归均尚未完成。
+
+`--probe` 和 `--probe-auto` 仅适用于 `--ZZZ`；与 `--GI`／`--SR` 组合会报错，且不会请求 UAC 或启动游戏。无参数双击不会启动游戏，可建立带游戏选择参数的快捷方式。以下为 ZZZ 触控桥与诊断说明。
+
+## ZZZ 触控桥
 
 这是可编译、可运行的触控原型。它调用游戏自身的 Mobile UI 状态设置器，并将 Windows 原生触点接入游戏已存在的 Unity 触控读取接口。本机触摸屏（1）与串流原生触控（2）共用同一实现。能否在当前运行环境完成移动、视角和技能同时操作，仍以游戏实测为准。
 
@@ -16,38 +35,38 @@
 
 ```powershell
 # 只读解析文件并输出 SHA-256，不启动或注入
-.\ZZZTouchLauncher.exe --probe --log
+.\ZZZTouchLauncher.exe --ZZZ --probe --log
 
 # --probe 的兼容别名
-.\ZZZTouchLauncher.exe --probe-auto --log
+.\ZZZTouchLauncher.exe --ZZZ --probe-auto --log
 
-# 已启动游戏时附加；没有游戏进程时默认启动 Client/3.2 中的游戏
-.\ZZZTouchLauncher.exe
+# 启动默认 Client/3.2；已有 ZZZ 进程时拒绝启动
+.\ZZZTouchLauncher.exe --ZZZ
 
 # 开启控制台和 DLL 文件日志
-.\ZZZTouchLauncher.exe --log
+.\ZZZTouchLauncher.exe --ZZZ --log
 
 # 可选：指定另一处游戏
-.\ZZZTouchLauncher.exe --game 'D:\Games\ZenlessZoneZero\ZenlessZoneZero.exe'
+.\ZZZTouchLauncher.exe --ZZZ --game 'D:\Games\ZenlessZoneZero\ZenlessZoneZero.exe'
 ```
 
-也可以直接双击启动器。普通权限下执行启动或附加命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe`、`--probe-auto` 无需提权。
+普通权限下执行有效启动命令时，会自动弹出 Windows UAC；确认后以管理员身份继续，并保留参数和工作目录。已经以管理员身份运行时直接继续。取消 UAC 会退出，返回 1223，不启动或操作游戏；提权未成功时不会循环弹窗。`--help`、`--probe`、`--probe-auto` 无需提权。
 
 默认路径按项目目录布局寻找 `Client/3.2`；不存在时再寻找旧版目录。游戏安装在其他位置时使用 `--game`。为明确测试 3.2，可执行：
 
 ```powershell
-.\ZZZTouchLauncher.exe --game 'D:\WorkSpace\ZZZTouchUI\Client\3.2\ZenlessZoneZero.exe'
+.\ZZZTouchLauncher.exe --ZZZ --game 'D:\WorkSpace\ZZZTouchUI\Client\3.2\ZenlessZoneZero.exe'
 ```
 
 程序使用普通 LoadLibrary 注入；若管理员权限下仍被客户端拒绝加载，应保留错误与日志用于判断。
 
-默认不输出控制台日志，也不创建日志目录或文件；需要诊断时添加 `--log`（包括 `--probe`）。`--help` 始终显示帮助，失败仍返回非零退出码。DLL 日志为 `logs\touch-<PID>.log`。再次运行启动器时，是否携带 `--log` 会更新当前游戏进程的日志开关；开启后从后续日志开始记录。先出现模块基址 `Resolving loaded GameAssembly.dll at base=...`，随后是 `Resolver:` 阶段和全部 15 项解析结果。`DLL loaded` 只表示 DLL 已加载；`READY` 表示输入接口已接入；还应出现 `Effective UI layout=1`。进入可操作场景后依次验证：单指点击、摇杆持续移动、另一指拖动视角、移动期间按技能、抬起全部手指后停止动作、切出再切回。
+默认不输出控制台日志，也不创建日志目录或文件；需要诊断时添加 `--log`（包括 `--probe`）。`--help` 始终显示帮助，失败仍返回非零退出码。DLL 日志为 `logs\touch-<PID>.log`。日志开关由本次启动参数决定；修改开关需要退出游戏重新启动。先出现模块基址 `Resolving loaded GameAssembly.dll at base=...`，随后是 `Resolver:` 阶段和全部 15 项解析结果。`DLL loaded` 只表示 DLL 已加载；`READY` 表示输入接口已接入；还应出现 `Effective UI layout=1`。进入可操作场景后依次验证：单指点击、摇杆持续移动、另一指拖动视角、移动期间按技能、抬起全部手指后停止动作、切出再切回。
 
 所有版本都应出现 `resolved all 15 fields from memory`。读取失败会报告对应 RVA，范围不完整时不会用磁盘补齐。解析结果只用于当前进程；版本升级或替换测试版后需完全退出游戏再启动。
 
 串流端必须向 Windows 传递原生触点。只将触屏映射为鼠标或手柄的模式没有独立多指信息，本原型不能从中还原多个触点。若使用 Moonlight/Sunshine，请在你的客户端中选择传递原生触控的模式；不同版本的选项名称可能不同。
 
-不再提供指定 PID、状态查询或运行时启停参数。多个游戏进程同时运行时，可用 `--game` 按路径筛选；仍有多个匹配进程时需关闭多余实例。触控在初始化完成后自动启用，故障时停止桥接。DLL 保留在进程内，完全退出游戏即可卸载。工具自身不写入游戏文件或持久配置，UI 设置器引发的游戏内部通知仍需实测确认。
+不提供指定 PID、附加、状态查询或运行时启停参数。`--game` 仅指定启动路径，不用于选择已有进程。同款游戏在其他安装路径运行时同样拒绝启动。触控在初始化完成后自动启用，故障时停止桥接。DLL 保留在进程内，完全退出游戏即可卸载。工具自身不写入游戏文件或持久配置，UI 设置器引发的游戏内部通知仍需实测确认。
 
 ## 根据日志定位
 
@@ -69,6 +88,11 @@
 
 ## 已验证范围与构建
 
+GI／SR UI 片段使用随 VS C++ 工具链提供的 MASM x64 汇编器构建。Python 命令不可用时，可传入 `scripts\build_touch.ps1 -Python 'C:\path\to\python.exe'`。`MobileUI` 覆盖五种特征变体、文件与模拟模块视图、重复／越界拒绝，并在自有内存及自有子进程中执行生产 UI 代码，验证 GI 调用顺序和一次性恢复、SR 周期写入、挂起主线程期间加载系统 DLL、失败清理及成功恢复。仓库存在 `refs/HSR/GameAssembly.dll` 时额外运行 `MobileUIStarRailSample`，只读解析，不执行样本 DLL。
+
+实机待验收：GI／SR 分别退出后从启动器启动，检查进入游戏后的移动 UI、移动／视角／按钮操作，以及退出后再次启动；ZZZ 回归上述多指动作。测试记录需注明版本、游戏路径、日志和实际可用动作，不能用自动化测试代替实机结果。
+
+
 构建脚本：`D:\WorkSpace\ZZZTouchUI\scripts\build_touch.ps1`，需要 VS 2022 C++ x64、CMake、Python 3.11+ 和 Python Capstone 包（用于核对生成规则）。脚本使用保留的 2.5/2.6/3.1/3.2 样本运行测试，并复制两个二进制和第三方许可证；它不启动游戏。直接使用 CMake 编译不需要 Python 或 Capstone，HDE64 指令解码器静态编入 EXE/DLL。
 
 `TouchState` 覆盖多指、坐标转换、按帧一致性、快速点击、ID 重用与容量；`TouchBridge31`、`TouchBridge32` 分别在独立进程的隐藏窗口及模拟接口表上测试生产桥接代码，包括原生接口回退、消息转发、重复事件源过滤、取消触点、主线程限制、UI 通知与恢复，以及两版不同的覆盖属性偏移。`profile-validation.json` 将每版 6 个接口槽、3 个 UI 函数的完整导出指令、状态字段及覆盖/默认值调用关系与原始 DLL 交叉核对。
@@ -83,4 +107,4 @@
 
 人工基准保留在 `profiles/*.json` 与 `analysis/versions/2.5`、`analysis/versions/2.6`。`generate_touch_profiles.py` 分别生成不含地址值的生产字段结构和仅测试使用的 `test_profiles.hpp`；基准与哈希不编入发布程序。原可用版本保存在 `baseline-3.1` 标签和 `releases/baseline-3.1`，其后的固定地址与 v1/v2/v3 发布同样保留。同一进程无法卸载后安全更新 DLL，回退测试前须完全退出游戏。
 
-短布局特征和 Unity 规则仍来自保留的样本；接口派发以数据来源识别成员角色。当前设计与验证见 `analysis/runtime-resolution/memory-resolution.md`，历史数据流设计见 `dataflow-dispatch.md`。统一读取路径不保证任意混淆、内联或指令重写都能识别，也不使用固定地址兜底。开发分支为 `codex/memory-resolution`，发布归档为 `releases/runtime-resolution-v4`；分发须保留 `THIRD-PARTY-NOTICES.txt`。
+短布局特征和 Unity 规则仍来自保留的样本；接口派发以数据来源识别成员角色。当前设计与验证见 `analysis/runtime-resolution/memory-resolution.md`，历史数据流设计见 `dataflow-dispatch.md`。统一读取路径不保证任意混淆、内联或指令重写都能识别，也不使用固定地址兜底。当前开发分支为 `codex/gi-sr-mobile-ui`；历史发布归档 `releases/runtime-resolution-v4` 保持原样。分发须保留 `THIRD-PARTY-NOTICES.txt`，其中包含 HDE64 和 GI／SR 参考项目的 MIT 版权声明。
