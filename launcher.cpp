@@ -3,6 +3,7 @@
 #include "win_util.hpp"
 #include "elevation.hpp"
 #include "game.hpp"
+#include "mobile_runtime.hpp"
 #include <tlhelp32.h>
 #include <iostream>
 #include <optional>
@@ -78,7 +79,7 @@ void usage() {
         "  --game <exe>                          Required for GI/SR; optional for ZZZ\n"
         "  --ZZZ --probe [--game <exe>]           Verify files only; never launch/inject\n"
         "  --probe-auto                          Compatibility alias for --probe (ZZZ)\n"
-        "  --log                                 Enable console and DLL file logs\n"
+        "  --log                                 Console diagnostics; ZZZ also logs to file\n"
         "  --help                                Show this help\n"
         "Game commands request Windows administrator approval automatically when needed.\n"
         "--help, --probe and --probe-auto run without requesting elevation.\n"
@@ -143,10 +144,13 @@ int wmain(int argc,wchar_t** argv) {
         if(lock_result!=WAIT_OBJECT_0&&lock_result!=WAIT_ABANDONED)throw std::runtime_error("Another launcher is starting this game");
         struct Unlock {HANDLE handle;~Unlock(){ReleaseMutex(handle);}} unlock{launch_lock};
         game::require_stopped(!find_games(*selected).empty());
-        if(*selected!=game::Kind::ZZZ)throw std::runtime_error("GI/SR UI backend is not installed in this intermediate build");
-        game::Child child;child.start(game,false);
+        game::Child child;child.start(game,*selected!=game::Kind::ZZZ);
         const DWORD pid=child.info.dwProcessId;
         if(log_enabled)std::cout<<"Started game, PID "<<pid<<"\n";
+        if(*selected!=game::Kind::ZZZ) {
+            mobile::initialize(child,*selected,game,log_enabled);
+            child.resume();child.release();return 0;
+        }
         Handle process(OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION|SYNCHRONIZE,FALSE,pid));
         if(!process.value)throw std::runtime_error("Cannot query game process, Windows error "+std::to_string(GetLastError()));
         if(_wcsicmp(process_path(process).filename().c_str(),L"ZenlessZoneZero.exe")!=0)throw std::runtime_error("PID does not belong to ZenlessZoneZero.exe");

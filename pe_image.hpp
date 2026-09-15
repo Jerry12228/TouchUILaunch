@@ -16,6 +16,7 @@ inline void require(bool condition,const std::string& message) {
 }
 struct Section {
     uint32_t rva{},size{},raw{},raw_size{},flags{};
+    char name[8]{};
     bool code()const{return (flags&0x60000000)==0x60000000 && !(flags&0x80000000);}
     bool data()const{return (flags&0xc0000000)==0xc0000000 && !(flags&0x20000000);}
 };
@@ -48,6 +49,7 @@ public:
         for(size_t i=0;i<count;++i) {
             const size_t at=opt+optional_size+i*40;
             Section s{raw<uint32_t>(at+12),std::max(raw<uint32_t>(at+8),raw<uint32_t>(at+16)),raw<uint32_t>(at+20),raw<uint32_t>(at+16),raw<uint32_t>(at+36)};
+            std::memcpy(s.name,bytes_.data()+at,sizeof(s.name));
             require(s.rva>=headers && uint64_t(s.rva)+s.size<=image_size,"section outside image");
             require(memory_read_ || !s.raw_size || (s.raw>=headers && uint64_t(s.raw)+s.raw_size<=bytes_.size()),"section outside file");
             for(const auto& prev:sections) {
