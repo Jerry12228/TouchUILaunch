@@ -19,8 +19,8 @@ inline std::wstring module_path(HMODULE module=nullptr) {
     if(!n||n>=b.size())throw std::runtime_error("GetModuleFileName failed");
     return {b.data(),n};
 }
-inline std::wstring log_event_name(DWORD pid) {return L"Local\\ZZZTouchUI.Log."+std::to_wstring(pid);}
-inline std::wstring started_event_name(DWORD pid) {return L"Local\\ZZZTouchUI.Started."+std::to_wstring(pid);}
+inline std::wstring log_event_name(DWORD pid) {return L"Local\\TouchUILaunch.Log."+std::to_wstring(pid);}
+inline std::wstring started_event_name(DWORD pid) {return L"Local\\TouchUILaunch.Started."+std::to_wstring(pid);}
 inline bool executable_pointer(const void* pointer) {
     MEMORY_BASIC_INFORMATION mbi{};
     if(!pointer||pointer==reinterpret_cast<const void*>(~uintptr_t{})||!VirtualQuery(pointer,&mbi,sizeof(mbi)))return false;
