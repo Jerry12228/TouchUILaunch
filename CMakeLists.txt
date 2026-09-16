@@ -117,6 +117,7 @@ endif()
 
 install(TARGETS TouchUILaunch TouchUILaunchPayload RUNTIME DESTINATION . LIBRARY DESTINATION .)
 install(FILES docs/README.zh-CN.md DESTINATION . RENAME README.md)
+install(FILES LICENSE DESTINATION .)
 install(FILES docs/THIRD-PARTY-NOTICES.txt DESTINATION .)
 install(FILES third_party/hde64/LICENSE.txt DESTINATION licenses/hde64)
 install(FILES third_party/gi_sr/LICENSE.txt DESTINATION licenses/gi_sr)

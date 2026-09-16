@@ -33,7 +33,7 @@ ctest --preset windows-x64-release
 .\scripts\full.ps1
 ```
 
-普通 CMake 构建和 `scripts\build.ps1` 不要求 Python、Capstone 或游戏样本；后者只配置、编译并把最小发布产物安装到 `dist`。`scripts\test.ps1` 只运行验证，要求已有构建和 `dist` 产物；`scripts\full.ps1` 依次执行这两个步骤，完成构建、打包和所有自动验证。两条验证入口均使用 Python 执行生成文件、CLI 和边界检查。`scripts\full.ps1 -ZZZSampleRoot 'D:\samples\ZZZ' -SRSample 'D:\samples\SR\GameAssembly.dll'` 会额外注册对外部样本的只读测试；样本必须以 `2.5`、`2.6`、`3.1`、`3.2` 子目录组织，显式传入的无效路径会失败。未传入样本时会报告跳过。规则重新生成需要 Python Capstone 和显式的 3.1 `GameAssembly.dll`：`games\zzz\tools\generate_scan_patterns.py --game-assembly <path> --check`。
+普通 CMake 构建和 `scripts\build.ps1` 不要求 Python、Capstone 或游戏样本；后者只配置、编译并把最小发布产物安装到 `dist`。安装包包含项目的 GPL-3.0 `LICENSE`、说明、第三方声明和第三方许可证。`scripts\test.ps1` 只运行验证，要求已有构建和 `dist` 产物；`scripts\full.ps1` 依次执行这两个步骤，完成构建、打包和所有自动验证。两条验证入口均使用 Python 执行生成文件、CLI 和边界检查。`scripts\full.ps1 -ZZZSampleRoot 'D:\samples\ZZZ' -SRSample 'D:\samples\SR\GameAssembly.dll'` 会额外注册对外部样本的只读测试；样本必须以 `2.5`、`2.6`、`3.1`、`3.2` 子目录组织，显式传入的无效路径会失败。未传入样本时会报告跳过。规则重新生成需要 Python Capstone 和显式的 3.1 `GameAssembly.dll`：`games\zzz\tools\generate_scan_patterns.py --game-assembly <path> --check`。
 
 ZZZ 的只读文件诊断可直接使用 `TouchUILaunch.exe --ZZZ --probe --game <exe> --log`；该模式不会启动、注入或修改游戏。
 
