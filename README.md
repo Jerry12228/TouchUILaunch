@@ -27,6 +27,12 @@ Examples:
 .\TouchUILaunch.exe --WW --game "path_to_root\Client\Binaries\Win64\Client-Win64-Shipping.exe"
 ```
 
+## TODO
+
+- Support more games
+
+One dream: to someday be capable of maintaining this project myself (an agriculture student's fantasy).
+
 ## Build
 
 ### Requirements

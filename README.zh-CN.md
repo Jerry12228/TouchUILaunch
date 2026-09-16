@@ -27,6 +27,13 @@
 .\TouchUILaunch.exe --WW --game "path_to_root\Client\Binaries\Win64\Client-Win64-Shipping.exe"
 ```
 
+## TODO
+
+- 支持更多游戏
+
+一个梦想：有一天能有能力自己维护这个项目（一个农学生的幻想）
+
+
 ## 构建
 
 ### 需求
