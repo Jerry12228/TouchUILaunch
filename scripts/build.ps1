@@ -1,52 +1,61 @@
 [CmdletBinding()]
 param(
-    [string]$Python = 'python',
-    [string]$BuildDir = (Join-Path $PSScriptRoot '..\build\windows-x64-release'),
-    [string]$DistDir = (Join-Path $PSScriptRoot '..\dist'),
+    [string]$BuildDir = '',
+    [string]$DistDir = '',
     [string]$ZZZSampleRoot = '',
-    [string]$SRSample = '',
-    [string]$GiSample = ''
+    [string]$SRSample = ''
 )
 
 $ErrorActionPreference = 'Stop'
 $nativeRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+if (-not $BuildDir) { $BuildDir = Join-Path $nativeRoot 'build\windows-x64-release' }
+if (-not $DistDir) { $DistDir = Join-Path $nativeRoot 'dist' }
+
 function Resolve-ProjectPath([string]$Path) {
     if ([IO.Path]::IsPathRooted($Path)) { return [IO.Path]::GetFullPath($Path) }
     return [IO.Path]::GetFullPath((Join-Path $nativeRoot $Path))
 }
+
+function Assert-File([string]$Path, [string]$Label) {
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "$Label does not exist or is not a file: $Path"
+    }
+}
+
 $build = Resolve-ProjectPath $BuildDir
 $dist = Resolve-ProjectPath $DistDir
 
-# Generation checks are read-only: a developer must intentionally regenerate
-# headers after changing the checked-in ZZZ test data.
-& $Python (Join-Path $nativeRoot 'games\zzz\tools\generate_profiles.py') --check
-if ($LASTEXITCODE) { throw 'Generated ZZZ profile headers are stale' }
+# External samples are opt-in. They are only read by CTest; no executable in
+# this project loads or executes them.
+if ($SRSample -and -not $ZZZSampleRoot) {
+    throw '-SRSample requires -ZZZSampleRoot because external-sample CTest registration is one configuration.'
+}
+if ($ZZZSampleRoot) {
+    $ZZZSampleRoot = [IO.Path]::GetFullPath($ZZZSampleRoot)
+    foreach ($version in '2.5', '2.6', '3.1', '3.2') {
+        Assert-File (Join-Path $ZZZSampleRoot "$version\GameAssembly.dll") "ZZZ $version sample"
+    }
+    if ($SRSample) {
+        $SRSample = [IO.Path]::GetFullPath($SRSample)
+        Assert-File $SRSample 'SR sample'
+    }
+}
 
 $configure = @('-S', $nativeRoot, '-B', $build, '-G', 'Visual Studio 17 2022', '-A', 'x64')
 if ($ZZZSampleRoot) {
     $configure += @('-DTOUCHUI_ENABLE_EXTERNAL_SAMPLES=ON', "-DTOUCHUI_ZZZ_SAMPLE_ROOT=$ZZZSampleRoot")
     if ($SRSample) { $configure += "-DTOUCHUI_SR_SAMPLE=$SRSample" }
+} else {
+    $configure += '-DTOUCHUI_ENABLE_EXTERNAL_SAMPLES=OFF'
 }
+
 & cmake @configure
 if ($LASTEXITCODE) { throw 'CMake configure failed' }
 & cmake --build $build --config Release -- /m:1 /v:minimal
 if ($LASTEXITCODE) { throw 'Native build failed' }
-& ctest --test-dir $build -C Release --output-on-failure
-if ($LASTEXITCODE) { throw 'CTest failed' }
-
-if ($GiSample) {
-    & (Join-Path $build 'Release\MobileUITests.exe') --gi-file $GiSample
-    if ($LASTEXITCODE) { throw 'GI read-only resolution failed' }
-}
-
-$launcher = Join-Path $build 'Release\TouchUILaunch.exe'
-& $Python (Join-Path $nativeRoot 'launcher\tests\validate_cli.py') $launcher
-if ($LASTEXITCODE) { throw 'Launcher CLI validation failed' }
 
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
 & cmake --install $build --config Release --prefix $dist
 if ($LASTEXITCODE) { throw 'Packaging failed' }
-& $Python (Join-Path $nativeRoot 'games\zzz\tools\validate_memory_boundary.py') --output-dir $dist
-if ($LASTEXITCODE) { throw 'ZZZ memory-boundary validation failed' }
 
 Write-Output "Artifacts: $dist"

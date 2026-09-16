@@ -16,5 +16,7 @@ depend on a game module. `common/testing` contains only owned fixtures.
 
 Use `cmake --preset windows-x64-release`, `cmake --build --preset
 windows-x64-release`, and `ctest --preset windows-x64-release` for a standalone
-build. `scripts/build.ps1` packages to `dist`; pass `-ZZZSampleRoot` only when
-running external, read-only sample tests.
+build. `scripts/build.ps1` packages only the minimum release files to `dist`;
+`scripts/test.ps1` verifies existing artifacts; and `scripts/full.ps1` runs both
+in sequence. Pass `-ZZZSampleRoot` only when registering external, read-only
+sample tests.
