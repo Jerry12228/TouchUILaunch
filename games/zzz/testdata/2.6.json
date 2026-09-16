@@ -1,0 +1,38 @@
+{
+  "version": "2.6",
+  "sha256": "8547fc8a2aaa6b509a4ac4e3b8ddf65997afd52f3f7c3652917d0effe2625e1a",
+  "default_game_dir": "Client/2.6",
+  "scope": "IDA-verified test oracle only; not added to the runtime fixed profile table.",
+  "values": {
+    "touch_count_slot": "0x4916a68",
+    "get_touch_slot": "0x4916a88",
+    "touch_supported_slot": "0x4916a70",
+    "frame_count_slot": "0x4913c38",
+    "screen_width_slot": "0x4910500",
+    "screen_height_slot": "0x4910508",
+    "ui_class_slot": "0x4950e90",
+    "static_reference_pool": "0x4885c60",
+    "ui_state_offset": "0x295a8",
+    "get_layout_override": "0xb10d400",
+    "set_layout_override": "0xb109140",
+    "get_effective_layout": "0xb103be0",
+    "class_initialized_offset": "0xcb",
+    "override_property_offset": "0x70",
+    "default_property_offset": "0x60"
+  },
+  "wrappers": {
+    "touch_count_slot": "0x19b117100",
+    "get_touch_slot": "0x19b116f50",
+    "touch_supported_slot": "0x19b117110",
+    "frame_count_slot": "0x199de41f0",
+    "screen_width_slot": "0x199bc41a0",
+    "screen_height_slot": "0x199bc41b0"
+  },
+  "get_default_layout_va": "0x18b108ce0",
+  "accessor_instructions": {
+    "get_layout_override": {"class_load": "0x18b10d413", "initialized": "0x18b10d41a", "pool_load": "0x18b10d427", "state_load": "0x18b10d42e", "property_load": "0x18b10d43e", "property_opcode": "488b78", "property_width": 1},
+    "set_layout_override": {"class_load": "0x18b109163", "initialized": "0x18b10916a", "pool_load": "0x18b109177", "state_load": "0x18b10917e", "property_load": "0x18b10918e", "property_opcode": "488b78", "property_width": 1},
+    "get_default_layout": {"class_load": "0x18b108cf3", "initialized": "0x18b108cfa", "pool_load": "0x18b108d07", "state_load": "0x18b108d0e", "property_load": "0x18b108d1e", "property_opcode": "488b78", "property_width": 1}
+  },
+  "evidence": "analysis/versions/2.6/ida"
+}

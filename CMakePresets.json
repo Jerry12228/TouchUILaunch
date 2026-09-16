@@ -1,0 +1,51 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "windows-x64-release",
+      "displayName": "Windows x64 Release",
+      "generator": "Visual Studio 17 2022",
+      "architecture": "x64",
+      "binaryDir": "${sourceDir}/build/windows-x64-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "TOUCHUI_ENABLE_EXTERNAL_SAMPLES": "OFF"
+      }
+    },
+    {
+      "name": "windows-x64-samples",
+      "inherits": "windows-x64-release",
+      "binaryDir": "${sourceDir}/build/windows-x64-samples",
+      "cacheVariables": {
+        "TOUCHUI_ENABLE_EXTERNAL_SAMPLES": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-x64-release",
+      "configurePreset": "windows-x64-release",
+      "configuration": "Release"
+    },
+    {
+      "name": "windows-x64-samples",
+      "configurePreset": "windows-x64-samples",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "windows-x64-release",
+      "configurePreset": "windows-x64-release",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "windows-x64-samples",
+      "configurePreset": "windows-x64-samples",
+      "configuration": "Release",
+      "output": { "outputOnFailure": true }
+    }
+  ]
+}

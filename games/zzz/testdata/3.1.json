@@ -1,0 +1,32 @@
+{
+  "version": "3.1",
+  "sha256": "4cba5d52c5fbfd478d2a9ec217075f82216780d56ad1bd1e85e4f724dcce30b4",
+  "default_game_dir": "Client/3.1",
+  "values": {
+    "touch_count_slot": "0x540dcb8",
+    "get_touch_slot": "0x540dcd8",
+    "touch_supported_slot": "0x540dcc0",
+    "frame_count_slot": "0x540ad20",
+    "screen_width_slot": "0x5407458",
+    "screen_height_slot": "0x5407460",
+    "ui_class_slot": "0x5450eb0",
+    "static_reference_pool": "0x5360730",
+    "ui_state_offset": "186816",
+    "get_layout_override": "0x15b462a0",
+    "set_layout_override": "0x15b46680",
+    "get_effective_layout": "0x15b43570",
+    "class_initialized_offset": "203",
+    "override_property_offset": "128",
+    "default_property_offset": "136"
+  },
+  "wrappers": {
+    "touch_count_slot": "0x19fbf1d50",
+    "get_touch_slot": "0x19fbf1ba0",
+    "touch_supported_slot": "0x19fbf1d60",
+    "frame_count_slot": "0x19e956450",
+    "screen_width_slot": "0x19e60d8c0",
+    "screen_height_slot": "0x19e60d8d0"
+  },
+  "get_default_layout_va": "0x195b46180",
+  "evidence": "analysis/touch/injection.md"
+}

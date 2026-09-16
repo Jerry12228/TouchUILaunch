@@ -1,0 +1,69 @@
+{
+  "reference_sha256": "4cba5d52c5fbfd478d2a9ec217075f82216780d56ad1bd1e85e4f724dcce30b4",
+  "rules": [
+    {
+      "name": "input_region",
+      "reference_va": "0x19fbf1b30",
+      "length": 592,
+      "fixed_bytes": 500,
+      "layout_masking": false,
+      "pattern_sha256": "2ac64e8d0cefc1307d0c9dcb68e179b1701e832296a54e7c8d621c22098356d6"
+    },
+    {
+      "name": "screen_region",
+      "reference_va": "0x19e60d8a0",
+      "length": 224,
+      "fixed_bytes": 184,
+      "layout_masking": false,
+      "pattern_sha256": "b4d14751fa5847cfb888135ca2f960740be14397d69990f8572f0c038f4efdd2"
+    },
+    {
+      "name": "frame_region",
+      "reference_va": "0x19e956450",
+      "length": 128,
+      "fixed_bytes": 95,
+      "layout_masking": false,
+      "pattern_sha256": "b26dc1b11d0dfd223ef9929c1d036015ac46a74b1434f3bd0152210679f6bf78"
+    },
+    {
+      "name": "touch_loop",
+      "reference_va": "0x196fe5770",
+      "length": 155,
+      "fixed_bytes": 83,
+      "layout_masking": true,
+      "pattern_sha256": "c3a9a28cdd8f877437e85c6173ced3e6982a9e87c9686bd1601ccc4e1544d454"
+    },
+    {
+      "name": "device_selector",
+      "reference_va": "0x1958a87e0",
+      "length": 511,
+      "fixed_bytes": 233,
+      "layout_masking": true,
+      "pattern_sha256": "4ca1b5ba1fb1dd12d2ccd87a2da8f28f5d4cbbacaa897094e2a7c5226ef6a9c1"
+    },
+    {
+      "name": "layout_getter",
+      "reference_va": "0x195b462a0",
+      "length": 285,
+      "fixed_bytes": 165,
+      "layout_masking": true,
+      "pattern_sha256": "fc66cce6c5c5a2008b3a1d384083e174f98f811b9f8bcd14623f3a415208deb8"
+    },
+    {
+      "name": "layout_setter",
+      "reference_va": "0x195b46680",
+      "length": 341,
+      "fixed_bytes": 199,
+      "layout_masking": true,
+      "pattern_sha256": "6be675b678067186c0497f16bf9fe4c3792fea8ca6d018ba8bbdb8e06de234d1"
+    },
+    {
+      "name": "effective_layout",
+      "reference_va": "0x195b43570",
+      "length": 183,
+      "fixed_bytes": 80,
+      "layout_masking": true,
+      "pattern_sha256": "b5abb495e583cbb53f390a763b34047b113195803ab6805d820499d832e9aa82"
+    }
+  ]
+}

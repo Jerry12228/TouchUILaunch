@@ -1,0 +1,10 @@
+HDE64
+
+The project includes the HDE64 instruction decoder under its upstream BSD
+license. See licenses/hde64/LICENSE.txt in a packaged distribution.
+
+GI/SR mobile UI adaptation
+
+The GI and SR mobile-UI routines are adapted from
+Genshin_StarRail_fps_unlocker, copyright (c) 2024 NullName, under the MIT
+license. See licenses/gi_sr/LICENSE.txt in a packaged distribution.

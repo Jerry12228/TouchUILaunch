@@ -1,0 +1,45 @@
+{
+  "input_sha256": "4cba5d52c5fbfd478d2a9ec217075f82216780d56ad1bd1e85e4f724dcce30b4",
+  "input_path": "D:\\WorkSpace\\ZZZTouchUI\\ZenlessZoneZero Game\\GameAssembly.dll",
+  "va": "0x19166b410",
+  "end_va": "0x19166b464",
+  "name": "sub_19166B410",
+  "prefix": "56574883ec284889ce803de52dd9f3007516ff15f8f8d9f3f30f2ac0f30f1146344883c4285f5ec34889d7b9550f0600e81b23b1fe4885c074144889c14889f2",
+  "incoming": [
+    [
+      "0x184adab40",
+      1
+    ],
+    [
+      "0x1a06f2740",
+      1
+    ]
+  ],
+  "outgoing": [
+    [
+      "0x180ac9120",
+      "sub_180AC9120",
+      17
+    ],
+    [
+      "0x1853fe205",
+      "byte_1853FE205",
+      3
+    ],
+    [
+      "0x18540ad20",
+      "qword_18540AD20",
+      3
+    ],
+    [
+      "0x18b18a0e0",
+      "sub_18B18A0E0",
+      19
+    ],
+    [
+      "0x19017d760",
+      "sub_19017D760",
+      17
+    ]
+  ]
+}

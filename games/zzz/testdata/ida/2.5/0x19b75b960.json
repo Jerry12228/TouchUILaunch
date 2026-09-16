@@ -1,0 +1,21 @@
+{
+  "input_sha256": "69142459d5559677ac7f4c38ae88f568dc62ea41e2017e266f23889f33074ceb",
+  "input_path": "D:\\WorkSpace\\ZZZTouchUI\\Client\\2.5\\GameAssembly.dll",
+  "va": "0x19b75b960",
+  "end_va": "0x19b75b967",
+  "name": "sub_19B75B960",
+  "prefix": "48ff25491f7ee9",
+  "incoming": [
+    [
+      "0x184aa7da8",
+      1
+    ]
+  ],
+  "outgoing": [
+    [
+      "0x184f3d8b0",
+      "qword_184F3D8B0",
+      3
+    ]
+  ]
+}
