@@ -16,7 +16,7 @@
 1. 在 [Releases](https://github.com/Jerry12228/TouchUILaunch/releases) 下载最新的构建，将包中的 `.exe` 和 `.dll` 置于同一目录下。
 2. 在该目录运行以下命令，将示例路径替换为你的游戏可执行文件路径
 
-使用 `--GI`、`--SR`、`--ZZZ`、`--WW` 中的一个指定目标游戏；使用`--game`指定游戏可执行层徐路径；携带`--log`参数启用控制台日志输出。
+使用 `--GI`、`--SR`、`--ZZZ`、`--WW` 中的一个指定目标游戏；使用`--game`指定游戏可执行文件路径；携带`--log`参数启用控制台日志输出。使用 `--extra <额外参数>` 可向所有游戏追加一段原样启动参数；包含空格时请将整段参数用引号包住。鸣潮会先保留内置的云游戏参数，再追加该参数。
 
 示例：
 
@@ -25,6 +25,7 @@
 .\TouchUILaunch.exe --SR --game "path_to_root\StarRail.exe"
 .\TouchUILaunch.exe --ZZZ --game "path_to_root\ZenlessZoneZero.exe"
 .\TouchUILaunch.exe --WW --game "path_to_root\Client\Binaries\Win64\Client-Win64-Shipping.exe"
+.\TouchUILaunch.exe --GI --game "path_to_root\GenshinImpact.exe" --extra '-screen-width 1920 -screen-height 1080'
 ```
 
 ## TODO

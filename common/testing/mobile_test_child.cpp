@@ -1,11 +1,23 @@
 #include "win_util.hpp"
 #include <fstream>
+
+namespace {
+bool matches(int argc,wchar_t** argv,std::initializer_list<std::wstring_view> expected) {
+    if(argc!=static_cast<int>(expected.size()+1))return false;
+    int index=1;
+    for(const auto value:expected)if(std::wstring_view(argv[index++])!=value)return false;
+    return true;
+}
+}
+
 int wmain(int argc,wchar_t** argv) {
     if(argc>1) {
+        const std::initializer_list<std::wstring_view> extra={L"--fixture-extra",L"two words",L"中文 路径",L"embedded \"quote\"",L"trailing\\"};
+        if(matches(argc,argv,extra))return 23;
         // WW CLI integration uses this fixture under the game's executable name.
         // Report only after a delay, so premature launcher cleanup is detected.
-        if(argc!=3||std::wstring_view(argv[1])!=L"-CloudGame"||
-           std::wstring_view(argv[2])!=L"-CloudGamePlatform=Android")return 20;
+        if(!matches(argc,argv,{L"-CloudGame",L"-CloudGamePlatform=Android",L"--fixture-extra",L"two words",L"中文 路径",L"embedded \"quote\"",L"trailing\\"}) &&
+           !matches(argc,argv,{L"-CloudGame",L"-CloudGamePlatform=Android"}))return 20;
         const auto directory=std::filesystem::path(module_path()).parent_path();
         if(std::filesystem::current_path()!=directory)return 21;
         Sleep(200);

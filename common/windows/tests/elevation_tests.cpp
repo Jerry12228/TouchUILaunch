@@ -41,7 +41,7 @@ void test() {
     Handle process(child.hProcess),thread(child.hThread);
     check(WaitForSingleObject(process,10000)==WAIT_OBJECT_0,"argument child completes");DWORD code{};
     check(GetExitCodeProcess(process,&code)&&code==0,"real CRT argv round-trip");
-    expected_args={L"--ZZZ",L"--game",L"D:\\游戏目录\\ZenlessZoneZero.exe",L"--log",elevation::relaunch_flag};
+    expected_args={L"--ZZZ",L"--game",L"D:\\游戏目录\\ZenlessZoneZero.exe",L"--extra",L"-screen-width 1920 \"中文 路径\" trailing\\",L"--log",elevation::relaunch_flag};
     shell_error=ERROR_CANCELLED;shell_calls=0;
     check(elevation::relaunch(expected_exe,expected_args,expected_directory,fake_shell)==ERROR_CANCELLED&&shell_calls==1,"UAC cancellation returns once without retry");
     shell_error=ERROR_ACCESS_DENIED;stopped=false;
@@ -49,7 +49,7 @@ void test() {
     check(stopped,"non-cancellation shell error is reported");
     shell_error=0;
     for(const auto flag:{L"--GI",L"--SR",L"--ZZZ",L"--WW"}) {
-        expected_args={L"--log",L"--game",L"D:\\游戏 目录\\example.exe",flag,elevation::relaunch_flag};
+        expected_args={L"--log",L"--game",L"D:\\游戏 目录\\example.exe",L"--extra",L"-flag \"quoted value\"",flag,elevation::relaunch_flag};
         check(elevation::relaunch(expected_exe,expected_args,expected_directory,fake_shell)==37,"preserve game selection and propagate elevated child exit code");
     }
     std::cout<<"Token elevated="<<elevation::is_elevated()<<"; quoting, relaunch guard, cancellation, errors and child exit propagation: PASS\n";

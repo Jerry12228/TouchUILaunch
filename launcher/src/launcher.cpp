@@ -80,6 +80,7 @@ void usage() {
     std::cout<<"TouchUILaunch (Windows x64, experimental)\n"
         "  --GI | --SR | --ZZZ | --WW             Required: choose exactly one game\n"
         "  --game <exe>                          Required for GI/SR/WW; optional for ZZZ\n"
+        "  --extra <arguments>                   Append one raw argument string to the selected game\n"
         "  --WW                                  Launch with -CloudGame -CloudGamePlatform=Android\n"
         "  --ZZZ --probe [--game <exe>]           Verify files only; never launch/inject\n"
         "  --probe-auto                          Compatibility alias for --probe (ZZZ)\n"
@@ -94,8 +95,9 @@ void usage() {
 int wmain(int argc,wchar_t** argv) {
     // Read the logging option before validation, including errors preceding --log.
     for(int i=1;i<argc;++i) {
-        if(std::wstring_view(argv[i])==L"--game"&&i+1<argc){++i;continue;}
-        if(std::wstring_view(argv[i])==L"--log")log_enabled=true;
+        const std::wstring_view argument=argv[i];
+        if((argument==L"--game"||argument==L"--extra")&&i+1<argc){++i;continue;}
+        if(argument==L"--log")log_enabled=true;
     }
     launcher_log::Session diagnostics(log_enabled);
     bool elevation_relaunch{};
@@ -110,7 +112,7 @@ int wmain(int argc,wchar_t** argv) {
             }
         }
         fs::path payload=own_dir/L"TouchUILaunch.dll";
-        std::wstring action;bool explicit_game{},explicit_action{};
+        std::wstring action,extra_arguments;bool explicit_game{},explicit_action{},explicit_extra{};
         std::optional<game::Kind> selected;
         std::vector<std::wstring> forwarded_args;
         for(int i=1;i<argc;++i) {
@@ -120,6 +122,7 @@ int wmain(int argc,wchar_t** argv) {
             forwarded_args.push_back(arg);
             if(const auto kind=game::parse(arg)){game::select(selected,*kind);}
             else if(arg==L"--game"&&i+1<argc){if(explicit_game)throw std::runtime_error("Duplicate --game");game=fs::weakly_canonical(fs::absolute(argv[++i]));explicit_game=true;forwarded_args.push_back(game.wstring());}
+            else if(arg==L"--extra"&&i+1<argc){if(explicit_extra)throw std::runtime_error("Duplicate --extra");extra_arguments=argv[++i];explicit_extra=true;forwarded_args.push_back(extra_arguments);}
             else if(arg==L"--probe"||arg==L"--probe-auto") {
                 if(explicit_action)throw std::runtime_error("Choose only one action");action=arg.substr(2);explicit_action=true;
             } else if(arg==L"--log") {
@@ -159,8 +162,12 @@ int wmain(int argc,wchar_t** argv) {
         game::require_stopped(!find_games(*selected).empty());
         diagnostics.stage("create new game process");
         const bool mobile_patch=*selected==game::Kind::GI||*selected==game::Kind::SR;
-        const auto arguments=*selected==game::Kind::WW?touchui::ww::cloud_arguments:L"";
-        if(log_enabled&&*selected==game::Kind::WW)std::cout<<"WW launch arguments: "<<launcher_log::utf8(arguments)<<std::endl;
+        std::wstring arguments=*selected==game::Kind::WW?std::wstring(touchui::ww::cloud_arguments):L"";
+        if(!extra_arguments.empty()) {
+            if(!arguments.empty())arguments+=L" ";
+            arguments+=extra_arguments;
+        }
+        if(log_enabled&&!arguments.empty())std::cout<<"Game launch arguments: "<<launcher_log::utf8(arguments)<<std::endl;
         game::Child child;child.start(game,mobile_patch,arguments);
         const DWORD pid=child.info.dwProcessId;
         if(log_enabled)std::cout<<"Started game, PID "<<pid<<"\n";

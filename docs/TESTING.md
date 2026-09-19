@@ -51,7 +51,7 @@ There are seven default CTest registrations in
 
 | CTest name | Executable | Main coverage |
 | --- | --- | --- |
-| `MobileUI` | `MobileUITests` | GI/SR resolver variants, matching conflicts, assembly behavior on owned fixtures, suspended startup, remote loading, child ownership, WW arguments/cwd |
+| `MobileUI` | `MobileUITests` | GI/SR resolver variants, matching conflicts, assembly behavior on owned fixtures, suspended startup, remote loading, child ownership, extra-argument quoting, WW argument order/cwd |
 | `TouchState` | `TouchStateTests` | Contact phases, multitouch, stable frame snapshots, Y conversion, deltas, recycled IDs, quick taps, ten-contact limit |
 | `TouchBridge31` | `TouchBridgeTests 3.1` | Production bridge functions against owned window, callbacks, and 3.1 oracle layout |
 | `TouchBridge32` | `TouchBridgeTests 3.2` | Same bridge harness with 3.2 oracle layout |
@@ -221,7 +221,7 @@ Commands below assume the affected Release targets have been rebuilt. Add
 | Change | Focused checks | Additional evidence |
 | --- | --- | --- |
 | Documentation only | Relative links/anchors, paths, command syntax, `git diff --check`; preset/test enumeration where relevant | No runtime test claims from enumeration |
-| CLI, registry, family rejection | `python launcher/tests/validate_cli.py build/windows-x64-release/Release/TouchUILaunch.exe`; `ctest --preset windows-x64-release --no-tests=error -R '^MobileUI$'` | Update both usage READMEs when behavior changes |
+| CLI, registry, family rejection, extra arguments | `python launcher/tests/validate_cli.py build/windows-x64-release/Release/TouchUILaunch.exe`; `ctest --preset windows-x64-release --no-tests=error -R '^MobileUI$'` | Update both usage READMEs when behavior changes |
 | UAC/quoting | `ctest --preset windows-x64-release --no-tests=error -R '^LauncherElevation$'`; CLI checks | Actual UAC cancel/accept scenarios need manual observation if affected |
 | Launcher logs | `ctest --preset windows-x64-release --no-tests=error -R '^LauncherLog$'`; CLI checks | Inspect durable elevated-session logs when that path changes |
 | GI/SR resolver or MASM | `ctest --preset windows-x64-release --no-tests=error -R '^MobileUI$'` | Relevant read-only GI/SR samples; manual per-game UI/input check |

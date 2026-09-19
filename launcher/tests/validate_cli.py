@@ -45,6 +45,7 @@ def main():
         result = run([help_flag], 0, help_output=True)
         assert b'TouchUILaunch' in result.stdout
         assert b'--log' in result.stdout
+        assert b'--extra' in result.stdout
         assert all(flag in result.stdout for flag in (b'--GI', b'--SR', b'--ZZZ', b'--WW'))
         assert b'-CloudGame -CloudGamePlatform=Android' in result.stdout
         for removed in (b'--status', b'--disable', b'--enable', b'--pid'):
@@ -52,6 +53,7 @@ def main():
 
     for options in (['--status'], ['--disable'], ['--enable'], ['--pid', '12345'],
                     ['--unknown'], ['--game'], ['--ZZZ', '--probe', '--probe'], [],
+                    ['--extra'], ['--ZZZ', '--extra'], ['--ZZZ', '--extra', 'one', '--extra', 'two'],
                     ['--GI'], ['--SR'], ['--GI', '--SR'], ['--ZZZ', '--GI'],
                     ['--GI', '--GI'], ['--SR', '--SR'], ['--ZZZ', '--ZZZ'],
                     ['--GI', '--probe'], ['--SR', '--probe-auto'],
@@ -63,16 +65,20 @@ def main():
         result = run(['--log', *options], 2, logged=True)
         assert b'ERROR:' in result.stderr
         # Diagnostics work even if an invalid option occurs before --log.
-        if options != ['--game']:
+        if options not in (['--game'], ['--extra'], ['--ZZZ', '--extra']):
             run([*options, '--log'], 2, logged=True)
 
     missing_game = str(launcher.parent / 'missing-cli-fixture' / 'ZenlessZoneZero.exe')
     run(['--ZZZ', '--probe', '--game', missing_game], 2)
     run(['--ZZZ', '--probe', '--game', missing_game, '--log'], 2, logged=True)
+    # Values of --extra are never reinterpreted as launcher options.
+    run(['--ZZZ', '--extra', '--log', '--probe', '--game', missing_game], 2)
     for selection, name in (('--GI', 'YuanShen.exe'), ('--SR', 'StarRail.exe'), ('--ZZZ', 'ZenlessZoneZero.exe'),
                             ('--WW', 'Client-Win64-Shipping.exe')):
         missing = str(launcher.parent / 'missing-cli-fixture' / name)
         run([selection, '--game', missing, '--log'], 2, logged=True)
+        result = run([selection, '--game', missing, '--extra', '-screen-width 1920', '--log'], 2, logged=True)
+        assert b'Game executable not found' in result.stderr
 
     # Suspended copies of our tiny fixture, never game binaries. An internal
     # relaunch marker prevents UAC even if the already-running check regresses.
@@ -113,7 +119,8 @@ def main():
         standalone = fixture / launcher.name
         shutil.copyfile(launcher, standalone)
         ww = fixture / 'Client-Win64-Shipping.exe'
-        result = subprocess.run([str(standalone), '--WW', '--game', str(ww), '--elevation-relaunch'],
+        extra = '--fixture-extra "two words" "中文 路径" "embedded \\"quote\\"" "trailing\\\\"'
+        result = subprocess.run([str(standalone), '--WW', '--game', str(ww), '--extra', extra, '--elevation-relaunch'],
                                 capture_output=True, timeout=15)
         assert not result.stdout and not result.stderr, 'WW defaults to silence'
         report = fixture / 'ww-launch-passed.txt'
@@ -125,10 +132,10 @@ def main():
                     break
                 time.sleep(0.05)
             else:
-                raise AssertionError('WW child did not receive exact arguments/cwd or survive launcher exit')
+                raise AssertionError('WW child did not receive cloud arguments followed by exact extra arguments/cwd or survive launcher exit')
         else:
             assert result.returncode == 2, 'WW must require administrator privileges'
-            result = subprocess.run([str(standalone), '--WW', '--game', str(ww), '--elevation-relaunch', '--log'],
+            result = subprocess.run([str(standalone), '--WW', '--game', str(ww), '--extra', extra, '--elevation-relaunch', '--log'],
                                     capture_output=True, timeout=15)
             assert result.returncode == 2 and b'Elevation did not grant administrator privileges' in result.stderr
             assert not report.exists(), 'WW must not start after failed elevation'

@@ -35,14 +35,18 @@ commands and distribution instructions.
 | Option | Behavior |
 | --- | --- |
 | `--game <exe>` | Canonicalize the selected executable path; duplicate occurrences are rejected |
+| `--extra <arguments>` | Append one raw argument string to the selected game; duplicate occurrences are rejected |
 | `--log` | Enable console and launcher file diagnostics; also enable the ZZZ payload log |
 | `--ZZZ --probe` | Read-only GameAssembly file diagnostic and payload-existence check; no launch, injection, or elevation |
 | `--probe-auto` | Compatibility alias for `--probe`, restricted to ZZZ |
 | `--help`, `-h` | Print usage without requiring a game or elevation |
 
 Only one probe action is allowed. Probe with GI/SR/WW is rejected. Unknown or
-incomplete options fail; there is no arbitrary game-argument forwarding CLI.
-The WW arguments are supplied internally by its module.
+incomplete options fail. `--extra` consumes exactly one following launcher
+argument without parsing its contents; quote that value when it contains spaces.
+It is accepted by the read-only ZZZ probe but is not used because no game is
+started. The WW arguments are supplied internally by its module before any
+extra arguments.
 
 `--status`, `--enable`, `--disable`, and `--pid` are unsupported. Internal
 bridge enable/disable state does not expose corresponding public commands.
@@ -89,6 +93,7 @@ these are real launches, not automated documentation checks:
 ./dist/TouchUILaunch.exe --SR --game 'C:/Games/SR/StarRail.exe' --log
 ./dist/TouchUILaunch.exe --ZZZ --game 'C:/Games/ZZZ/ZenlessZoneZero.exe' --log
 ./dist/TouchUILaunch.exe --WW --game 'C:/Games/WW/Client/Binaries/Win64/Client-Win64-Shipping.exe' --log
+./dist/TouchUILaunch.exe --GI --game 'C:/Games/GI/GenshinImpact.exe' --extra '-screen-width 1920 -screen-height 1080' --log
 ```
 
 ## GI and SR initialization
@@ -149,9 +154,10 @@ behavior separately rather than promising ZZZ-equivalent touch handling.
 ## WW launch
 
 [ww_launch.hpp](../games/ww/include/ww_launch.hpp) supplies exactly
-`-CloudGame -CloudGamePlatform=Android`. The launcher starts WW normally and
-releases its child immediately. This path has no suspended initialization,
-memory patch, or payload dependency.
+`-CloudGame -CloudGamePlatform=Android`. The launcher appends the optional
+`--extra` string after those flags, starts WW normally, and releases its child
+immediately. This path has no suspended initialization, memory patch, or
+payload dependency.
 
 The CLI fixture verifies argument delivery, working directory, and child
 survival on an elevated run, or the elevation guard on a standard-token run.

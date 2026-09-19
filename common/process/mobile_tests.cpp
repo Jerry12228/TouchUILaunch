@@ -1,5 +1,6 @@
 #include "mobile_runtime.hpp"
 #include "test_module.hpp"
+#include "ww_launch.hpp"
 #include <fstream>
 #include <iostream>
 
@@ -139,6 +140,7 @@ void sr_runtime_test() {
 }
 void child_tests() {
     const auto path=std::filesystem::path(module_path()).parent_path()/L"MobileUITestChild.exe";
+    const std::wstring extra_arguments=L"--fixture-extra \"two words\" \"中文 路径\" \"embedded \\\"quote\\\"\" \"trailing\\\\\"";
     HANDLE owned{};
     {
         game::Child child;child.start(path,true);
@@ -155,10 +157,17 @@ void child_tests() {
         game::Child child;child.start(path,true);child.resume();child.release();
         check(WaitForSingleObject(child.info.hProcess,5000)==WAIT_OBJECT_0&&GetExitCodeProcess(child.info.hProcess,&code)&&code==19,"successful child resumes and exits normally");
     }
+    for(const bool suspended:{false,true}) {
+        game::Child child;child.start(path,suspended,extra_arguments);
+        if(suspended)child.resume();
+        child.release();
+        check(WaitForSingleObject(child.info.hProcess,5000)==WAIT_OBJECT_0&&GetExitCodeProcess(child.info.hProcess,&code)&&code==23,
+              "game arguments preserve spaces, Unicode, quotes and trailing backslashes for normal and suspended startup");
+    }
     {
-        game::Child child;child.start(path,false,L"-CloudGame -CloudGamePlatform=Android");child.release();
+        game::Child child;child.start(path,false,std::wstring(touchui::ww::cloud_arguments)+L" "+extra_arguments);child.release();
         check(WaitForSingleObject(child.info.hProcess,5000)==WAIT_OBJECT_0&&GetExitCodeProcess(child.info.hProcess,&code)&&code==0,
-              "WW child receives exact cloud arguments and executable working directory, without suspended initialization");
+              "WW child receives cloud arguments before extra arguments and uses its executable working directory");
         std::filesystem::remove(path.parent_path()/L"ww-launch-passed.txt");
     }
     for(auto kind:{game::Kind::GI,game::Kind::SR,game::Kind::ZZZ,game::Kind::WW}) {

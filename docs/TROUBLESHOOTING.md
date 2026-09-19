@@ -70,9 +70,10 @@ limitations, not intended behavior. Keep the notes synchronized when fixed.
 ## Selection, UAC, and process ownership
 
 For argument errors, check exactly one selector, the required explicit path,
-the actual executable filename, and whether an option is supported. WW's
-cloud flags are internally supplied game arguments, not extra launcher
-options. Use `--log` to see validation errors.
+the actual executable filename, and whether an option is supported. Use one
+`--extra <arguments>` value to append game arguments, quoting the complete
+value when it contains spaces. WW's cloud flags are internally supplied before
+that optional extra string. Use `--log` to see validation errors.
 
 If the launcher reports an already-running game, it matches the selected
 family's executable names across installation paths. Exit that game normally
