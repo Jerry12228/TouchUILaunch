@@ -70,7 +70,7 @@ both scripts and stops on failure.
 | `-Python` | `test.ps1`, `full.ps1` | Python executable; default `python` |
 | `-ZZZSampleRoot` | All three | Root with all four versioned ZZZ sample directories; opts into external CTest registration during build |
 | `-SRSample` | All three | Optional SR GameAssembly file; currently requires `-ZZZSampleRoot` |
-| `-GiSample` | `test.ps1`, `full.ps1` | Optional GI PE file for a separate resolver check; not a build-script option |
+| `-GiSample` | `test.ps1`, `full.ps1` | Exact analyzed GI 7.1 EXE for independent read-only verification; not a build-script option |
 
 Relative build/dist arguments are resolved against the repository root. Use
 absolute sample paths for clarity. Supplying `-ZZZSampleRoot` does not

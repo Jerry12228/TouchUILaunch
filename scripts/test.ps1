@@ -61,8 +61,8 @@ if ($LASTEXITCODE) { throw 'CTest failed' }
 if ($GiSample) {
     $GiSample = [IO.Path]::GetFullPath($GiSample)
     Assert-File $GiSample 'GI sample'
-    & (Join-Path $build 'Release\MobileUITests.exe') --gi-file $GiSample
-    if ($LASTEXITCODE) { throw 'GI read-only resolution failed' }
+    & (Join-Path $build 'Release\GITouch71Tests.exe') --sample $GiSample
+    if ($LASTEXITCODE) { throw 'GI 7.1 independent read-only verification failed' }
 } else {
     Write-Output 'SKIP: GI sample resolution (no -GiSample supplied).'
 }

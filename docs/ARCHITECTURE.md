@@ -14,7 +14,7 @@ Read [Game support](GAME_SUPPORT.md) for CLI details,
 | Component | Owns | Useful entry points |
 | --- | --- | --- |
 | Launcher | CLI parsing, static game registry, diagnostics, elevation coordination, launch serialization, ZZZ injection | [launcher.cpp](../launcher/src/launcher.cpp), [game.hpp](../launcher/include/game.hpp), [launcher_log.hpp](../launcher/include/launcher_log.hpp) |
-| GI adapter and resolver | GI entry adapter; the current shared GI/SR signature resolver; GI initialization stub | [gi_mobile.hpp](../games/gi/include/gi_mobile.hpp), [mobile_resolver.hpp](../games/gi/include/mobile_resolver.hpp), [gi_stubs.asm](../games/gi/src/gi_stubs.asm) |
+| Retained legacy GI / SR resolver | Shared legacy signature resolver and stubs, still needed by SR and legacy fixtures | [gi_mobile.hpp](../games/gi/include/gi_mobile.hpp), [mobile_resolver.hpp](../games/gi/include/mobile_resolver.hpp), [gi_stubs.asm](../games/gi/src/gi_stubs.asm) |
 | SR adapter | SR entry adapter and repeated UI-state worker | [sr_mobile.hpp](../games/sr/include/sr_mobile.hpp), [sr_stubs.asm](../games/sr/src/sr_stubs.asm) |
 | WW | Android cloud UI launch arguments | [ww_launch.hpp](../games/ww/include/ww_launch.hpp) |
 | ZZZ | Memory discovery, optional file probe, injected input/UI bridge, fixtures and generators | [profile_resolver.hpp](../games/zzz/include/profile_resolver.hpp), [payload.cpp](../games/zzz/src/payload.cpp) |
@@ -28,6 +28,12 @@ include directories. A public header in this project is not necessarily an
 externally supported library API. Keep its callers, binary layout assumptions,
 and CMake consumers in view when changing it.
 
+The active GI entry is [gi_touch71.hpp](../games/gi/include/gi_touch71.hpp),
+with a separate [instruction plan](../games/gi/include/gi_touch71_plan.hpp).
+Its dependencies are generic PE/Windows helpers, child ownership, and BCrypt.
+See [GI 7.1](GI_TOUCH_71.md) for the exact-build verification and UI evidence.
+It has no dependency on the legacy process initializer or GI stubs.
+
 ## Current dependencies and maintenance direction
 
 The intended direction is a generic launcher, per-game behavior, and reusable
@@ -38,7 +44,7 @@ concrete exceptions:
 - `common/process/include/mobile_runtime.hpp` includes the launcher-owned
   `game.hpp` and the GI-owned `mobile_resolver.hpp`.
 - That process header implements both GI and SR installation and branches on
-  `game::Kind`. The GI/SR adapters delegate to it.
+  `game::Kind`. The SR adapter delegates to it; the active GI adapter does not.
 - The GI-owned resolver contains SR signatures as well as GI signatures.
 - `TouchUIHeaders` exposes all local include roots. The CMake interface targets
   describe composition; they do not enforce strict header isolation.
@@ -90,7 +96,7 @@ The common path in [wmain](../launcher/src/launcher.cpp) is:
 
 | Game | Creation and setup | Point at which the launcher releases its child |
 | --- | --- | --- |
-| GI | Suspended main thread; initialize loader, capture target module, resolve and install initialization hook | After successful setup and main-thread resume |
+| GI | Verify the 7.1 file, then validate and patch ten UI/input sites in the owned suspended EXE | After successful setup and main-thread resume |
 | SR | Suspended main thread; load/capture GameAssembly, resolve UI state, start repeated writer | After worker startup and main-thread resume |
 | WW | Normal process with cloud UI arguments | Immediately after process creation |
 | ZZZ | Normal process; wait for GameAssembly, inject adjacent DLL, observe startup event | After the payload worker publishes its startup event |
@@ -107,7 +113,7 @@ lock against unrelated external launchers.
 
 ## Remote memory and callback ownership
 
-GI/SR remote addresses are rebased from the actual module that owns a system
+The retained legacy GI/SR helper remote addresses are rebased from the actual module that owns a system
 API in the child. A suspended process may not yet have a Toolhelp module list,
 so the process layer inspects mapped images. It validates architecture,
 allocation ownership, protections, and complete memory transfers.
@@ -116,7 +122,7 @@ allocation ownership, protections, and complete memory transfers.
 executable/readable after installation; context remains writable. Once a live
 thread or installed callback can reference a block, retain it. In particular,
 a loader timeout must not free memory that the remote thread may still use.
-GI C++ context offsets must match MASM operands, enforced partly by
+Retained legacy GI C++ context offsets must match MASM operands, enforced partly by
 `static_assert` declarations and [MobileUI tests](../common/process/mobile_tests.cpp).
 
 ZZZ's resolver pins GameAssembly for process lifetime. The payload's installed
@@ -149,7 +155,7 @@ event is published before resolution and hook installation, so later worker
 failures can occur after that exit. Even the payload's `READY` message still
 awaits a usable UI provider and input.
 
-Similarly, GI hook installation does not prove the target initialization
+Similarly, successful GI patch installation does not prove the target initialization
 function has run, SR worker startup does not prove visible UI, and WW process
 creation does not prove the game honored its arguments. Use
 [evidence levels](TESTING.md#evidence-levels) when reporting results.

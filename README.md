@@ -6,7 +6,7 @@ This project enables touch UI support for several PC games.
 
 ## Supported games
 
-- Genshin Impact
+- Genshin Impact (experimental: the analyzed 7.1 EXE only)
 - Honkai: Star Rail
 - Zenless Zone Zero
 - Wuthering Waves
@@ -17,6 +17,8 @@ This project enables touch UI support for several PC games.
 2. Run one of the commands below from that directory, replacing the sample path with the path to your game's executable.
 
 Choose the target game with exactly one of `--GI`, `--SR`, `--ZZZ`, or `--WW`. Use `--game` to provide the executable path, `--log` to enable console logging, and `--extra <arguments>` to append one raw argument string to the game process. Quote the complete extra string when it contains spaces. The launcher passes it to every supported game; WW keeps its built-in cloud UI arguments before it.
+
+GI now uses the independent [7.1 UI implementation](docs/GI_TOUCH_71.md). It verifies the complete EXE before launch and keeps mobile layout with TouchScreen input for that session. It uses the game's 360 DPI touch-scale fallback for joystick travel and camera gestures, and selects the touchscreen settings caption. Other builds are rejected. Mobile layout and streamed interaction have user feedback; the latest scale/caption corrections and multi-touch acceptance still need live verification.
 
 Examples:
 
@@ -56,4 +58,4 @@ This project is licensed under GNU General Public License version 3 only (`GPL-3
 
 The bundled HDE64 decoder retains its upstream [license and copyright notice](third_party/hde64/LICENSE.txt).
 
-The GI/SR UI signatures and execution logic are adapted from [Genshin_StarRail_fps_unlocker](https://github.com/winTEuser/Genshin_StarRail_fps_unlocker) under its [MIT License](third_party/gi_sr/LICENSE.txt).
+The retained legacy GI and current SR UI signatures and execution logic are adapted from [Genshin_StarRail_fps_unlocker](https://github.com/winTEuser/Genshin_StarRail_fps_unlocker) under its [MIT License](third_party/gi_sr/LICENSE.txt).

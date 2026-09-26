@@ -3,7 +3,7 @@
 #include "win_util.hpp"
 #include "elevation.hpp"
 #include "game.hpp"
-#include "gi_mobile.hpp"
+#include "gi_touch71.hpp"
 #include "sr_mobile.hpp"
 #include "ww_launch.hpp"
 #include "launcher_log.hpp"
@@ -160,6 +160,11 @@ int wmain(int argc,wchar_t** argv) {
         if(lock_result!=WAIT_OBJECT_0&&lock_result!=WAIT_ABANDONED)throw std::runtime_error("Another launcher is starting this game");
         struct Unlock {HANDLE handle;~Unlock(){ReleaseMutex(handle);}} unlock{launch_lock};
         game::require_stopped(!find_games(*selected).empty());
+        std::unique_ptr<touchui::gi71::VerifiedImage> gi_image;
+        if(*selected==game::Kind::GI) {
+            diagnostics.stage("GI 7.1: verify executable and independent UI patch sites");
+            gi_image=std::make_unique<touchui::gi71::VerifiedImage>(game);
+        }
         diagnostics.stage("create new game process");
         const bool mobile_patch=*selected==game::Kind::GI||*selected==game::Kind::SR;
         std::wstring arguments=*selected==game::Kind::WW?std::wstring(touchui::ww::cloud_arguments):L"";
@@ -179,7 +184,7 @@ int wmain(int argc,wchar_t** argv) {
         if(mobile_patch) {
             const auto progress=[&](std::string_view stage){diagnostics.stage(stage);};
             if(*selected==game::Kind::GI) {
-                touchui::gi::initialize(child,game,log_enabled,progress);
+                touchui::gi71::initialize(child,*gi_image,log_enabled,progress);
             } else {
                 touchui::sr::initialize(child,game,log_enabled,progress);
             }

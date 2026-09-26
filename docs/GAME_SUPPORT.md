@@ -9,7 +9,7 @@ or future client build. Validation scope is defined in [Testing](TESTING.md).
 
 | Flag | Accepted executable filename, case-insensitive | Explicit `--game` | Implementation |
 | --- | --- | --- | --- |
-| `--GI` | `YuanShen.exe` or `GenshinImpact.exe` | Required | Suspended startup and initialization hook |
+| `--GI` | `YuanShen.exe` or `GenshinImpact.exe` | Required | Verified 7.1 EXE; suspended startup and independent UI patch plan |
 | `--SR` | `StarRail.exe` | Required | Suspended startup and periodic UI-state writer |
 | `--ZZZ` | `ZenlessZoneZero.exe` | Optional | Normal startup, injected DLL, memory discovery, Windows touch bridge |
 | `--WW` | `Client-Win64-Shipping.exe` | Required | Normal startup with Android cloud UI arguments |
@@ -98,40 +98,15 @@ these are real launches, not automated documentation checks:
 
 ## GI and SR initialization
 
-The [GI adapter](../games/gi/include/gi_mobile.hpp) and
-[SR adapter](../games/sr/include/sr_mobile.hpp) call `mobile::initialize` in
-[mobile_runtime.hpp](../common/process/include/mobile_runtime.hpp). Both create
-the main thread suspended, bootstrap the child's loader using a short remote
-thread, resolve from captured child memory, install behavior, then resume and
-release the child. Their code does not load `TouchUILaunch.dll`.
-
 ### GI
 
-GI first captures its main executable. If it has an `il2cpp` section, that
-image supplies the signatures. Otherwise the launcher loads the legacy
-`<executable-stem>_Data/Native/UserAssembly.dll` and captures that module.
-
-The [resolver](../games/gi/include/mobile_resolver.hpp) decodes UI/input setters,
-class storage, object offsets, and the initialization target. Repeated matching
-sites are acceptable only when their decoded targets agree. Do not replace
-that agreement check with a first occurrence or require one raw occurrence:
-the source explicitly accommodates repeated GI call sites. Function targets
-must differ, fields must be aligned/in range, and an already-hooked
-initialization entry is rejected.
-
-`install_gi` saves 16 original bytes and installs an indirect jump into an
-owned remote code block. The [MASM stub](../games/gi/src/gi_stubs.asm) coordinates
-restoration, flushes instructions, restores page protection, and calls the
-original function with preserved arguments. The winning invocation then calls
-the UI setter with `(object, 0, 1)` and input setter with `(object, 0, 0)` if
-both objects are ready. It preserves the original return values and records
-outcome bits. It is not a trampoline that executes copied prologue bytes.
-
-`GiContext` offsets and size are asserted against the assembly layout. Changes
-to argument handling, concurrency, or context members require coordinated
-C++/MASM review and [MobileUI tests](../common/process/mobile_tests.cpp).
-The launcher reports hook installation before the game necessarily invokes
-that initialization function; it does not certify the eventual UI result.
+The active GI entry uses the [independent 7.1 implementation](GI_TOUCH_71.md).
+It verifies the exact EXE before creating the child, validates all ten loaded
+UI/input sites, selects Mobile layout and TouchScreen input, applies the game's
+360 DPI touch-scale fallback and touchscreen settings caption, then resumes
+the owned suspended child. See the GI evidence chapter for the scale's limits.
+Unsupported files fail without falling back to the retained legacy resolver.
+The game's existing Unity input path is used; actual touch acceptance is pending.
 
 ### SR
 
