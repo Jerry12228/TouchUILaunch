@@ -28,10 +28,11 @@ include directories. A public header in this project is not necessarily an
 externally supported library API. Keep its callers, binary layout assumptions,
 and CMake consumers in view when changing it.
 
-The active GI entry is [gi_touch71.hpp](../games/gi/include/gi_touch71.hpp),
-with a separate [instruction plan](../games/gi/include/gi_touch71_plan.hpp).
-Its dependencies are generic PE/Windows helpers, child ownership, and BCrypt.
-See [GI 7.1](GI_TOUCH_71.md) for the exact-build verification and UI evidence.
+The active GI entry is [gi_touch.hpp](../games/gi/include/gi_touch.hpp),
+with [signature discovery](../games/gi/include/gi_touch_plan.hpp) and
+[leaf joystick helper](../games/gi/include/gi_joystick_code.hpp). It uses generic
+PE/x64/Windows helpers, HDE64 and child ownership, with no version hash gate.
+See [GI touch](GI_TOUCH.md) for discovery, scale evidence and helper lifetime.
 It has no dependency on the legacy process initializer or GI stubs.
 
 ## Current dependencies and maintenance direction
@@ -96,7 +97,7 @@ The common path in [wmain](../launcher/src/launcher.cpp) is:
 
 | Game | Creation and setup | Point at which the launcher releases its child |
 | --- | --- | --- |
-| GI | Verify the 7.1 file, then validate and patch ten UI/input sites in the owned suspended EXE | After successful setup and main-thread resume |
+| GI | Discover eleven UI/input/joystick windows from the file and loaded EXE; install validated patches and an owned joystick helper while suspended | After successful setup and main-thread resume |
 | SR | Suspended main thread; load/capture GameAssembly, resolve UI state, start repeated writer | After worker startup and main-thread resume |
 | WW | Normal process with cloud UI arguments | Immediately after process creation |
 | ZZZ | Normal process; wait for GameAssembly, inject adjacent DLL, observe startup event | After the payload worker publishes its startup event |

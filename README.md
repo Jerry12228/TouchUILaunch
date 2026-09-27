@@ -6,7 +6,7 @@ This project enables touch UI support for several PC games.
 
 ## Supported games
 
-- Genshin Impact (experimental: the analyzed 7.1 EXE only)
+- Genshin Impact (experimental signature discovery; checked against the supplied 7.1 EXE)
 - Honkai: Star Rail
 - Zenless Zone Zero
 - Wuthering Waves
@@ -18,7 +18,7 @@ This project enables touch UI support for several PC games.
 
 Choose the target game with exactly one of `--GI`, `--SR`, `--ZZZ`, or `--WW`. Use `--game` to provide the executable path, `--log` to enable console logging, and `--extra <arguments>` to append one raw argument string to the game process. Quote the complete extra string when it contains spaces. The launcher passes it to every supported game; WW keeps its built-in cloud UI arguments before it.
 
-GI now uses the independent [7.1 UI implementation](docs/GI_TOUCH_71.md). It verifies the complete EXE before launch and keeps mobile layout with TouchScreen input for that session. It uses the game's 360 DPI touch-scale fallback for joystick travel and camera gestures, and selects the touchscreen settings caption. Other builds are rejected. Mobile layout and streamed interaction have user feedback; the latest scale/caption corrections and multi-touch acceptance still need live verification.
+GI uses [signature discovery](docs/GI_TOUCH.md) to keep mobile layout and TouchScreen input for the session. Joystick diameter and travel match 0.2.0. Single-finger, two-finger and pinch increments are left unchanged, with no additional camera/map/world speed multiplier. Discovery has no fixed build addresses or hash allowlist; incomplete or ambiguous matches are rejected. Only the supplied 7.1 file and synthetic layouts have been checked. Other real versions and streamed interaction still need live verification.
 
 Examples:
 

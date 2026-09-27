@@ -9,7 +9,7 @@ or future client build. Validation scope is defined in [Testing](TESTING.md).
 
 | Flag | Accepted executable filename, case-insensitive | Explicit `--game` | Implementation |
 | --- | --- | --- | --- |
-| `--GI` | `YuanShen.exe` or `GenshinImpact.exe` | Required | Verified 7.1 EXE; suspended startup and independent UI patch plan |
+| `--GI` | `YuanShen.exe` or `GenshinImpact.exe` | Required | Signature discovery; suspended startup, UI/input selection and joystick setup |
 | `--SR` | `StarRail.exe` | Required | Suspended startup and periodic UI-state writer |
 | `--ZZZ` | `ZenlessZoneZero.exe` | Optional | Normal startup, injected DLL, memory discovery, Windows touch bridge |
 | `--WW` | `Client-Win64-Shipping.exe` | Required | Normal startup with Android cloud UI arguments |
@@ -100,13 +100,15 @@ these are real launches, not automated documentation checks:
 
 ### GI
 
-The active GI entry uses the [independent 7.1 implementation](GI_TOUCH_71.md).
-It verifies the exact EXE before creating the child, validates all ten loaded
-UI/input sites, selects Mobile layout and TouchScreen input, applies the game's
-360 DPI touch-scale fallback and touchscreen settings caption, then resumes
-the owned suspended child. See the GI evidence chapter for the scale's limits.
-Unsupported files fail without falling back to the retained legacy resolver.
-The game's existing Unity input path is used; actual touch acceptance is pending.
+The active GI entry uses [signature discovery and joystick setup](GI_TOUCH.md).
+It discovers eleven instruction windows from the selected file and the owned
+suspended EXE, selecting Mobile layout and TouchScreen input. The 360 DPI
+baseline and touchscreen caption remain; joystick diameter/travel match 0.2.0
+and gesture delta/pinch increments remain unmodified.
+Missing or ambiguous evidence fails without a fixed-address fallback. No hash
+allowlist selects versions, but only the supplied 7.1 file has been checked.
+The existing Unity input path is used. Latest streaming behavior needs manual
+acceptance, as described in the GI evidence chapter.
 
 ### SR
 

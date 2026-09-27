@@ -1,10 +1,14 @@
-# GI 7.1 independent mobile UI implementation
+# GI 7.1 evidence for release 0.2.0
+
+This chapter records the **historical 0.2.0 implementation**. Its exact-file
+gate and fixed address plan are superseded by [current discovery and joystick
+setup](GI_TOUCH.md). Commands and behavior below describe 0.2.0.
 
 This experimental implementation selects both the game's mobile UI layout and
 TouchScreen input mode, using its existing Unity touch input path. It was derived from the supplied EXE and
 the [independently recovered metadata](GI_METADATA_71.md), without using the
 previous GI resolver, signatures, stubs, or external GI implementations.
-The launcher now routes `--GI` to [gi_touch71.hpp](../games/gi/include/gi_touch71.hpp).
+The 0.2.0 launcher routes `--GI` to [gi_touch71.hpp](https://github.com/Jerry12228/TouchUILaunch/blob/0.2.0/games/gi/include/gi_touch71.hpp).
 There is no fallback to the previous GI initializer.
 
 ## Supported input and behavior
@@ -53,7 +57,7 @@ object indices. VAs are analysis addresses; the checked-in plan uses RVAs.
 | Method `304924`, `OCKNLKACCAL`, VA `0x14BA775B0` | Changes mode, refreshes canvas parameters, and optionally notifies UI objects. |
 | Method `304868`, `AKHDGCPBDEP`, VA `0x14BA6FD00` | Leaf property setter writes `edx` to `this+864`. |
 
-The [plan](../games/gi/include/gi_touch71_plan.hpp) changes 41 bytes total:
+The [plan](https://github.com/Jerry12228/TouchUILaunch/blob/0.2.0/games/gi/include/gi_touch71_plan.hpp) changes 41 bytes total:
 
 | Site RVA | Patch offset | Change |
 | --- | --- | --- |

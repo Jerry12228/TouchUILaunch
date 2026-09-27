@@ -32,7 +32,7 @@ tool automatically reads every linked document.
 | Set up, build, or package | [Development](DEVELOPMENT.md) | [Build script](../scripts/build.ps1), [CMake targets](../CMakeLists.txt) |
 | Change CLI, logging, UAC, or launch behavior | [Game support](GAME_SUPPORT.md), [Testing](TESTING.md) | [Launcher](../launcher/src/launcher.cpp), [game registry and child ownership](../launcher/include/game.hpp) |
 | Change SR / retained legacy UI initialization | [Game support](GAME_SUPPORT.md#gi-and-sr-initialization) | [Process runtime](../common/process/include/mobile_runtime.hpp), [GI/SR resolver](../games/gi/include/mobile_resolver.hpp) |
-| Change the active GI 7.1 UI implementation | [Independent GI UI](GI_TOUCH_71.md) | [Initializer](../games/gi/include/gi_touch71.hpp), [patch plan](../games/gi/include/gi_touch71_plan.hpp) |
+| Change active GI UI discovery or joystick sizing | [GI touch](GI_TOUCH.md), [0.2.0 evidence](GI_TOUCH_71.md) | [Initializer](../games/gi/include/gi_touch.hpp), [discovery plan](../games/gi/include/gi_touch_plan.hpp), [joystick helper](../games/gi/include/gi_joystick_code.hpp) |
 | Independently inspect the supplied GI 7.1 metadata | [Offline metadata recovery](GI_METADATA_71.md) | [Recovery tool](../games/gi/tools/recover_metadata71.py), [read-only query tool](../games/gi/tools/query_metadata71.py) |
 | Change WW launch behavior | [Game support](GAME_SUPPORT.md#ww-launch) | [WW arguments](../games/ww/include/ww_launch.hpp) |
 | Diagnose or extend ZZZ discovery | [ZZZ internals](ZZZ_INTERNALS.md#discovery-pipeline), [Testing](TESTING.md#external-sample-tests) | [Memory resolver](../games/zzz/include/profile_resolver.hpp), [semantic discovery](../games/zzz/include/short_discovery.hpp) |

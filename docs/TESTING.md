@@ -41,7 +41,7 @@ The verification script performs these steps:
 3. Validate explicit external-sample options; external inputs are supplied by
    the caller, not discovered automatically in a parent workspace.
 4. Run CTest against the selected build tree in Release configuration.
-5. Run the independent GI 7.1 file verification if `-GiSample` was supplied.
+5. Compare GI signature discovery against the 7.1 IDA oracles if `-GiSample` was supplied.
 6. Run Python CLI checks against the built launcher.
 7. Check source boundaries and packaged imports/fingerprint strings, writing
    `memory-boundary.json` in the selected dist directory.
@@ -51,7 +51,7 @@ There are eight default CTest registrations in
 
 | CTest name | Executable | Main coverage |
 | --- | --- | --- |
-| `GITouch71` | `GITouch71Tests` | Independent GI plan, conflicts, write failures, x64 snippets, remote protection, and owned suspended child lifecycle |
+| `GITouch` | `GITouchTests` | Relocated GI discovery/fields, rejected conflicts, x64 UI/joystick execution and unchanged gesture deltas, protection, helper lifetime and owned suspended child cleanup |
 | `MobileUI` | `MobileUITests` | Retained legacy GI/SR resolver variants, matching conflicts, assembly behavior on owned fixtures, suspended startup, remote loading, child ownership, extra-argument quoting, WW argument order/cwd |
 | `TouchState` | `TouchStateTests` | Contact phases, multitouch, stable frame snapshots, Y conversion, deltas, recycled IDs, quick taps, ten-contact limit |
 | `TouchBridge31` | `TouchBridgeTests 3.1` | Production bridge functions against owned window, callbacks, and 3.1 oracle layout |
@@ -60,7 +60,8 @@ There are eight default CTest registrations in
 | `LauncherLog` | `LauncherLogTests` | Opt-in logs, default silence, Unicode paths, captured streams, restoration, error-dialog policy |
 | `MemoryReader` | `MemoryReaderTests` | Raw offsets versus RVAs, cross-page reads, BSS slots, owned snapshots, module retention, invalid headers/protection rejection |
 
-Test sources: [process tests](../common/process/mobile_tests.cpp),
+Test sources: [GI discovery/joystick tests](../games/gi/tests/gi_touch_tests.cpp),
+[process tests](../common/process/mobile_tests.cpp),
 [touch state](../games/zzz/tests/touch_state_tests.cpp),
 [bridge harness](../games/zzz/tests/bridge_test_body.inc),
 [elevation](../common/windows/tests/elevation_tests.cpp),
@@ -122,8 +123,11 @@ Add optional SR/GI checks when their inputs exist:
 ./scripts/full.ps1 -BuildDir build/windows-x64-samples -DistDir dist/samples -ZZZSampleRoot 'C:/Samples/ZZZ' -SRSample 'C:/Samples/SR/GameAssembly.dll' -GiSample 'C:/Samples/GI/GenshinImpact.exe'
 ```
 
-GI requires the exact analyzed 7.1 EXE; see [GI UI evidence](GI_TOUCH_71.md).
-The old `UserAssembly.dll` layout is not accepted by this check.
+The optional GI oracle comparison requires the analyzed 7.1 EXE; see
+[GI UI evidence](GI_TOUCH.md). Production does not use these oracle addresses.
+For another EXE, use `GITouchTests --discover <exe>` for discovery acceptance
+without the 7.1 oracle. Neither check establishes live touch compatibility.
+The old `UserAssembly.dll` layout is not accepted by these checks.
 
 CTest adds `ProfileDiscovery2.5`, `ProfileDiscovery2.6`,
 `ProfileDiscovery3.1`, and `ProfileDiscovery3.2`, plus
@@ -144,7 +148,7 @@ Direct read-only checks on a built tree are also available:
 ```powershell
 ./build/windows-x64-release/Release/ProfileDiscoveryTests.exe 'C:/Samples/ZZZ/3.1/GameAssembly.dll'
 ./build/windows-x64-release/Release/MobileUITests.exe 'C:/Samples/SR/GameAssembly.dll'
-./build/windows-x64-release/Release/GITouch71Tests.exe --sample 'C:/Samples/GI/GenshinImpact.exe'
+./build/windows-x64-release/Release/GITouchTests.exe --sample 'C:/Samples/GI/GenshinImpact.exe'
 ```
 
 For direct use of the samples preset, configure its required paths first:
@@ -224,7 +228,7 @@ Commands below assume the affected Release targets have been rebuilt. Add
 | CLI, registry, family rejection, extra arguments | `python launcher/tests/validate_cli.py build/windows-x64-release/Release/TouchUILaunch.exe`; `ctest --preset windows-x64-release --no-tests=error -R '^MobileUI$'` | Update both usage READMEs when behavior changes |
 | UAC/quoting | `ctest --preset windows-x64-release --no-tests=error -R '^LauncherElevation$'`; CLI checks | Actual UAC cancel/accept scenarios need manual observation if affected |
 | Launcher logs | `ctest --preset windows-x64-release --no-tests=error -R '^LauncherLog$'`; CLI checks | Inspect durable elevated-session logs when that path changes |
-| Active GI UI plan or initializer | `ctest --preset windows-x64-release --no-tests=error -R '^GITouch71$'`; `scripts/test.ps1 -GiSample <7.1-exe>` | Read-only sample validation; manual mobile layout and touch acceptance |
+| Active GI UI plan or initializer | `ctest --preset windows-x64-release --no-tests=error -R '^GITouch$'`; `scripts/test.ps1 -GiSample <7.1-exe>` | Read-only sample validation; manual mobile layout and touch acceptance |
 | SR / retained legacy resolver or MASM | `ctest --preset windows-x64-release --no-tests=error -R '^MobileUI$'` | Relevant read-only GI/SR samples; manual per-game UI/input check |
 | WW arguments/startup | `MobileUI` CTest plus CLI verifier | Manual WW acceptance for the target game build |
 | ZZZ contact state | [Contact-state checks](#contact-state-checks) | Real multi-finger and streaming scenarios when affected |
