@@ -53,6 +53,8 @@
 
 ## 协议
 
+**如果相关公司希望移除本仓库，请提交issue或联系我。**
+
 本项目采用 GNU 通用公共许可证第 3 版（仅限该版本，`GPL-3.0-only`）。完整条款见 [LICENSE](LICENSE)。
 
 内置的 HDE64 解码器保留其上游[许可证和版权声明](third_party/hde64/LICENSE.txt)。
