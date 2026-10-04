@@ -52,7 +52,7 @@ This script builds the minimum release artifacts: one launcher executable and on
 
 ## License
 
-**If the relevant company wants to remove this warehouse, please submit the issue or contact me.**
+**If the relevant company wants to remove this Repo, please submit the issue or contact me.**
 
 This project is licensed under GNU General Public License version 3 only (`GPL-3.0-only`). See [LICENSE](LICENSE) for the complete terms.
 
