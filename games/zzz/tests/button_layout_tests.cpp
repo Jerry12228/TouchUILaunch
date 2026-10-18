@@ -43,7 +43,7 @@ struct Fixture {
             put<uint32_t>(bytes,h+16,length);put<uint32_t>(bytes,h+20,rva);
             put<uint32_t>(bytes,h+36,i?0xc0000040:0x60000020);
         }
-        std::fill(bytes.begin()+0x1000,bytes.begin()+0x7000,0xcc);
+        std::fill(bytes.begin()+0x1000,bytes.begin()+0x7000,uint8_t{0xcc});
         bytes[metadata]=1;bytes[enabled]=1;bytes[cached]=1;bytes[klass+initialized]=1;
         put<int>(bytes,cache,3);put<int>(bytes,ui,1);
         Emit u{bytes,getter};u.relative({0x8b,0x05},ui);u.raw({0xc3});
