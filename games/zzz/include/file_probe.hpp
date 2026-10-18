@@ -45,11 +45,11 @@ inline std::string sha256(std::span<const uint8_t> bytes) {
     for(auto b:digest){result+=hex[b>>4];result+=hex[b&15];}return result;
 }
 struct Probe {Result resolution;std::string sha256;};
-inline Probe probe_file(const std::filesystem::path& path) {
+inline Probe probe_file(const std::filesystem::path& path,bool button_layout_requested=false) {
     const MappedFile file(path);
     // Hash and discovery use the same read-only mapping; no hash lookup/cache.
     const auto hash=sha256(file.bytes());
-    return {discover(Image(file.bytes())),hash};
+    return {discover(Image(file.bytes()),button_layout_requested),hash};
 }
 inline void print_json(std::ostream& out,const Probe& probe) {
     const auto& p=probe.resolution.build;
@@ -59,6 +59,10 @@ inline void print_json(std::ostream& out,const Probe& probe) {
         if(!first)out<<",\n";first=false;
         out<<"    \""<<field.name<<"\": \"0x"<<std::hex<<p.*(field.value)<<std::dec<<"\"";
     }
-    out<<"\n  },\n  \"setter_candidates\": "<<probe.resolution.setter_candidates<<"\n}\n";
+    out<<"\n  },\n  \"setter_candidates\": "<<probe.resolution.setter_candidates<<",\n  \"button_layout\": {\n    \"requested\": "<<(probe.resolution.button_layout_requested?"true":"false");
+    const auto& layout=probe.resolution.button_layout;
+    out<<",\n    \"available\": "<<(layout.plan?"true":"false");
+    if(layout.plan)out<<",\n    \"position_compare\": \"0x"<<std::hex<<layout.plan->sites[0].compare<<"\",\n    \"size_compare\": \"0x"<<layout.plan->sites[1].compare<<"\""<<std::dec;
+    out<<"\n  }\n}\n";
 }
 }

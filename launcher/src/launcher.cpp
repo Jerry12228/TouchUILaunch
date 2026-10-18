@@ -38,9 +38,10 @@ std::vector<DWORD> find_games(game::Kind kind) {
     if(Process32FirstW(snap,&entry))do {if(game::accepts(kind,entry.szExeFile))result.push_back(entry.th32ProcessID);}while(Process32NextW(snap,&entry));
     return result;
 }
-void probe_assembly(const fs::path& path) {
+void probe_assembly(const fs::path& path,bool button_layout_requested) {
     if(log_enabled)std::wcout<<L"Checking GameAssembly: "<<path<<L"\n";
-    const auto result=discovery::probe_file(path);
+    const auto result=discovery::probe_file(path,button_layout_requested);
+    if(button_layout_requested)discovery::require(result.resolution.button_layout.plan.has_value(),result.resolution.button_layout.error);
     if(log_enabled)discovery::print_json(std::cout,result);
 }
 void* remote_load_library(DWORD pid) {
@@ -84,6 +85,7 @@ void usage() {
         "  --WW                                  Launch with -CloudGame -CloudGamePlatform=Android\n"
         "  --ZZZ --probe [--game <exe>]           Verify files only; never launch/inject\n"
         "  --probe-auto                          Compatibility alias for --probe (ZZZ)\n"
+        "  --zzz-button-layout                   Opt in to ZZZ button position/size compatibility\n"
         "  --log                                 Console + launcher file logs; ZZZ DLL log\n"
         "  --help                                Show this help\n"
         "Game commands request Windows administrator approval automatically when needed.\n"
@@ -114,6 +116,7 @@ int wmain(int argc,wchar_t** argv) {
         fs::path payload=own_dir/L"TouchUILaunch.dll";
         std::wstring action,extra_arguments;bool explicit_game{},explicit_action{},explicit_extra{};
         std::optional<game::Kind> selected;
+        bool button_layout_requested{};
         std::vector<std::wstring> forwarded_args;
         for(int i=1;i<argc;++i) {
             std::wstring arg=argv[i];
@@ -125,16 +128,20 @@ int wmain(int argc,wchar_t** argv) {
             else if(arg==L"--extra"&&i+1<argc){if(explicit_extra)throw std::runtime_error("Duplicate --extra");extra_arguments=argv[++i];explicit_extra=true;forwarded_args.push_back(extra_arguments);}
             else if(arg==L"--probe"||arg==L"--probe-auto") {
                 if(explicit_action)throw std::runtime_error("Choose only one action");action=arg.substr(2);explicit_action=true;
+            } else if(arg==L"--zzz-button-layout") {
+                if(button_layout_requested)throw std::runtime_error("Duplicate --zzz-button-layout");
+                button_layout_requested=true;
             } else if(arg==L"--log") {
                 // Already applied above; forwarded unchanged for UAC relaunch.
             } else throw std::runtime_error("Unknown or incomplete argument (use --help)");
         }
+        if(button_layout_requested && (!selected || *selected!=game::Kind::ZZZ))throw std::runtime_error("--zzz-button-layout supports --ZZZ only");
         game::validate(selected,game,explicit_game,!action.empty());
         if(log_enabled)std::cout<<"Selected game: "<<launcher_log::utf8(game::flag(*selected))<<"; executable: "<<launcher_log::utf8(game.wstring())<<std::endl;
         if(action==L"probe"||action==L"probe-auto") {
             diagnostics.stage("ZZZ: read-only file probe");
             if(!fs::is_regular_file(game))throw std::runtime_error("Game executable not found; specify --game");
-            probe_assembly(game.parent_path()/L"GameAssembly.dll");
+            probe_assembly(game.parent_path()/L"GameAssembly.dll",button_layout_requested);
             if(!fs::is_regular_file(payload))throw std::runtime_error("Payload DLL missing");
             if(log_enabled)std::wcout<<L"Payload: "<<payload<<L"\nProbe passed. No game process was launched or modified.\n";return 0;
         }
@@ -209,6 +216,8 @@ int wmain(int argc,wchar_t** argv) {
         Handle logging(CreateEventW(nullptr,TRUE,log_enabled,log_event_name(pid).c_str()));
         if(!logging.value)throw std::runtime_error("Cannot create payload logging event");
         if(!(log_enabled?SetEvent(logging):ResetEvent(logging)))throw std::runtime_error("Cannot configure payload logging");
+        Handle button_layout(CreateEventW(nullptr,TRUE,button_layout_requested,button_layout_event_name(pid).c_str()));
+        if(!button_layout.value || !(button_layout_requested?SetEvent(button_layout):ResetEvent(button_layout)))throw std::runtime_error("Cannot configure button layout option");
         diagnostics.stage("ZZZ: load touch payload");inject(pid,payload);
         HANDLE started{};
         for(int i=0;i<200&&!started;++i) {

@@ -1,6 +1,7 @@
 #include "profile.hpp"
 #include "profile_resolver.hpp"
 #include "touch_state.hpp"
+#include "button_layout_patch.hpp"
 #include "win_util.hpp"
 #include <atomic>
 #include <cstdio>
@@ -23,6 +24,8 @@ std::atomic<UINT_PTR> timer_id{};
 constexpr UINT_PTR requested_timer=0x5a5a7455;
 Handle logging_event;
 Handle started_event;
+Handle button_layout_event;
+touchui::zzz::ButtonLayoutPatch button_layout_patch;
 bool touch_registration_added{};
 FILE* logfile{};
 std::mutex log_mutex;
@@ -293,6 +296,8 @@ bool install_icalls() {
 }
 void worker() {
     logging_event.value=OpenEventW(SYNCHRONIZE,FALSE,log_event_name(GetCurrentProcessId()).c_str());
+    button_layout_event.value=OpenEventW(SYNCHRONIZE,FALSE,button_layout_event_name(GetCurrentProcessId()).c_str());
+    const bool button_layout_requested=button_layout_event.value && WaitForSingleObject(button_layout_event,0)==WAIT_OBJECT_0;
     // Publish only after retaining the launcher's logging configuration.
     started_event.value=CreateEventW(nullptr,TRUE,TRUE,started_event_name(GetCurrentProcessId()).c_str());
     if(!started_event.value)return;
@@ -302,7 +307,7 @@ void worker() {
     for(int i=0;i<600&&!module;++i){module=GetModuleHandleW(L"GameAssembly.dll");if(!module)Sleep(200);}
     if(!module){log("ERROR: GameAssembly.dll not loaded after 120 s");return;}
     log("Resolving loaded GameAssembly.dll at base=%p",module);
-    const auto resolution=discovery::resolve_module(module,[](const char* stage){log("Resolver: %s",stage);});
+    const auto resolution=discovery::resolve_module(module,[](const char* stage){log("Resolver: %s",stage);},button_layout_requested);
     resolved_profile=resolution.build;
     active_profile=&resolved_profile;
     for(const auto& field:profile::fields)log("profile %s=0x%llx",field.name,static_cast<unsigned long long>(active_profile->*(field.value)));
@@ -313,6 +318,13 @@ void worker() {
     bool installed=false;
     for(int i=0;i<600&&!installed;++i){installed=install_icalls();if(!installed)Sleep(200);}
     if(!installed){log("ERROR: Unity icalls unresolved or table replacement failed after 120 s");return;}
+    if(button_layout_requested) {
+        const auto& layout=resolution.button_layout;
+        if(!layout.plan)log("Button layout SKIPPED: %s",layout.error.c_str());
+        else if(!button_layout_patch.install(assembly,*layout.plan))log("Button layout SKIPPED: live bytes/protection changed; owned writes rolled back where possible");
+        else log("Button layout APPLIED: position compare=0x%llx size compare=0x%llx; global device type unchanged",
+            static_cast<unsigned long long>(layout.plan->sites[0].compare),static_cast<unsigned long long>(layout.plan->sites[1].compare));
+    }
     enabled=!ui_fault.load()&&game_window.load()!=nullptr;
     log("READY: native Windows touch bridge enabled=%d. Awaiting UI provider and input.",enabled.load());
     ULONGLONG last_status{};
@@ -329,6 +341,10 @@ void worker() {
             exchange_slot(active_profile->get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));
             exchange_slot(active_profile->touch_supported_slot,reinterpret_cast<void*>(hooked_supported),reinterpret_cast<void*>(original_supported));
         }
+        if(!enabled.load() && button_layout_patch.installed()) {
+            const bool restored=button_layout_patch.restore();
+            log("Button layout RESTORE: owned bytes restored=%d",restored);
+        }
         const auto now=GetTickCount64();
         if(now-last_status>=5000) {
             last_status=now;uint64_t accepted{},ignored{};
@@ -340,7 +356,7 @@ void worker() {
     }
 }
 DWORD WINAPI worker_entry(void*) {
-    try {worker();}catch(const std::exception& ex){enabled=false;cancel_contacts();log("ERROR: worker stopped: %s",ex.what());}
+    try {worker();}catch(const std::exception& ex){enabled=false;cancel_contacts();button_layout_patch.restore();log("ERROR: worker stopped: %s",ex.what());}
     return 0;
 }
 }

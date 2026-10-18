@@ -46,12 +46,16 @@ def main():
         assert b'TouchUILaunch' in result.stdout
         assert b'--log' in result.stdout
         assert b'--extra' in result.stdout
+        assert b'--zzz-button-layout' in result.stdout
         assert all(flag in result.stdout for flag in (b'--GI', b'--SR', b'--ZZZ', b'--WW'))
         assert b'-CloudGame -CloudGamePlatform=Android' in result.stdout
         for removed in (b'--status', b'--disable', b'--enable', b'--pid'):
             assert removed not in result.stdout
 
-    for options in (['--status'], ['--disable'], ['--enable'], ['--pid', '12345'],
+    for options in (['--zzz-button-layout'], ['--GI', '--zzz-button-layout'],
+                    ['--SR', '--zzz-button-layout'], ['--WW', '--zzz-button-layout'],
+                    ['--ZZZ', '--zzz-button-layout', '--zzz-button-layout'],
+                    ['--status'], ['--disable'], ['--enable'], ['--pid', '12345'],
                     ['--unknown'], ['--game'], ['--ZZZ', '--probe', '--probe'], [],
                     ['--extra'], ['--ZZZ', '--extra'], ['--ZZZ', '--extra', 'one', '--extra', 'two'],
                     ['--GI'], ['--SR'], ['--GI', '--SR'], ['--ZZZ', '--GI'],

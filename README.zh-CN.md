@@ -28,6 +28,17 @@
 .\TouchUILaunch.exe --GI --game "path_to_root\GenshinImpact.exe" --extra '-screen-width 1920 -screen-height 1080'
 ```
 
+### 绝区零按钮布局配置（可选）
+
+添加 `--ZZZ --zzz-button-layout`，让桌面设备应用游戏保存的触摸按钮位置和大小配置。不添加此参数时保持原有启动行为。
+
+```powershell
+.\TouchUILaunch.exe --ZZZ --zzz-button-layout --game "path_to_root\ZenlessZoneZero.exe" --extra '-use-d3d12' --log
+.\TouchUILaunch.exe --ZZZ --zzz-button-layout --probe --game "path_to_root\ZenlessZoneZero.exe" --log
+```
+
+补丁从已加载模块中验证两个布局处理器，仅兼容其中的 Handheld 判断，保留全局设备类型和游戏文件。定位失败或结果不唯一时跳过，并在 DLL 日志中说明原因；携带此选项的只读探测若无法验证两个处理器，会返回失败。日志中的 `APPLIED` 表示已应用，`SKIPPED` 表示已跳过，按钮实际表现仍需在游戏中验证。
+
 ## TODO
 
 - 支持更多游戏

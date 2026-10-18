@@ -95,7 +95,11 @@ target_link_libraries(GITouchTests PRIVATE TouchUIGI)
 add_executable(ProfileDiscoveryTests games/zzz/tests/discovery_tests.cpp)
 target_link_libraries(ProfileDiscoveryTests PRIVATE TouchUIZZZDiscovery bcrypt)
 
+add_executable(ButtonLayoutTests games/zzz/tests/button_layout_tests.cpp)
+target_link_libraries(ButtonLayoutTests PRIVATE TouchUIZZZDiscovery)
+
 enable_testing()
+add_test(NAME ButtonLayout COMMAND ButtonLayoutTests)
 add_test(NAME GITouch COMMAND GITouchTests)
 set_tests_properties(GITouch PROPERTIES TIMEOUT 30)
 add_test(NAME MobileUI COMMAND MobileUITests)

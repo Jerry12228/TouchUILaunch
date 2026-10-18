@@ -234,6 +234,35 @@ Restarting the game is the documented recovery for a UI fault, hook conflict,
 or destroyed selected window. It is not a request to attach to an existing
 process. Diagnose the cause with [Troubleshooting](TROUBLESHOOTING.md).
 
+## Optional button-layout compatibility
+
+`--zzz-button-layout` is passed to the newly created ZZZ process through a
+PID-scoped named event, retained by the payload before its startup event.
+The default resolver and touch bridge do not request or install this patch.
+
+[button_layout.hpp](../games/zzz/include/button_layout.hpp) reuses the same
+captured module and the proven effective-UI getter. It requires exactly two
+validated gates with a shared cached-device getter, a Mobile comparison,
+active-component checks and false-return branches. Position additionally has
+a reentrancy flag. Each gate must have exactly one matching application caller
+whose readiness/marker fields agree with that gate. Ambiguous or incomplete
+evidence leaves this optional feature unavailable, without weakening discovery
+for the original touch bridge. No handler RVAs or fingerprints are shipped.
+
+[button_layout_patch.hpp](../games/zzz/include/button_layout_patch.hpp) replaces
+only each local `cmp eax,1` with `cmp eax,eax; nop`. The device getter/cache and
+the Mobile/active/reentrancy conditions are unchanged. Each comparison must fit
+inside one aligned eight-byte word; live expected words are checked before any
+mutation and replaced using 64-bit compare/exchange. Neighbor bytes stay intact.
+Page protections and instruction-cache coherency are restored after each write.
+Partial installation attempts roll back owned changes; restoration never
+overwrites words changed by another writer. The worker restores owned patches
+when the bridge disables. Normal process exit removes all process-local state.
+
+`--probe --zzz-button-layout` validates this path against a read-only disk view;
+the default probe retains its original scope. Probe success, patch installation,
+and observed preview/gameplay behavior are separate evidence levels.
+
 ## Evidence and version adaptation
 
 The checked-in [test data](../games/zzz/testdata/README.md) covers manual oracles
