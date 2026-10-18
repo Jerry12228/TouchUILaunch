@@ -247,17 +247,28 @@ active-component checks and false-return branches. Position additionally has
 a reentrancy flag. Each gate must have exactly one matching application caller
 whose readiness/marker fields agree with that gate. Ambiguous or incomplete
 evidence leaves this optional feature unavailable, without weakening discovery
-for the original touch bridge. No handler RVAs or fingerprints are shipped.
+for the original touch bridge. A live storage-read failure aborts the optional
+matcher as a whole; it cannot be hidden while accepting a different candidate.
+The core module capture/discovery still fails on its own unreadable evidence.
+No handler RVAs or fingerprints are shipped.
 
 [button_layout_patch.hpp](../games/zzz/include/button_layout_patch.hpp) replaces
 only each local `cmp eax,1` with `cmp eax,eax; nop`. The device getter/cache and
 the Mobile/active/reentrancy conditions are unchanged. Each comparison must fit
-inside one aligned eight-byte word; live expected words are checked before any
-mutation and replaced using 64-bit compare/exchange. Neighbor bytes stay intact.
-Page protections and instruction-cache coherency are restored after each write.
-Partial installation attempts roll back owned changes; restoration never
-overwrites words changed by another writer. The worker restores owned patches
-when the bridge disables. Normal process exit removes all process-local state.
+inside one aligned eight-byte word. Installation first checks the plan's exact
+three-byte edit and revalidates all captured gate, application, and device-getter
+code evidence against live executable memory. It then replaces expected words
+using 64-bit compare/exchange. Neighbor bytes stay intact. These checks do not
+freeze other game threads or make both sites one atomic transaction.
+
+Partial installation attempts roll back owned changes. Temporary write/read,
+protection-restoration, or cache-flush failures retain pending cleanup state and
+the original page protection. The worker makes at most three further cleanup
+attempts, one second apart, and logs any remaining state. A changed word or page
+protection is treated as a competing owner: it is preserved, never forced back.
+The worker also checks installed words and removes other owned edits on conflict;
+it never reinstalls a conflicted patch. Normal process exit removes process-local
+state. Optional layout failures leave the existing touch bridge available.
 
 `--probe --zzz-button-layout` validates this path against a read-only disk view;
 the default probe retains its original scope. Probe success, patch installation,

@@ -160,7 +160,158 @@ void execution_and_ownership() {
     check(*reinterpret_cast<uint64_t*>(mapping.base+plan.sites[0].word)==plan.sites[0].expected,"restore other owned word despite conflict");
 }
 }
+namespace {
+struct FaultMemory:touchui::zzz::ButtonLayoutMemory {
+    inline static unsigned protects{},flushes{},exchanges{};
+    inline static std::set<unsigned> fail_protect,fail_flush,fail_exchange;
+    inline static uintptr_t competing_at{};
+    inline static uint64_t competing_word{};
+    static void reset(){protects=flushes=exchanges=0;fail_protect.clear();fail_flush.clear();fail_exchange.clear();competing_at=0;}
+    static bool protect(uintptr_t at,DWORD desired,DWORD& old) {
+        if(fail_protect.contains(++protects))return false;
+        return ButtonLayoutMemory::protect(at,desired,old);
+    }
+    static bool flush(uintptr_t at) {
+        if(fail_flush.contains(++flushes))return false;
+        return ButtonLayoutMemory::flush(at);
+    }
+    static bool exchange(uintptr_t at,uint64_t expected,uint64_t desired,uint64_t& previous) {
+        if(fail_exchange.contains(++exchanges))return false;
+        if(exchanges==2 && competing_at)write_word(competing_at,competing_word);
+        return ButtonLayoutMemory::exchange(at,expected,desired,previous);
+    }
+};
+using FaultPatch=touchui::zzz::BasicButtonLayoutPatch<FaultMemory>;
+struct OwnedLayout {
+    Fixture fixture;
+    discovery::button_layout::Plan plan=*fixture.resolve().plan;
+    test_module::Mapping mapping{fixture.bytes};
+    OwnedLayout(){mapping.protect(0x1000,0x6000,PAGE_EXECUTE_READ);FaultMemory::reset();}
+    uint64_t word(size_t index)const{return *reinterpret_cast<const uint64_t*>(mapping.base+plan.sites[index].word);}
+    void original()const {
+        for(size_t i=0;i<2;++i) {
+            check(word(i)==plan.sites[i].expected,"all owned bytes restored after injected failure");
+            MEMORY_BASIC_INFORMATION region{};
+            check(VirtualQuery(reinterpret_cast<void*>(mapping.base+plan.sites[i].word),&region,sizeof(region))==sizeof(region) &&
+                region.Protect==PAGE_EXECUTE_READ,"original RX protection restored after injected failure");
+        }
+    }
+};
+void review_safety() {
+    {
+        Fixture f;unsigned slot_reads{};
+        const discovery::Image image(f.bytes,[&](uintptr_t at,std::span<uint8_t> target) {
+            if(at>=0x8000){++slot_reads;throw discovery::MemoryReadError("injected optional slot failure");}
+            std::copy_n(f.bytes.data()+at,target.size(),target.data());
+        });
+        const auto result=discovery::button_layout::resolve(image,f.getter,f.initialized,discovery::x64::calls_to(image,f.getter));
+        check(!result.plan && slot_reads==1 && result.error.find("injected optional slot failure")!=std::string::npos,
+            "unreadable optional evidence rejects feature without hiding failed reads as candidates");
+    }
+    {
+        OwnedLayout f;FaultPatch patch;f.mapping.protect(0x1000,0x1000,PAGE_NOACCESS);
+        check(!patch.install(f.mapping.base,f.plan) && FaultMemory::protects==0,"inaccessible code is never reopened");
+    }
+    {
+        OwnedLayout f;FaultPatch patch;FaultMemory::fail_exchange={2};
+        check(!patch.install(f.mapping.base,f.plan) && !patch.has_pending(),"atomic access fault rolls back first edit");f.original();
+    }
+    {
+        OwnedLayout f;FaultPatch patch;check(patch.install(f.mapping.base,f.plan),"atomic restore fault fixture install");
+        FaultMemory::fail_exchange={3};
+        check(!patch.restore() && patch.has_pending(),"atomic restore access fault retains ownership");
+        check(patch.restore() && !patch.has_pending(),"atomic restore fault can be retried conditionally");f.original();
+    }
+    // Changes outside the patch words must invalidate the entire install.
+    for(int kind=0;kind<3;++kind) {
+        OwnedLayout f;
+        const auto at=kind==0?f.fixture.position:kind==1?f.fixture.position_apply:f.fixture.device;
+        const auto aligned=at&~uintptr_t{7};
+        const auto original=*reinterpret_cast<uint64_t*>(f.mapping.base+aligned);
+        write_word(f.mapping.base+aligned,original^uint64_t{0x100});
+        FaultPatch patch;
+        check(!patch.install(f.mapping.base,f.plan) && FaultMemory::protects==0,"stale semantic evidence prevents all writes");
+        check(f.word(0)==f.plan.sites[0].expected && f.word(1)==f.plan.sites[1].expected,"stale evidence keeps both gate words original");
+    }
+    {
+        OwnedLayout f;FaultPatch patch;
+        f.plan.sites[0].replacement^=uint64_t{1};
+        check(!patch.install(f.mapping.base,f.plan) && FaultMemory::protects==0,"arbitrary or neighbor edit rejected before permissions");
+        f.original();
+    }
+    {
+        OwnedLayout f;FaultPatch patch;f.plan.evidence.clear();
+        check(!patch.install(f.mapping.base,f.plan) && FaultMemory::protects==0,"evidence-free plan rejected");
+    }
+    {
+        // The busy=false branch must skip the common false-return block.
+        Fixture f;const discovery::Image image(f.bytes);
+        discovery::x64::Cursor cursor(image,f.position,512);
+        while(cursor.at<f.position+512) {
+            const auto i=cursor.take();
+            if(i.cmp_zero_byte(6) && i.disp()==0x9b) {
+                const auto branch=cursor.take();
+                put<int32_t>(f.bytes,branch.next()-4,0);break;
+            }
+        }
+        check(!f.resolve().plan,"incorrect reentrancy continuation rejected");
+    }
+    {
+        OwnedLayout f;FaultPatch patch;FaultMemory::fail_protect={3};
+        check(!patch.install(f.mapping.base,f.plan) && !patch.has_pending(),"second write refusal rolls back first write");f.original();
+    }
+    {
+        OwnedLayout f;FaultPatch patch;FaultMemory::fail_protect={2,3};
+        check(!patch.install(f.mapping.base,f.plan) && patch.has_pending(),"failed RX cleanup retains owned state");
+        check(f.word(0)==f.plan.sites[0].replacement,"failed cleanup leaves only tracked owned edit");
+        check(patch.restore() && !patch.has_pending(),"retry uses originally saved RX protection");f.original();
+    }
+    {
+        OwnedLayout f;FaultPatch patch;FaultMemory::fail_protect={3,4};
+        check(!patch.install(f.mapping.base,f.plan) && patch.has_pending(),"failed partial rollback retains ownership");
+        check(patch.restore() && !patch.has_pending(),"partial rollback can be completed later");f.original();
+    }
+    {
+        OwnedLayout f;FaultPatch patch;FaultMemory::fail_flush={1,2};
+        check(!patch.install(f.mapping.base,f.plan) && patch.has_pending(),"failed cache flush retains cleanup state");
+        check(patch.restore() && !patch.has_pending(),"flush recovery completes owned rollback");f.original();
+    }
+    {
+        OwnedLayout f;FaultPatch patch;
+        check(patch.install(f.mapping.base,f.plan),"restore failure fixture install");
+        FaultMemory::fail_protect={5};
+        check(!patch.restore() && patch.has_pending(),"restore permission refusal retains one site");
+        check(patch.restore() && !patch.has_pending(),"restore retry finishes remaining site");f.original();
+    }
+    {
+        OwnedLayout f;FaultPatch patch;
+        FaultMemory::competing_at=f.mapping.base+f.plan.sites[1].word;
+        FaultMemory::competing_word=f.plan.sites[1].expected^uint64_t{0x100};
+        check(!patch.install(f.mapping.base,f.plan) && !patch.has_pending(),"CAS conflict rolls back remaining owned edit");
+        check(f.word(0)==f.plan.sites[0].expected && f.word(1)==FaultMemory::competing_word,"competing CAS writer preserved");
+    }
+    {
+        OwnedLayout f;FaultPatch patch;
+        check(patch.install(f.mapping.base,f.plan) && patch.intact(),"intact optional patch");
+        const auto competing=f.plan.sites[1].replacement^uint64_t{0x100000000000000};
+        write_word(f.mapping.base+f.plan.sites[1].word,competing);
+        check(!patch.intact() && !patch.restore() && !patch.has_pending(),"changed installed words stop optional feature");
+        check(f.word(1)==competing && f.word(0)==f.plan.sites[0].expected,"runtime conflict preserves competing word");
+    }
+    {
+        OwnedLayout f;FaultPatch patch;
+        check(patch.install(f.mapping.base,f.plan),"protection ownership fixture install");
+        // Both fixture gates share this page. Preserve a later owner's RWX.
+        f.mapping.protect(0x1000,0x1000,PAGE_EXECUTE_READWRITE);
+        const auto before=FaultMemory::protects;
+        check(!patch.restore() && !patch.has_pending() && FaultMemory::protects==before,"changed page permissions are preserved");
+        MEMORY_BASIC_INFORMATION region{};VirtualQuery(reinterpret_cast<void*>(f.mapping.base+0x1000),&region,sizeof(region));
+        check(region.Protect==PAGE_EXECUTE_READWRITE,"no forced permission restoration");
+    }
+}
+}
+
 int main() {
-    try {negatives();execution_and_ownership();std::cout<<"PASS: button layout semantic discovery, local eligibility and atomic ownership\n";return 0;}
+    try {negatives();execution_and_ownership();review_safety();std::cout<<"PASS: button layout semantic discovery, local eligibility and atomic ownership\n";return 0;}
     catch(const std::exception& ex){std::cerr<<"FAIL: "<<ex.what()<<"\n";return 1;}
 }

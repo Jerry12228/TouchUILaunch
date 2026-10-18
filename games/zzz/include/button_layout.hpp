@@ -10,9 +10,20 @@ struct Site {
     uintptr_t gate{}, compare{}, word{}, apply{};
     uint64_t expected{}, replacement{};
 };
+struct CodeEvidence {
+    uintptr_t rva{};
+    std::vector<uint8_t> bytes;
+};
+inline void remember(const Image& image,std::vector<CodeEvidence>& evidence,uintptr_t at,size_t length) {
+    require(length>0 && length<=1024,"button layout evidence exceeds bound");
+    image.code(at,length);
+    const auto bytes=image.view(at,length);
+    evidence.push_back({at,{bytes.begin(),bytes.end()}});
+}
 struct Plan {
     std::array<Site,2> sites{}; // Position, then size. Never a global device override.
     uintptr_t device_getter{}, device_cache{}, device_ready{};
+    std::vector<CodeEvidence> evidence;
 };
 struct Resolution {
     std::optional<Plan> plan;
@@ -22,6 +33,7 @@ struct Gate {
     Site site;
     uintptr_t device_getter{}, device_class{};
     int object{}, busy=-1;
+    std::vector<CodeEvidence> evidence;
 };
 inline void writable(const Image& image,uintptr_t at,size_t size) {
     const auto* section=image.section(at,size);
@@ -67,27 +79,34 @@ inline Gate gate(const Image& image,uintptr_t entry,uintptr_t call,uintptr_t ui_
     require(equal.h.opcode==0x0f && equal.h.opcode2==0x94 && equal.h.modrm_mod==3 && equal.rm()==self && (self<4 || equal.h.rex),
         "button gate does not return device equality");
     const auto done=c.take();require(done.jump(),"button gate result does not join its return");
-    boolean_return(image,done.relative(image),self,stack.imm());
+    const auto success_end=boolean_return(image,done.relative(image),self,stack.imm());
     Cursor failure(image,reject.relative(image),32);
     require(failure.take().zero(self),"button gate rejection is not false");
-    boolean_return(image,failure.at,self,stack.imm());
+    const auto failure_end=boolean_return(image,failure.at,self,stack.imm());
     Cursor initialize(image,slow.relative(image),24);
     require(initialize.take().call(),"button gate initialization call missing");
     const auto retry=initialize.take();
     require(retry.jump() && retry.relative(image)==argument.at,"button gate initialization does not rejoin device check");
-    bool active{};int busy=-1;
-    for(size_t i=0;i+4<before.size();++i) {
+    size_t active{};int busy=-1;
+    for(size_t i=0;i+3<before.size();++i) {
         const auto& move=before[i];
         if(move.mov(1,self,true) && before[i+1].indirect_call() && before[i+1].base()==rip &&
             before[i+2].test(0,true) && before[i+3].condition(4) &&
-            before[i+3].relative(image)==reject.relative(image))active=true;
+            before[i+3].relative(image)==reject.relative(image)) {
+            image.slot(before[i+1].storage(image));++active;
+        }
         if(move.cmp_zero_byte(self)) {
             require(busy==-1 && move.disp()>=0x10 && move.disp()<0x1000,"ambiguous button gate reentrancy flag");
-            require(before[i+1].condition(4),"button gate reentrancy branch differs");
+            const auto& branch=before[i+1];
+            require(branch.condition(4) && branch.next()==reject.relative(image),"button gate reentrancy rejection differs");
+            const auto target=branch.relative(image);
+            require(target>=failure_end && target<=call &&
+                (target==call || std::any_of(before.begin(),before.end(),[&](const auto& ins){return ins.at==target;})),
+                "button gate reentrancy continuation differs");
             busy=move.disp();
         }
     }
-    require(active,"button gate active-component check missing");
+    require(active==1,"button gate active-component check missing or ambiguous");
     const auto word=compare.at&~uintptr_t{7};
     require(compare.at-word<=5,"button gate comparison crosses an atomic patch word");
     Site site{entry,compare.at,word};
@@ -98,11 +117,15 @@ inline Gate gate(const Image& image,uintptr_t entry,uintptr_t call,uintptr_t ui_
     // active-component and reentrancy checks intact. The device getter is unchanged.
     patched[offset]=0x39;patched[offset+1]=0xc0;patched[offset+2]=0x90;
     std::memcpy(&site.replacement,patched.data(),8);
-    return {site,device.relative(image),klass.storage(image),self,busy};
+    Gate result{site,device.relative(image),klass.storage(image),self,busy};
+    const auto end=std::max({c.at,success_end,failure_end,initialize.at});
+    require(end>entry,"button gate evidence is reversed");
+    remember(image,result.evidence,entry,end-entry);
+    return result;
 }
-inline uintptr_t application(const Image& image,const Gate& current) {
+inline uintptr_t application(const Image& image,Gate& current) {
     using namespace x64;
-    std::set<uintptr_t> matches;
+    std::map<uintptr_t,std::vector<CodeEvidence>> matches;
     for(auto call:calls_to(image,current.site.gate)) {
         for(uintptr_t start=call>32?call-32:0;start<call;++start)try {
             Cursor c(image,start,64);
@@ -118,13 +141,18 @@ inline uintptr_t application(const Image& image,const Gate& current) {
             const int expected=current.busy<0?ready.disp()+2:current.busy;
             require(byte_store(marker,self,expected),"button apply marker does not match its gate");
             if(current.busy>=0)require(current.busy==ready.disp()+3,"position readiness and reentrancy flags differ");
-            matches.insert(call);
+            std::vector<CodeEvidence> evidence;
+            remember(image,evidence,start,c.at-start);
+            remember(image,evidence,marker.at,marker.h.len);
+            matches.emplace(call,std::move(evidence));
         }catch(const std::runtime_error&){}
     }
     require(matches.size()==1,"expected one validated button application caller, got "+std::to_string(matches.size()));
-    return *matches.begin();
+    const auto& selected=*matches.begin();
+    current.evidence.insert(current.evidence.end(),selected.second.begin(),selected.second.end());
+    return selected.first;
 }
-inline std::pair<uintptr_t,uintptr_t> cached_device(const Image& image,uintptr_t fn,uintptr_t owner,uintptr_t initialized) {
+inline std::pair<uintptr_t,uintptr_t> cached_device(const Image& image,uintptr_t fn,uintptr_t owner,uintptr_t initialized,std::vector<CodeEvidence>& evidence) {
     using namespace x64;Cursor c(image,fn,128);
     const auto saved=c.take(),stack=c.take();
     require(saved.push() && stack.stack_adjust(true) && c.take().mov(saved.stack_reg(),1,false),"device cache prologue differs");
@@ -142,6 +170,7 @@ inline std::pair<uintptr_t,uintptr_t> cached_device(const Image& image,uintptr_t
     const auto cache=value.storage(image),flag=cached.storage(image);
     writable(image,cache,4);writable(image,flag,1);
     require(cache%4==0 && (flag<cache || flag>=cache+4),"device cache and flag overlap");
+    remember(image,evidence,fn,c.at-fn);
     return {cache,flag};
 }
 inline Plan discover(const Image& image,uintptr_t ui_getter,uintptr_t initialized,const std::vector<uintptr_t>& references) {
@@ -163,11 +192,17 @@ inline Plan discover(const Image& image,uintptr_t ui_getter,uintptr_t initialize
     require(position && size && position->device_getter==size->device_getter && position->device_class==size->device_class,
         "button layout handlers do not share a device source");
     require(position->site.word!=size->site.word,"button layout patch words alias");
-    const auto [cache,flag]=cached_device(image,position->device_getter,position->device_class,initialized);
-    return {{position->site,size->site},position->device_getter,cache,flag};
+    Plan result{{position->site,size->site},position->device_getter};
+    result.evidence=std::move(position->evidence);
+    result.evidence.insert(result.evidence.end(),size->evidence.begin(),size->evidence.end());
+    const auto [cache,flag]=cached_device(image,position->device_getter,position->device_class,initialized,result.evidence);
+    result.device_cache=cache;result.device_ready=flag;
+    return result;
 }
 inline Resolution resolve(const Image& image,uintptr_t ui_getter,uintptr_t initialized,const std::vector<uintptr_t>& references) {
     try {return {discover(image,ui_getter,initialized,references),{}};}
-    catch(const std::runtime_error& ex){return {{},ex.what()};}
+    // A read failure in this optional matcher rejects the entire feature,
+    // never just a candidate. Core capture/discovery must succeed separately.
+    catch(const std::exception& ex){return {{},ex.what()};}
 }
 }

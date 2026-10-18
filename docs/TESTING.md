@@ -51,7 +51,7 @@ There are nine default CTest registrations in
 
 | CTest name | Executable | Main coverage |
 | --- | --- | --- |
-| `ButtonLayout` | `ButtonLayoutTests` | Relocated semantic gate fixtures, local layout application on owned executable fixtures, stale/ambiguous rejection, atomic ownership and restoration |
+| `ButtonLayout` | `ButtonLayoutTests` | Relocated semantic gate fixtures, local layout application on owned executable fixtures, stale/ambiguous rejection, full live evidence checks, partial-install rollback, injected protection/flush failures and competing-owner preservation |
 | `GITouch` | `GITouchTests` | Relocated GI discovery/fields, rejected conflicts, x64 UI/joystick execution and unchanged gesture deltas, protection, helper lifetime and owned suspended child cleanup |
 | `MobileUI` | `MobileUITests` | Retained legacy GI/SR resolver variants, matching conflicts, assembly behavior on owned fixtures, suspended startup, remote loading, child ownership, extra-argument quoting, WW argument order/cwd |
 | `TouchState` | `TouchStateTests` | Contact phases, multitouch, stable frame snapshots, Y conversion, deltas, recycled IDs, quick taps, ten-contact limit |

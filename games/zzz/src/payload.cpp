@@ -321,14 +321,15 @@ void worker() {
     if(button_layout_requested) {
         const auto& layout=resolution.button_layout;
         if(!layout.plan)log("Button layout SKIPPED: %s",layout.error.c_str());
-        else if(!button_layout_patch.install(assembly,*layout.plan))log("Button layout SKIPPED: live bytes/protection changed; owned writes rolled back where possible");
+        else if(!button_layout_patch.install(assembly,*layout.plan))log("Button layout SKIPPED: validation/write failed; cleanup_pending=%d",button_layout_patch.has_pending());
         else log("Button layout APPLIED: position compare=0x%llx size compare=0x%llx; global device type unchanged",
             static_cast<unsigned long long>(layout.plan->sites[0].compare),static_cast<unsigned long long>(layout.plan->sites[1].compare));
     }
     enabled=!ui_fault.load()&&game_window.load()!=nullptr;
     log("READY: native Windows touch bridge enabled=%d. Awaiting UI provider and input.",enabled.load());
     ULONGLONG last_status{};
-    bool reported_conflict{};
+    bool reported_conflict{},layout_disabled{};
+    unsigned layout_restore_attempts{};ULONGLONG last_layout_restore{};
     for(;;) {
         // A window can disappear concurrently with the initial enabled store.
         if(enabled.load()&&(ui_fault.load()||game_window.load()==nullptr)) {
@@ -341,11 +342,18 @@ void worker() {
             exchange_slot(active_profile->get_touch_slot,reinterpret_cast<void*>(hooked_touch),reinterpret_cast<void*>(original_touch));
             exchange_slot(active_profile->touch_supported_slot,reinterpret_cast<void*>(hooked_supported),reinterpret_cast<void*>(original_supported));
         }
-        if(!enabled.load() && button_layout_patch.installed()) {
+        if(!layout_disabled && button_layout_patch.installed() && !button_layout_patch.intact()) {
+            layout_disabled=true;
             const bool restored=button_layout_patch.restore();
-            log("Button layout RESTORE: owned bytes restored=%d",restored);
+            log("Button layout DISABLED: patched words changed; owned cleanup complete=%d pending=%d",restored,button_layout_patch.has_pending());
         }
         const auto now=GetTickCount64();
+        if((!enabled.load() || layout_disabled || !button_layout_patch.installed()) && button_layout_patch.has_pending() &&
+            layout_restore_attempts<3 && now-last_layout_restore>=1000) {
+            last_layout_restore=now;++layout_restore_attempts;
+            const bool restored=button_layout_patch.restore();
+            log("Button layout RESTORE: owned cleanup complete=%d pending=%d attempt=%u",restored,button_layout_patch.has_pending(),layout_restore_attempts);
+        }
         if(now-last_status>=5000) {
             last_status=now;uint64_t accepted{},ignored{};
             {InputGuard guard;accepted=input.accepted_downs;ignored=input.ignored_downs;}
@@ -356,7 +364,7 @@ void worker() {
     }
 }
 DWORD WINAPI worker_entry(void*) {
-    try {worker();}catch(const std::exception& ex){enabled=false;cancel_contacts();button_layout_patch.restore();log("ERROR: worker stopped: %s",ex.what());}
+    try {worker();}catch(const std::exception& ex){enabled=false;cancel_contacts();const bool restored=button_layout_patch.restore();log("ERROR: worker stopped: %s; button layout cleanup complete=%d pending=%d",ex.what(),restored,button_layout_patch.has_pending());}
     return 0;
 }
 }
