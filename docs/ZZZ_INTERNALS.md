@@ -252,14 +252,27 @@ matcher as a whole; it cannot be hidden while accepting a different candidate.
 The core module capture/discovery still fails on its own unreadable evidence.
 No handler RVAs or fingerprints are shipped.
 
+Two result shapes are recognized: the original equality-return/rejoin form,
+and a branched true/false form with a shared read-only global shortcut and
+duplicated initialization checks. The latter requires both handlers to use
+the same shortcut and device source. Each copied device argument, getter,
+equality-to-success edge, and false exit must agree with its primary path;
+additional unproven device calls reject the feature. The shortcut's storage
+and branch are never edited, and its meaning is not assumed.
+
 [button_layout_patch.hpp](../games/zzz/include/button_layout_patch.hpp) replaces
-only each local `cmp eax,1` with `cmp eax,eax; nop`. The device getter/cache and
-the Mobile/active/reentrancy conditions are unchanged. Each comparison must fit
-inside one aligned eight-byte word. Installation first checks the plan's exact
-three-byte edit and revalidates all captured gate, application, and device-getter
-code evidence against live executable memory. It then replaces expected words
-using 64-bit compare/exchange. Neighbor bytes stay intact. These checks do not
-freeze other game threads or make both sites one atomic transaction.
+local `cmp eax,1` with `cmp eax,eax; nop`. When a copied cold comparison crosses
+an atomic-word boundary, its proven near equality-to-success branch may instead
+become a same-target `jmp; nop`, wholly inside one aligned eight-byte word.
+Other branch shapes are rejected. Device getter/cache, Mobile/active/reentrancy
+checks, and the global shortcut remain unchanged. Original gates have two edit
+sites; gates with copied initialization paths require all four sites.
+
+Installation validates this bounded edit set, its exact allowed byte changes,
+and all captured gate, application, and device-getter code evidence against live
+executable memory before any mutation. It then replaces expected words using
+64-bit compare/exchange. Neighbor bytes stay intact. These checks do not freeze
+other game threads or make the complete edit set one atomic transaction.
 
 Partial installation attempts roll back owned changes. Temporary write/read,
 protection-restoration, or cache-flush failures retain pending cleanup state and

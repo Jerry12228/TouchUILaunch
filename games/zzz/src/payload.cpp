@@ -322,8 +322,8 @@ void worker() {
         const auto& layout=resolution.button_layout;
         if(!layout.plan)log("Button layout SKIPPED: %s",layout.error.c_str());
         else if(!button_layout_patch.install(assembly,*layout.plan))log("Button layout SKIPPED: validation/write failed; cleanup_pending=%d",button_layout_patch.has_pending());
-        else log("Button layout APPLIED: position compare=0x%llx size compare=0x%llx; global device type unchanged",
-            static_cast<unsigned long long>(layout.plan->sites[0].compare),static_cast<unsigned long long>(layout.plan->sites[1].compare));
+        else log("Button layout APPLIED: position compare=0x%llx size compare=0x%llx sites=%zu; global device type and shortcut flag unchanged",
+            static_cast<unsigned long long>(layout.plan->sites[0].compare),static_cast<unsigned long long>(layout.plan->sites[1].compare),layout.plan->sites.size());
     }
     enabled=!ui_fault.load()&&game_window.load()!=nullptr;
     log("READY: native Windows touch bridge enabled=%d. Awaiting UI provider and input.",enabled.load());

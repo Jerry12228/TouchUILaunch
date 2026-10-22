@@ -37,7 +37,7 @@ template<class Memory=ButtonLayoutMemory> class BasicButtonLayoutPatch {
     };
     discovery::button_layout::Plan plan_{};
     uintptr_t base_{};
-    std::array<State,2> states_{};
+    std::vector<State> states_;
     bool conflict_{};
     static bool executable(DWORD protection) {
         return !(protection&(PAGE_GUARD|PAGE_NOACCESS)) &&
@@ -109,24 +109,35 @@ template<class Memory=ButtonLayoutMemory> class BasicButtonLayoutPatch {
         return changed && complete;
     }
     static bool valid(const discovery::button_layout::Plan& plan) {
-        if(plan.sites[0].word==plan.sites[1].word || plan.evidence.empty() || plan.evidence.size()>16)return false;
-        for(const auto& site:plan.sites) {
+        if((plan.sites.size()!=2 && plan.sites.size()!=4) || plan.evidence.empty() || plan.evidence.size()>16 ||
+            plan.sites[0].gate==plan.sites[1].gate)return false;
+        std::set<uintptr_t> words;
+        for(size_t index=0;index<plan.sites.size();++index) {
+            const auto& site=plan.sites[index];
+            if(index<2 && site.edit!=discovery::button_layout::Edit::comparison)return false;
             if(!site.gate || !site.apply || site.gate>=site.compare || site.compare-site.gate>1024 ||
-                site.word!=(site.compare&~uintptr_t{7}) || site.compare-site.word>5)return false;
-            std::array<uint8_t,8> original{},patched{};
-            std::memcpy(original.data(),&site.expected,8);std::memcpy(patched.data(),&site.replacement,8);
-            const auto offset=site.compare-site.word;
-            if(original[offset]!=0x83 || original[offset+1]!=0xf8 || original[offset+2]!=1)return false;
-            original[offset]=0x39;original[offset+1]=0xc0;original[offset+2]=0x90;
-            if(original!=patched)return false;
-            bool covered{};
+                site.patch<site.compare || site.patch-site.compare>3 || site.word!=(site.patch&~uintptr_t{7}) ||
+                !words.insert(site.word).second)return false;
+            if(site.edit==discovery::button_layout::Edit::equal_branch &&
+                (site.accepted<=site.gate || site.accepted>=site.compare))return false;
+            const auto replacement=discovery::button_layout::replacement_word(site);
+            if(!replacement || *replacement!=site.replacement)return false;
+            bool covered{},comparison_covered{};
             for(const auto& evidence:plan.evidence)if(evidence.rva<=site.word && site.word-evidence.rva<=evidence.bytes.size() &&
                 8<=evidence.bytes.size()-(site.word-evidence.rva)) {
                 uint64_t expected{};std::memcpy(&expected,evidence.bytes.data()+site.word-evidence.rva,8);
                 if(expected==site.expected)covered=true;
             }
-            if(!covered)return false;
+            for(const auto& evidence:plan.evidence)if(evidence.rva<=site.compare && site.compare-evidence.rva<=evidence.bytes.size() &&
+                3<=evidence.bytes.size()-(site.compare-evidence.rva)) {
+                const auto offset=site.compare-evidence.rva;
+                if(evidence.bytes[offset]==0x83 && evidence.bytes[offset+1]==0xf8 && evidence.bytes[offset+2]==1)comparison_covered=true;
+            }
+            if(!covered || !comparison_covered)return false;
         }
+        if(plan.sites.size()==4)for(size_t i=0;i<2;++i)
+            if(plan.sites[i+2].gate!=plan.sites[i].gate || plan.sites[i+2].apply!=plan.sites[i].apply ||
+                plan.sites[i+2].compare<=plan.sites[i].compare)return false;
         return true;
     }
 public:
@@ -139,6 +150,7 @@ public:
         return false;
     }
     bool installed()const {
+        if(states_.empty())return false;
         for(const auto& state:states_)if(!state.owned || state.protection_pending || state.flush_pending)return false;
         return true;
     }
@@ -154,14 +166,14 @@ public:
     bool install(uintptr_t base,const discovery::button_layout::Plan& plan) {
         if(has_pending() || !valid(plan))return false;
         // Validate all semantic evidence before the first mutation. The only
-        // later writes remain conditional exchanges of the two exact words.
+        // later writes remain conditional exchanges of the exact bounded words.
         for(const auto& evidence:plan.evidence) {
             if(evidence.bytes.empty() || evidence.bytes.size()>1024)return false;
             std::vector<uint8_t> live(evidence.bytes.size());
             if(!read(base,evidence.rva,live) || live!=evidence.bytes)return false;
         }
         for(const auto& site:plan.sites){uint64_t value{};if(!word(base,site.word,value) || value!=site.expected)return false;}
-        base_=base;plan_=plan;states_={};conflict_=false;
+        base_=base;plan_=plan;states_=std::vector<State>(plan.sites.size());conflict_=false;
         for(size_t i=0;i<states_.size();++i)if(!exchange(i,true)){restore();return false;}
         return true;
     }

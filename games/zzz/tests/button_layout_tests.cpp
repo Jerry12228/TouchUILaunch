@@ -1,6 +1,8 @@
 // Authored executable fixtures only. No game process or game code is loaded.
 #include "button_layout_patch.hpp"
 #include "test_module.hpp"
+#include "short_discovery.hpp"
+#include <fstream>
 #include <iostream>
 #include <map>
 
@@ -27,13 +29,14 @@ struct Emit {
 };
 struct Fixture {
     static constexpr uintptr_t owner=0x8000,active_slot=0x8010,klass=0x8200;
-    static constexpr uintptr_t metadata=0x8100,hotfix=0x8101,enabled=0x8103,cache=0x8110,cached=0x8114,ui=0x8120;
+    static constexpr uintptr_t metadata=0x8100,hotfix=0x8101,enabled=0x8103,shortcut=0x8104,cache=0x8110,cached=0x8114,ui=0x8120;
     std::vector<uint8_t> bytes=std::vector<uint8_t>(0x9000);
     uintptr_t getter,device,position,size,position_apply,size_apply,active,initialize;
     uintptr_t initialized;
-    explicit Fixture(uintptr_t delta=0,uintptr_t init=0x31):getter(0x1100+delta),device(0x1200+delta),
+    bool branched;
+    explicit Fixture(uintptr_t delta=0,uintptr_t init=0x31,bool branch_form=false):getter(0x1100+delta),device(0x1200+delta),
         position(0x1400+delta),size(0x1800+delta),position_apply(0x2000+delta),size_apply(0x2400+delta),
-        active(0x2600+delta),initialize(0x2700+delta),initialized(init) {
+        active(0x2600+delta),initialize(0x2700+delta),initialized(init),branched(branch_form) {
         put<uint16_t>(bytes,0,0x5a4d);put<uint32_t>(bytes,0x3c,0x80);put<uint32_t>(bytes,0x80,0x4550);
         put<uint16_t>(bytes,0x84,0x8664);put<uint16_t>(bytes,0x86,2);put<uint16_t>(bytes,0x94,0xf0);
         put<uint16_t>(bytes,0x98,0x20b);put<uint32_t>(bytes,0x98+56,0x9000);put<uint32_t>(bytes,0x98+60,0x1000);
@@ -70,23 +73,36 @@ struct Fixture {
         e.relative({0x80,0x3d},enabled);e.raw({0});put<int32_t>(bytes,e.at-5,static_cast<int32_t>(enabled-e.at));
         e.branch({0x0f,0x84},"false");
         if(is_position) {
-            e.raw({0x80,0xbe});e.dword(0x9b);e.raw({0});e.branch({0x0f,0x84},"mobile");
+            e.raw({0x80,0xbe});e.dword(branched?0xa3:0x9b);e.raw({0});e.branch({0x0f,0x84},"mobile");
             e.label("false");e.raw({0x31,0xf6});e.label("result");e.raw({0x89,0xf0,0x48,0x83,0xc4,0x20,0x5e,0xc3});
         }
         e.label("mobile");
         // The cmp must fit in a single aligned word; vary relocation/field offsets.
-        while((e.at+41)%8>5)e.raw({0x90});
+        while((e.at+(branched?54:41))%8>5)e.raw({0x90});
         e.relative({0xe8},getter);e.raw({0x83,0xf8,1});e.branch({0x0f,0x85},"false");
+        if(branched) {
+            e.relative({0x80,0x3d},shortcut);e.raw({0});put<int32_t>(bytes,e.at-5,static_cast<int32_t>(shortcut-e.at));
+            e.branch({0x0f,0x85},"accepted");
+        }
         e.relative({0x48,0x8b,0x0d},owner);e.raw({0x80,0xb9});e.dword(static_cast<int32_t>(initialized));e.raw({0});
         e.branch({0x0f,0x84},"initialize");e.label("device");e.raw({0xb1,1});e.relative({0xe8},device);
-        e.raw({0x83,0xf8,1,0x40,0x0f,0x94,0xc6});e.branch({0xe9},"result");
+        e.raw({0x83,0xf8,1});
+        if(branched){e.branch({0x0f,0x85},"false");e.label("accepted");e.raw({0x40,0xb6,1});}
+        else e.raw({0x40,0x0f,0x94,0xc6});
+        e.branch({0xe9},"result");
         if(!is_position){e.label("false");e.raw({0x31,0xf6});e.label("result");e.raw({0x89,0xf0,0x48,0x83,0xc4,0x20,0x5e,0xc3});}
-        e.label("initialize");e.relative({0xe8},initialize);e.branch({0xe9},"device");e.finish();
+        if(branched)while((e.at+12)%8!=(is_position?2u:7u))e.raw({0x90});
+        e.label("initialize");e.relative({0xe8},initialize);
+        if(branched) {
+            e.raw({0xb1,1});e.relative({0xe8},device);e.raw({0x83,0xf8,1});
+            e.branch({0x0f,0x84},"accepted");e.branch({0xe9},"false");
+        } else e.branch({0xe9},"device");
+        e.finish();
     }
     void make_apply(uintptr_t entry,uintptr_t target,bool is_position) {
-        Emit e{bytes,entry};e.raw({0x80,0xbb});e.dword(is_position?0x98:0x38);e.raw({0});e.branch({0x0f,0x84},"end");
+        Emit e{bytes,entry};e.raw({0x80,0xbb});e.dword(branched?(is_position?0xa0:0x40):(is_position?0x98:0x38));e.raw({0});e.branch({0x0f,0x84},"end");
         e.raw({0x48,0x89,0xd9});e.relative({0xe8},target);e.raw({0x84,0xc0});e.branch({0x0f,0x85},"apply");
-        e.branch({0xe9},"end");e.label("apply");e.raw({0xc6,0x83});e.dword(is_position?0x9b:0x3a);e.raw({1});
+        e.branch({0xe9},"end");e.label("apply");e.raw({0xc6,0x83});e.dword(branched?(is_position?0xa3:0x42):(is_position?0x9b:0x3a));e.raw({1});
         e.label("end");e.raw({0xc3});e.finish();
     }
     discovery::button_layout::Resolution resolve()const {
@@ -184,12 +200,15 @@ struct FaultMemory:touchui::zzz::ButtonLayoutMemory {
 using FaultPatch=touchui::zzz::BasicButtonLayoutPatch<FaultMemory>;
 struct OwnedLayout {
     Fixture fixture;
-    discovery::button_layout::Plan plan=*fixture.resolve().plan;
-    test_module::Mapping mapping{fixture.bytes};
-    OwnedLayout(){mapping.protect(0x1000,0x6000,PAGE_EXECUTE_READ);FaultMemory::reset();}
+    discovery::button_layout::Plan plan;
+    test_module::Mapping mapping;
+    explicit OwnedLayout(bool branched=false):fixture(0,0x31,branched),
+        plan(*fixture.resolve().plan),mapping(fixture.bytes) {
+        mapping.protect(0x1000,0x6000,PAGE_EXECUTE_READ);FaultMemory::reset();
+    }
     uint64_t word(size_t index)const{return *reinterpret_cast<const uint64_t*>(mapping.base+plan.sites[index].word);}
     void original()const {
-        for(size_t i=0;i<2;++i) {
+        for(size_t i=0;i<plan.sites.size();++i) {
             check(word(i)==plan.sites[i].expected,"all owned bytes restored after injected failure");
             MEMORY_BASIC_INFORMATION region{};
             check(VirtualQuery(reinterpret_cast<void*>(mapping.base+plan.sites[i].word),&region,sizeof(region))==sizeof(region) &&
@@ -309,9 +328,120 @@ void review_safety() {
         check(region.Protect==PAGE_EXECUTE_READWRITE,"no forced permission restoration");
     }
 }
+void branched_discovery() {
+    for(uintptr_t delta:{uintptr_t{0},uintptr_t{0x1000}}) {
+        Fixture f(delta,0x45,true);auto result=f.resolve();check(result.plan.has_value(),result.error.c_str());
+        const auto& sites=result.plan->sites;
+        check(sites.size()==4,"both copied initialization checks must be planned");
+        check(sites[3].compare%8==7 && sites[3].edit==discovery::button_layout::Edit::equal_branch,
+            "straddling cold comparison uses its aligned proven success edge");
+        check(sites[0].gate==f.position && sites[1].gate==f.size && sites[2].gate==f.position && sites[3].gate==f.size,
+            "warm and cold checks retain their handler roles after relocation");
+        f.bytes[sites[2].compare+2]=2;check(!f.resolve().plan,"unknown cold device enum rejects the entire feature");
+    }
+    Fixture f(0,0x31,true);auto good=f.resolve();check(good.plan.has_value(),good.error.c_str());
+    const auto original=f.bytes;
+    const discovery::Image image(f.bytes);
+    // Mutate the new flag reference/edge, both cold-path call relationships,
+    // and the return joins independently; none may become a first-match patch.
+    discovery::x64::Cursor c(image,f.size,512);
+    uintptr_t shortcut_compare{};
+    while(c.at<f.size+512) {
+        const auto i=c.take();
+        if(i.cmp_zero_byte(discovery::x64::rip) && i.storage(image)==Fixture::shortcut){shortcut_compare=i.at;break;}
+    }
+    check(shortcut_compare!=0,"fixture shortcut comparison found");
+    put<int32_t>(f.bytes,shortcut_compare+2,static_cast<int32_t>(Fixture::shortcut+1-shortcut_compare-7));
+    check(!f.resolve().plan,"handlers using different shortcut flags rejected");
+    f.bytes=original;f.bytes[shortcut_compare+8]=0x84;
+    check(!f.resolve().plan,"inverted shortcut acceptance rejected");
+    for(size_t site_index:{size_t{2},size_t{3}}) {
+        const auto compare=good.plan->sites[site_index].compare;
+        f.bytes=original;f.bytes[compare-7]=0;
+        check(!f.resolve().plan,"changed cold device argument rejected");
+        f.bytes=original;put<int32_t>(f.bytes,compare-4,0);
+        check(!f.resolve().plan,"changed cold device callee rejected");
+        f.bytes=original;f.bytes[compare+4]=0x85;
+        check(!f.resolve().plan,"inverted cold success edge rejected");
+        f.bytes=original;put<int32_t>(f.bytes,compare+5,0);
+        check(!f.resolve().plan,"cold success edge outside shared true block rejected");
+    }
+    f.bytes=original;f.make_gate(0x3000,true);f.make_apply(0x3400,0x3000,true);
+    check(!f.resolve().plan,"duplicate branch-form handler rejected");
+}
+void branched_execution_and_ownership() {
+    OwnedLayout f(true);
+    f.mapping.put<uintptr_t>(Fixture::owner,f.mapping.base+Fixture::klass);
+    f.mapping.put<uintptr_t>(Fixture::active_slot,f.mapping.base+f.fixture.active);
+    alignas(8) std::array<uint8_t,256> receiver{};receiver[0x18]=1;
+    auto position=reinterpret_cast<bool(*)(void*)>(f.mapping.base+f.fixture.position);
+    auto size=reinterpret_cast<bool(*)(void*)>(f.mapping.base+f.fixture.size);
+    FaultPatch patch;check(!patch.installed(),"empty patch is not installed");
+    for(bool initialized:{false,true}) {
+        f.mapping.put<uint8_t>(Fixture::klass+f.fixture.initialized,initialized?1:0);
+        check(!position(receiver.data()) && !size(receiver.data()),"unpatched Desktop rejection on warm and cold paths");
+    }
+    check(patch.install(f.mapping.base,f.plan) && patch.installed(),"install complete four-site plan");
+    for(bool initialized:{false,true})for(uint8_t shortcut:{uint8_t{0},uint8_t{1}}) {
+        f.mapping.put<uint8_t>(Fixture::klass+f.fixture.initialized,initialized?1:0);
+        f.mapping.put<uint8_t>(Fixture::shortcut,shortcut);
+        check(position(receiver.data()) && size(receiver.data()),"both warm and cold Desktop paths become eligible");
+        check(*reinterpret_cast<uint8_t*>(f.mapping.base+Fixture::shortcut)==shortcut &&
+            *reinterpret_cast<int*>(f.mapping.base+Fixture::cache)==3,"global shortcut and hardware values preserved");
+        f.mapping.put<int>(Fixture::ui,2);check(!position(receiver.data()) && !size(receiver.data()),"PC UI rejected on all branch forms");
+        f.mapping.put<int>(Fixture::ui,1);receiver[0x18]=0;
+        check(!position(receiver.data()) && !size(receiver.data()),"inactive components rejected on all branch forms");
+        receiver[0x18]=1;receiver[0xa3]=1;
+        check(!position(receiver.data()) && size(receiver.data()),"branch-form position reentrancy remains enforced");
+        receiver[0xa3]=0;f.mapping.put<uint8_t>(Fixture::enabled,0);
+        check(!position(receiver.data()) && !size(receiver.data()),"branch-form enable condition remains enforced");
+        f.mapping.put<uint8_t>(Fixture::enabled,1);
+    }
+    check(patch.restore(),"restore complete four-site plan");f.original();
+    for(unsigned failure=1;failure<=4;++failure) {
+        FaultMemory::reset();FaultMemory::fail_exchange={failure};
+        check(!patch.install(f.mapping.base,f.plan) && !patch.has_pending(),"failure at any new site rolls back all owned edits");f.original();
+    }
+    FaultMemory::reset();auto incomplete=f.plan;incomplete.sites.pop_back();
+    check(!patch.install(f.mapping.base,incomplete) && FaultMemory::protects==0,"incomplete copied-check plan never writes");
+    auto wrong=f.plan;wrong.sites[3].accepted++;
+    check(!patch.install(f.mapping.base,wrong) && FaultMemory::protects==0,"redirected success target rejected before writing");
+    FaultMemory::reset();check(patch.install(f.mapping.base,f.plan),"four-site restore retry install");
+    FaultMemory::fail_exchange={5};
+    check(!patch.restore() && patch.has_pending(),"cold-site restore failure retains ownership");
+    check(patch.restore() && !patch.has_pending(),"cold-site restore can be retried");f.original();
+    FaultMemory::reset();check(patch.install(f.mapping.base,f.plan),"four-site conflict install");
+    const auto competing=f.plan.sites[3].replacement^uint64_t{0x100000000000000};
+    write_word(f.mapping.base+f.plan.sites[3].word,competing);
+    check(!patch.restore() && !patch.has_pending(),"cold-site competing writer preserved while other owned edits restore");
+    check(f.word(3)==competing,"cold-site conflicting bytes are not overwritten");
+    for(size_t i=0;i<3;++i)check(f.word(i)==f.plan.sites[i].expected,"other owned sites restored after cold-site conflict");
+}
+void static_sample(const char* path) {
+    std::ifstream stream(path,std::ios::binary|std::ios::ate);check(bool(stream),"cannot open read-only sample");
+    const auto length=stream.tellg();check(length>0 && uint64_t(length)<=UINT32_MAX,"invalid sample size");
+    std::vector<uint8_t> bytes(static_cast<size_t>(length));stream.seekg(0);
+    check(bool(stream.read(reinterpret_cast<char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()))),"incomplete sample read");
+    const discovery::Image image(bytes);const auto result=discovery::discover(image,true);
+    check(result.button_layout.plan.has_value(),result.button_layout.error.c_str());
+    const auto& plan=*result.button_layout.plan;
+    for(const auto& site:plan.sites) {
+        check(image.read<uint64_t>(site.word)==site.expected,"sample edit expected word differs");
+        const auto expected=discovery::button_layout::replacement_word(site);
+        check(expected && *expected==site.replacement,"sample edit is not an allowed local replacement");
+        std::cout<<"site compare=0x"<<std::hex<<site.compare<<" patch=0x"<<site.patch<<" word=0x"<<site.word
+            <<" kind="<<(site.edit==discovery::button_layout::Edit::comparison?"comparison":"equal_branch")<<std::dec<<"\n";
+    }
+    std::cout<<"PASS: read-only sample discovery; sites="<<plan.sites.size()<<"; no game code loaded or executed\n";
+}
 }
 
-int main() {
-    try {negatives();execution_and_ownership();review_safety();std::cout<<"PASS: button layout semantic discovery, local eligibility and atomic ownership\n";return 0;}
+int main(int argc,char** argv) {
+    try {
+        if(argc==3 && std::string(argv[1])=="--sample"){static_sample(argv[2]);return 0;}
+        check(argc==1,"usage: ButtonLayoutTests [--sample GameAssembly.dll]");
+        negatives();execution_and_ownership();review_safety();branched_discovery();branched_execution_and_ownership();
+        std::cout<<"PASS: button layout semantic discovery, warm/cold eligibility and atomic ownership\n";return 0;
+    }
     catch(const std::exception& ex){std::cerr<<"FAIL: "<<ex.what()<<"\n";return 1;}
 }
