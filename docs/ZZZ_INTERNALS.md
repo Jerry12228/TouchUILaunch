@@ -253,10 +253,11 @@ The core module capture/discovery still fails on its own unreadable evidence.
 No handler RVAs or fingerprints are shipped.
 
 Two result shapes are recognized: the original equality-return/rejoin form,
-and a branched true/false form with a shared read-only global shortcut and
-duplicated initialization checks. The latter requires both handlers to use
-the same shortcut and device source. Each copied device argument, getter,
-equality-to-success edge, and false exit must agree with its primary path;
+and a branched true/false form with a shared global shortcut and duplicated
+initialization checks. This feature only reads the shortcut. The latter shape
+requires both handlers to use the same shortcut and device source. Each copied
+device argument, getter, equality-to-success edge, and false exit must agree with
+its primary path;
 additional unproven device calls reject the feature. The shortcut's storage
 and branch are never edited, and its meaning is not assumed.
 

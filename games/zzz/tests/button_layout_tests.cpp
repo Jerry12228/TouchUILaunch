@@ -402,6 +402,16 @@ void branched_execution_and_ownership() {
         FaultMemory::reset();FaultMemory::fail_exchange={failure};
         check(!patch.install(f.mapping.base,f.plan) && !patch.has_pending(),"failure at any new site rolls back all owned edits");f.original();
     }
+    FaultMemory::reset();
+    // The cold comparison starts in the preceding word. Its untouched byte is
+    // still required live evidence, even though the edited branch word matches.
+    const auto compare_word=f.plan.sites[3].compare&~uintptr_t{7};
+    const auto saved_compare=*reinterpret_cast<const uint64_t*>(f.mapping.base+compare_word);
+    write_word(f.mapping.base+compare_word,saved_compare^uint64_t{0x100000000000000});
+    check(f.word(3)==f.plan.sites[3].expected,"cold branch word remains original during external comparison change");
+    check(!patch.install(f.mapping.base,f.plan) && FaultMemory::protects==0 && !patch.has_pending(),
+        "changed cold comparison outside the patch word rejects before any write");
+    write_word(f.mapping.base+compare_word,saved_compare);f.original();
     FaultMemory::reset();auto incomplete=f.plan;incomplete.sites.pop_back();
     check(!patch.install(f.mapping.base,incomplete) && FaultMemory::protects==0,"incomplete copied-check plan never writes");
     auto wrong=f.plan;wrong.sites[3].accepted++;
