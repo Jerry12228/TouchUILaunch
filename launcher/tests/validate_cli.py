@@ -48,10 +48,13 @@ def main():
         assert b'--extra' in result.stdout
         assert all(flag in result.stdout for flag in (b'--GI', b'--SR', b'--ZZZ', b'--WW'))
         assert b'-CloudGame -CloudGamePlatform=Android' in result.stdout
-        for removed in (b'--status', b'--disable', b'--enable', b'--pid'):
+        for removed in (b'--status', b'--disable', b'--enable', b'--pid', b'--zzz-button-layout'):
             assert removed not in result.stdout
 
-    for options in (['--status'], ['--disable'], ['--enable'], ['--pid', '12345'],
+    for options in (['--zzz-button-layout'], ['--ZZZ', '--zzz-button-layout'], ['--GI', '--zzz-button-layout'],
+                    ['--SR', '--zzz-button-layout'], ['--WW', '--zzz-button-layout'],
+                    ['--ZZZ', '--zzz-button-layout', '--zzz-button-layout'],
+                    ['--status'], ['--disable'], ['--enable'], ['--pid', '12345'],
                     ['--unknown'], ['--game'], ['--ZZZ', '--probe', '--probe'], [],
                     ['--extra'], ['--ZZZ', '--extra'], ['--ZZZ', '--extra', 'one', '--extra', 'two'],
                     ['--GI'], ['--SR'], ['--GI', '--SR'], ['--ZZZ', '--GI'],
@@ -147,6 +150,7 @@ def main():
             run(options, 0)
             result = run([*options, '--log'], 0, logged=True)
             assert b'Probe passed.' in result.stdout
+            assert b'"button_layout"' in result.stdout and b'"available"' in result.stdout
     print(f'PASS: {checks} CLI checks for {launcher}')
 
 

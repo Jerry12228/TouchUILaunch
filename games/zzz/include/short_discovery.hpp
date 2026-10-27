@@ -2,12 +2,14 @@
 #include "property_reader.hpp"
 #include "profile.hpp"
 #include "scan_patterns.hpp"
+#include "button_layout.hpp"
 #include <map>
 
 namespace discovery {
 struct Result {
     struct CodeEvidence { uintptr_t rva; std::vector<uint8_t> bytes; };
     profile::Build build{};
+    button_layout::Resolution button_layout;
     uintptr_t input_region{},screen_region{},frame_region{},touch_loop{},device_selector{},default_getter{};
     uintptr_t loop_count_call{},loop_get_touch_call{},mobile_value_at{},pc_value_at{};
     size_t setter_candidates{};
@@ -204,6 +206,7 @@ inline Result discover(const Image& image) {
     for(const auto& site:selected){evidence(image,r,site.call-5,site.size+5);if(site.helper){auto helper=helpers.at(site.helper);evidence(image,r,helper.fn,helper.size);}}
     evidence(image,r,selected.front().return_at,selected.front().return_size);
     if(branch.helper){auto helper=helpers.at(branch.helper);evidence(image,r,helper.fn,helper.size);}
+    r.button_layout=button_layout::resolve(image,p.get_effective_layout,p.class_initialized_offset,references);
     return r;
 }
 }

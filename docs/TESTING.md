@@ -46,11 +46,12 @@ The verification script performs these steps:
 7. Check source boundaries and packaged imports/fingerprint strings, writing
    `memory-boundary.json` in the selected dist directory.
 
-There are eight default CTest registrations in
+There are nine default CTest registrations in
 [CMakeLists.txt](../CMakeLists.txt):
 
 | CTest name | Executable | Main coverage |
 | --- | --- | --- |
+| `ButtonLayout` | `ButtonLayoutTests` | Relocated equality-return and branched warm/cold gate fixtures, unchanged shortcut/device state and UI guards, stale/ambiguous rejection, full live evidence checks, partial-install rollback, injected protection/flush failures and competing-owner preservation |
 | `GITouch` | `GITouchTests` | Relocated GI discovery/fields, rejected conflicts, x64 UI/joystick execution and unchanged gesture deltas, protection, helper lifetime and owned suspended child cleanup |
 | `MobileUI` | `MobileUITests` | Retained legacy GI/SR resolver variants, matching conflicts, assembly behavior on owned fixtures, suspended startup, remote loading, child ownership, extra-argument quoting, WW argument order/cwd |
 | `TouchState` | `TouchStateTests` | Contact phases, multitouch, stable frame snapshots, Y conversion, deltas, recycled IDs, quick taps, ten-contact limit |
@@ -128,6 +129,20 @@ The optional GI oracle comparison requires the analyzed 7.1 EXE; see
 For another EXE, use `GITouchTests --discover <exe>` for discovery acceptance
 without the 7.1 oracle. Neither check establishes live touch compatibility.
 The old `UserAssembly.dll` layout is not accepted by these checks.
+
+For an explicit read-only button-layout check against a newly supplied module:
+
+```powershell
+./build/windows-x64-release/Release/ButtonLayoutTests.exe --sample 'C:/Samples/ZZZ/new/GameAssembly.dll'
+```
+
+This mode runs automatic discovery and validates each planned local edit without
+loading or executing the sample, installing a patch, or writing game files. It
+prints all primary/copied hardware checks and whether the edit is a comparison
+or a same-target equality-branch replacement. It does not use an address/hash
+oracle and does not establish runtime or streaming compatibility. Synthetic
+fixtures, including cold-path execution and ownership faults, remain the default
+CTest case; supplied game binaries must never be uploaded to CI.
 
 CTest adds `ProfileDiscovery2.5`, `ProfileDiscovery2.6`,
 `ProfileDiscovery3.1`, and `ProfileDiscovery3.2`, plus

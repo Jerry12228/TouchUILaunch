@@ -59,6 +59,21 @@ inline void print_json(std::ostream& out,const Probe& probe) {
         if(!first)out<<",\n";first=false;
         out<<"    \""<<field.name<<"\": \"0x"<<std::hex<<p.*(field.value)<<std::dec<<"\"";
     }
-    out<<"\n  },\n  \"setter_candidates\": "<<probe.resolution.setter_candidates<<"\n}\n";
+    out<<"\n  },\n  \"setter_candidates\": "<<probe.resolution.setter_candidates<<",\n  \"button_layout\": {";
+    const auto& layout=probe.resolution.button_layout;
+    out<<"\n    \"available\": "<<(layout.plan?"true":"false");
+    if(layout.plan) {
+        out<<",\n    \"position_compare\": \"0x"<<std::hex<<layout.plan->sites[0].compare<<"\",\n    \"size_compare\": \"0x"<<layout.plan->sites[1].compare<<"\""<<std::dec;
+        out<<",\n    \"patch_sites\": [";
+        bool first_site=true;
+        for(const auto& site:layout.plan->sites) {
+            if(!first_site)out<<",";first_site=false;
+            out<<"\n      {\"compare\": \"0x"<<std::hex<<site.compare<<"\", \"patch\": \"0x"<<site.patch
+               <<"\", \"word\": \"0x"<<site.word<<"\", \"edit\": \""
+               <<(site.edit==button_layout::Edit::comparison?"comparison":"equal_branch")<<"\"}"<<std::dec;
+        }
+        out<<"\n    ]";
+    }
+    out<<"\n  }\n}\n";
 }
 }
