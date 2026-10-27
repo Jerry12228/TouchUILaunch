@@ -9,7 +9,6 @@ namespace discovery {
 struct Result {
     struct CodeEvidence { uintptr_t rva; std::vector<uint8_t> bytes; };
     profile::Build build{};
-    bool button_layout_requested{};
     button_layout::Resolution button_layout;
     uintptr_t input_region{},screen_region{},frame_region{},touch_loop{},device_selector{},default_getter{};
     uintptr_t loop_count_call{},loop_get_touch_call{},mobile_value_at{},pc_value_at{};
@@ -145,7 +144,7 @@ inline MobileBranch mobile_branch(const Image& image,uintptr_t call,bool helper,
     require(returned,"touch device branch has no bounded return");
     return {call,destination,helper?helper_enum:condition.next()-1,helper?target.relative(image):0,c.at-call,exit.at-destination};
 }
-inline Result discover(const Image& image,bool button_layout_requested=false) {
+inline Result discover(const Image& image) {
     Result r;auto& p=r.build;
     r.input_region=image.unique(scan_rules::input_region);r.screen_region=image.unique(scan_rules::screen_region);r.frame_region=image.unique(scan_rules::frame_region);
     p.get_touch_slot=image.relative(r.input_region+0x70,{0x48,0x8b,0x05});image.expect(r.input_region+0x77,{0x48,0xff,0xe0});
@@ -207,8 +206,7 @@ inline Result discover(const Image& image,bool button_layout_requested=false) {
     for(const auto& site:selected){evidence(image,r,site.call-5,site.size+5);if(site.helper){auto helper=helpers.at(site.helper);evidence(image,r,helper.fn,helper.size);}}
     evidence(image,r,selected.front().return_at,selected.front().return_size);
     if(branch.helper){auto helper=helpers.at(branch.helper);evidence(image,r,helper.fn,helper.size);}
-    r.button_layout_requested=button_layout_requested;
-    if(button_layout_requested)r.button_layout=button_layout::resolve(image,p.get_effective_layout,p.class_initialized_offset,references);
+    r.button_layout=button_layout::resolve(image,p.get_effective_layout,p.class_initialized_offset,references);
     return r;
 }
 }

@@ -20,7 +20,6 @@ inline std::wstring module_path(HMODULE module=nullptr) {
     return {b.data(),n};
 }
 inline std::wstring log_event_name(DWORD pid) {return L"Local\\TouchUILaunch.Log."+std::to_wstring(pid);}
-inline std::wstring button_layout_event_name(DWORD pid) {return L"Local\\TouchUILaunch.ButtonLayout."+std::to_wstring(pid);}
 inline std::wstring started_event_name(DWORD pid) {return L"Local\\TouchUILaunch.Started."+std::to_wstring(pid);}
 inline bool executable_pointer(const void* pointer) {
     MEMORY_BASIC_INFORMATION mbi{};

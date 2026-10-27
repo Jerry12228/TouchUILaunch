@@ -24,7 +24,6 @@ std::atomic<UINT_PTR> timer_id{};
 constexpr UINT_PTR requested_timer=0x5a5a7455;
 Handle logging_event;
 Handle started_event;
-Handle button_layout_event;
 touchui::zzz::ButtonLayoutPatch button_layout_patch;
 bool touch_registration_added{};
 FILE* logfile{};
@@ -296,8 +295,6 @@ bool install_icalls() {
 }
 void worker() {
     logging_event.value=OpenEventW(SYNCHRONIZE,FALSE,log_event_name(GetCurrentProcessId()).c_str());
-    button_layout_event.value=OpenEventW(SYNCHRONIZE,FALSE,button_layout_event_name(GetCurrentProcessId()).c_str());
-    const bool button_layout_requested=button_layout_event.value && WaitForSingleObject(button_layout_event,0)==WAIT_OBJECT_0;
     // Publish only after retaining the launcher's logging configuration.
     started_event.value=CreateEventW(nullptr,TRUE,TRUE,started_event_name(GetCurrentProcessId()).c_str());
     if(!started_event.value)return;
@@ -307,7 +304,7 @@ void worker() {
     for(int i=0;i<600&&!module;++i){module=GetModuleHandleW(L"GameAssembly.dll");if(!module)Sleep(200);}
     if(!module){log("ERROR: GameAssembly.dll not loaded after 120 s");return;}
     log("Resolving loaded GameAssembly.dll at base=%p",module);
-    const auto resolution=discovery::resolve_module(module,[](const char* stage){log("Resolver: %s",stage);},button_layout_requested);
+    const auto resolution=discovery::resolve_module(module,[](const char* stage){log("Resolver: %s",stage);});
     resolved_profile=resolution.build;
     active_profile=&resolved_profile;
     for(const auto& field:profile::fields)log("profile %s=0x%llx",field.name,static_cast<unsigned long long>(active_profile->*(field.value)));
@@ -318,13 +315,11 @@ void worker() {
     bool installed=false;
     for(int i=0;i<600&&!installed;++i){installed=install_icalls();if(!installed)Sleep(200);}
     if(!installed){log("ERROR: Unity icalls unresolved or table replacement failed after 120 s");return;}
-    if(button_layout_requested) {
-        const auto& layout=resolution.button_layout;
-        if(!layout.plan)log("Button layout SKIPPED: %s",layout.error.c_str());
-        else if(!button_layout_patch.install(assembly,*layout.plan))log("Button layout SKIPPED: validation/write failed; cleanup_pending=%d",button_layout_patch.has_pending());
-        else log("Button layout APPLIED: position compare=0x%llx size compare=0x%llx sites=%zu; global device type and shortcut flag unchanged",
-            static_cast<unsigned long long>(layout.plan->sites[0].compare),static_cast<unsigned long long>(layout.plan->sites[1].compare),layout.plan->sites.size());
-    }
+    const auto& layout=resolution.button_layout;
+    if(!layout.plan)log("Button layout SKIPPED: %s",layout.error.c_str());
+    else if(!button_layout_patch.install(assembly,*layout.plan))log("Button layout SKIPPED: validation/write failed; cleanup_pending=%d",button_layout_patch.has_pending());
+    else log("Button layout APPLIED: position compare=0x%llx size compare=0x%llx sites=%zu; global device type and shortcut flag unchanged",
+        static_cast<unsigned long long>(layout.plan->sites[0].compare),static_cast<unsigned long long>(layout.plan->sites[1].compare),layout.plan->sites.size());
     enabled=!ui_fault.load()&&game_window.load()!=nullptr;
     log("READY: native Windows touch bridge enabled=%d. Awaiting UI provider and input.",enabled.load());
     ULONGLONG last_status{};

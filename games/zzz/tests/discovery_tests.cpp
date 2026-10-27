@@ -301,6 +301,8 @@ void test(const std::filesystem::path& path) {
     std::cout<<"PASS: full file and simulated loaded views match all 15 manual fields.\n";
     const auto reduced=discovery::discover(discovery::Image(fixture.bytes));
     equal_profile(reduced.build,expected);
+    check(!reduced.button_layout.plan && !reduced.button_layout.error.empty(),
+        "missing button layout gates must preserve core touch discovery");
     negatives(fixture,reduced);
     variations(fixture,reduced);
     dispatch_variations(fixture,reduced);

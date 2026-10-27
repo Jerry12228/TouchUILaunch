@@ -58,7 +58,7 @@ inline Image capture_module(uintptr_t base) {
     return Image(bytes,read);
 }
 using Progress=void(*)(const char*);
-inline Result resolve_module(HMODULE module,Progress progress=nullptr,bool button_layout_requested=false) {
+inline Result resolve_module(HMODULE module,Progress progress=nullptr) {
     require(module!=nullptr,"null GameAssembly module");
     if(progress)progress("retain module for process lifetime");
     HMODULE retained{};
@@ -69,7 +69,7 @@ inline Result resolve_module(HMODULE module,Progress progress=nullptr,bool butto
     if(progress)progress("capture loaded PE headers and all readable code sections");
     const auto image=capture_module(reinterpret_cast<uintptr_t>(retained));
     if(progress)progress("match anchors, decode instructions and validate dataflow");
-    auto result=discover(image,button_layout_requested);
+    auto result=discover(image);
     if(progress)progress("resolved all 15 fields from memory");
     return result;
 }

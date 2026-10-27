@@ -432,7 +432,7 @@ void static_sample(const char* path) {
     const auto length=stream.tellg();check(length>0 && uint64_t(length)<=UINT32_MAX,"invalid sample size");
     std::vector<uint8_t> bytes(static_cast<size_t>(length));stream.seekg(0);
     check(bool(stream.read(reinterpret_cast<char*>(bytes.data()),static_cast<std::streamsize>(bytes.size()))),"incomplete sample read");
-    const discovery::Image image(bytes);const auto result=discovery::discover(image,true);
+    const discovery::Image image(bytes);const auto result=discovery::discover(image);
     check(result.button_layout.plan.has_value(),result.button_layout.error.c_str());
     const auto& plan=*result.button_layout.plan;
     for(const auto& site:plan.sites) {

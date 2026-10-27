@@ -234,60 +234,6 @@ Restarting the game is the documented recovery for a UI fault, hook conflict,
 or destroyed selected window. It is not a request to attach to an existing
 process. Diagnose the cause with [Troubleshooting](TROUBLESHOOTING.md).
 
-## Optional button-layout compatibility
-
-`--zzz-button-layout` is passed to the newly created ZZZ process through a
-PID-scoped named event, retained by the payload before its startup event.
-The default resolver and touch bridge do not request or install this patch.
-
-[button_layout.hpp](../games/zzz/include/button_layout.hpp) reuses the same
-captured module and the proven effective-UI getter. It requires exactly two
-validated gates with a shared cached-device getter, a Mobile comparison,
-active-component checks and false-return branches. Position additionally has
-a reentrancy flag. Each gate must have exactly one matching application caller
-whose readiness/marker fields agree with that gate. Ambiguous or incomplete
-evidence leaves this optional feature unavailable, without weakening discovery
-for the original touch bridge. A live storage-read failure aborts the optional
-matcher as a whole; it cannot be hidden while accepting a different candidate.
-The core module capture/discovery still fails on its own unreadable evidence.
-No handler RVAs or fingerprints are shipped.
-
-Two result shapes are recognized: the original equality-return/rejoin form,
-and a branched true/false form with a shared global shortcut and duplicated
-initialization checks. This feature only reads the shortcut. The latter shape
-requires both handlers to use the same shortcut and device source. Each copied
-device argument, getter, equality-to-success edge, and false exit must agree with
-its primary path;
-additional unproven device calls reject the feature. The shortcut's storage
-and branch are never edited, and its meaning is not assumed.
-
-[button_layout_patch.hpp](../games/zzz/include/button_layout_patch.hpp) replaces
-local `cmp eax,1` with `cmp eax,eax; nop`. When a copied cold comparison crosses
-an atomic-word boundary, its proven near equality-to-success branch may instead
-become a same-target `jmp; nop`, wholly inside one aligned eight-byte word.
-Other branch shapes are rejected. Device getter/cache, Mobile/active/reentrancy
-checks, and the global shortcut remain unchanged. Original gates have two edit
-sites; gates with copied initialization paths require all four sites.
-
-Installation validates this bounded edit set, its exact allowed byte changes,
-and all captured gate, application, and device-getter code evidence against live
-executable memory before any mutation. It then replaces expected words using
-64-bit compare/exchange. Neighbor bytes stay intact. These checks do not freeze
-other game threads or make the complete edit set one atomic transaction.
-
-Partial installation attempts roll back owned changes. Temporary write/read,
-protection-restoration, or cache-flush failures retain pending cleanup state and
-the original page protection. The worker makes at most three further cleanup
-attempts, one second apart, and logs any remaining state. A changed word or page
-protection is treated as a competing owner: it is preserved, never forced back.
-The worker also checks installed words and removes other owned edits on conflict;
-it never reinstalls a conflicted patch. Normal process exit removes process-local
-state. Optional layout failures leave the existing touch bridge available.
-
-`--probe --zzz-button-layout` validates this path against a read-only disk view;
-the default probe retains its original scope. Probe success, patch installation,
-and observed preview/gameplay behavior are separate evidence levels.
-
 ## Evidence and version adaptation
 
 The checked-in [test data](../games/zzz/testdata/README.md) covers manual oracles

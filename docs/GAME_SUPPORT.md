@@ -185,12 +185,3 @@ establish runtime compatibility.
 A new ZZZ client sample normally calls for discovery/evidence work rather than
 a new game selector or a production version table. See
 [version adaptation](ZZZ_INTERNALS.md#evidence-and-version-adaptation).
-
-## ZZZ button layout option
-
-`--zzz-button-layout` is accepted only with `--ZZZ`, including the read-only
-`--probe`/`--probe-auto` actions. Repeated options and use with another game
-are rejected before launch/elevation. It is never forwarded to the game.
-The launcher passes the flag through its PID-scoped event; UAC relaunch retains
-the parsed CLI option. Runtime patch discovery/application is owned by ZZZ.
-See [ZZZ internals](ZZZ_INTERNALS.md#optional-button-layout-compatibility).

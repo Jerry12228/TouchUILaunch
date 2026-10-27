@@ -122,17 +122,6 @@ both artifacts. See [Game support](GAME_SUPPORT.md).
 directory elsewhere is not automatically ignored. Do not commit local game
 samples, logs, build trees, or private machine paths.
 
-## GitHub Actions builds
-
-[Windows build and tests](../.github/workflows/windows-build.yml) uses the
-standard `windows-2022` hosted runner and the same `scripts/full.ps1` entry as
-local development. Pushes to `master`/`feat/**`, pull requests and manual runs
-build and verify without game binaries. Third-party action revisions are pinned;
-the checkout token is not persisted. Only the tested `dist/` package is uploaded,
-with one-day retention. No Codespaces, larger runner, game samples or installation
-on the developer's PC is required. Download the package for local game/streaming
-acceptance; the workflow does not launch installed games.
-
 ## Generated files
 
 | Generator and inputs | Outputs | Intended use |

@@ -275,7 +275,7 @@ inline Plan discover(const Image& image,uintptr_t ui_getter,uintptr_t initialize
 }
 inline Resolution resolve(const Image& image,uintptr_t ui_getter,uintptr_t initialized,const std::vector<uintptr_t>& references) {
     try {return {discover(image,ui_getter,initialized,references),{}};}
-    // A read failure in this optional matcher rejects the entire feature,
+    // A read failure in this matcher rejects the entire layout correction,
     // never just a candidate. Core capture/discovery must succeed separately.
     catch(const std::exception& ex){return {{},ex.what()};}
 }

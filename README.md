@@ -28,22 +28,6 @@ Examples:
 .\TouchUILaunch.exe --GI --game "path_to_root\GenshinImpact.exe" --extra '-screen-width 1920 -screen-height 1080'
 ```
 
-### ZZZ button layout settings (opt in)
-
-Use `--ZZZ --zzz-button-layout` to enable the game's saved touch-button position
-and size settings on desktop hardware. The default launch behavior is unchanged.
-
-```powershell
-.\TouchUILaunch.exe --ZZZ --zzz-button-layout --game "path_to_root\ZenlessZoneZero.exe" --extra '-use-d3d12' --log
-.\TouchUILaunch.exe --ZZZ --zzz-button-layout --probe --game "path_to_root\ZenlessZoneZero.exe" --log
-```
-
-The payload validates both layout gates from the captured module and changes
-only their local Handheld checks. Global device identity and game files are
-unchanged. Missing/ambiguous targets are skipped with a DLL log; the opt-in
-read-only probe fails if the two gates cannot be validated. Logs distinguish
-`APPLIED` from `SKIPPED`; actual button behavior requires a game-session check.
-
 ## TODO
 
 - Support more games
