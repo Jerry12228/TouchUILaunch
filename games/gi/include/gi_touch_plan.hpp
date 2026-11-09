@@ -42,9 +42,9 @@ struct Rule {
 };
 
 inline const std::array<Rule,11> rules{{
-    {"initial UI mode", "41 56 56 57 53 48 83 EC 28 49 89 CE 80 3D ?? ?? ?? ?? 00 0F 85 ?? ?? ?? ?? 4C 89 F1 E8 ?? ?? ?? ?? 41 89 86 ?? ?? ?? ?? 4C 89 F1 E8 ?? ?? ?? ??"},
+    {"initial UI mode", "41 56 56 57 53 48 83 EC 28 49 89 CE 80 3D ?? ?? ?? ?? 00 0F 85 ?? ?? ?? ?? 4C 89 F1 E8 ?? ?? ?? ?? 41 89 86 ?? ?? ?? ?? 4C 89 F1 E8 ?? ?? ?? ?? 41 89 86 ?? ?? ?? ??"},
     {"silent UI setter", "48 83 EC 28 41 89 D0 48 89 CA 80 3D ?? ?? ?? ?? 00 75 ?? 44 39 82 ?? ?? ?? ?? 74 ?? 44 89 82 ?? ?? ?? ?? 48 83 C4 28 C3"},
-    {"refreshing UI setter", "55 56 57 53 48 83 EC 58 48 8D 6C 24 ?? 48 C7 45 ?? FE FF FF FF 44 89 C3 41 89 D0 48 89 CE 80 3D ?? ?? ?? ?? 00 0F 85 ?? ?? ?? ?? 44 39 86 ?? ?? ?? ?? 0F 84 ?? ?? ?? ?? 44 89 86 ?? ?? ?? ??"},
+    {"refreshing UI setter", "55 56 57 53 48 83 EC 58 48 8D 6C 24 ?? 48 C7 45 ?? FE FF FF FF 44 89 C3 41 89 D0 48 89 CE 80 3D ?? ?? ?? ?? 00 0F 85 ?? ?? ?? ?? 44 39 86 ?? ?? ?? ?? 0F 84 ?? ?? ?? ?? 44 89 86 ?? ?? ?? ?? 48 89 F1 E8 ?? ?? ?? ?? 48 89 F1 48 89 C2 41 89 D8 E8 ?? ?? ?? ?? 48 89 F1 E8 ?? ?? ?? ?? 89 86 ?? ?? ?? ??"},
     {"UI property setter", "89 91 ?? ?? ?? ?? C3 66 0F 1F 84 00 ?? ?? 00 00"},
     {"initial touch input branch", "56 48 83 EC 30 48 89 CE 80 3D ?? ?? ?? ?? 00 0F 85 ?? ?? ?? ?? E8 ?? ?? ?? ?? 83 F8 0B 7E ??"},
     {"input mode setter and refresh", "48 83 EC 28 41 89 D0 48 89 CA 80 3D ?? ?? ?? ?? 00 75 ?? 44 89 82 ?? ?? ?? ?? 48 89 D1 31 D2 48 83 C4 28 E9 ?? ?? ?? ??"},
@@ -118,7 +118,29 @@ inline Plan resolve(const discovery::Image& image) {
           "UI initializer/refresh fields disagree");
     const auto ui_silent = locate(image, rules[1], [&](uintptr_t at) { return field(image, at + 19) == ui_field; });
     check(field(image, ui_silent + 28) == ui_field, "UI silent setter fields disagree");
-    const auto ui_leaf = locate(image, rules[3], [&](uintptr_t at) { return field(image, at) == ui_field; });
+    // The leaf body has no type identity: unrelated types can use the same
+    // displacement (7.2 has two +880 candidates). GI clusters each type's
+    // methods in code. Bound that component by the discovered UI entry points
+    // and their shared layout calculator, rather than a version RVA/distance.
+    // This layout assumption is required even if the leaf is globally unique.
+    const auto layout = discovery::x64::decode(image, ui_init + 43).relative(image);
+    check(discovery::x64::decode(image, ui_refresh + 88).relative(image) == layout &&
+          field(image, ui_init + 48) == field(image, ui_refresh + 93) &&
+          field(image, ui_init + 48) != ui_field,
+          "UI initializer/refresh layout calculations disagree");
+    image.expect(layout, {0x56,0x48,0x83,0xec,0x20,0x48,0x89,0xca});
+    const auto layout_guard = discovery::x64::decode(image, layout + 8);
+    const auto layout_branch = discovery::x64::decode(image, layout + 15);
+    const auto layout_mode = discovery::x64::decode(image, layout + 21);
+    check(layout_guard.cmp_zero_byte(discovery::x64::rip) && layout_branch.condition(5) &&
+          layout_mode.h.opcode == 0x8b && layout_mode.base() == 2 && layout_mode.reg() == 6 &&
+          field(image, layout + 21) == ui_field, "layout calculator does not read the UI mode");
+    validate_window(image, layout, 27);
+    const auto ui_begin = std::min({ui_init, ui_refresh, ui_silent, layout});
+    const auto ui_end = std::max({ui_init, ui_refresh, ui_silent, layout});
+    const auto ui_leaf = locate(image, rules[3], [&](uintptr_t at) {
+        return at > ui_begin && at < ui_end && field(image, at) == ui_field;
+    });
     const auto input_init = locate(image, rules[4]);
     const auto transition = locate(image, rules[6]);
     const auto input_field = field(image, transition + 28);

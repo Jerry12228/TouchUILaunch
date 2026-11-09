@@ -17,7 +17,7 @@ struct ImageFixture {
     std::vector<uint8_t> bytes = std::vector<uint8_t>(0x9000, 0xcc);
     std::vector<uint32_t> locations;
     template<class T> void put(size_t at, T value) { std::memcpy(bytes.data()+at, &value, sizeof(value)); }
-    explicit ImageFixture(uint32_t slide = 0, uint32_t field_shift = 0) {
+    explicit ImageFixture(uint32_t slide = 0, uint32_t field_shift = 0, bool alternate_order = false) {
         std::fill(bytes.begin(), bytes.begin()+0x1000, uint8_t{0});
         put<uint16_t>(0,0x5a4d); put<uint32_t>(0x3c,0x80); put<uint32_t>(0x80,0x4550);
         put<uint16_t>(0x84,0x8664); put<uint16_t>(0x86,2); put<uint16_t>(0x94,0xf0);
@@ -29,7 +29,9 @@ struct ImageFixture {
         section(0x188,0x1000,0x6000,0x60000020); section(0x1b0,0x7000,0x2000,0xc0000040);
         bytes[0x1100]=0xc3;
         for (size_t index=0; index<gi_fixture::windows.size(); ++index) {
-            const auto at=index==13 ? locations[12]+static_cast<uint32_t>(gi_fixture::windows[12].size()) :
+            const auto at=index==14 ? (alternate_order?0x5200u:0x1b00u)+slide :
+                alternate_order && index<4 ? std::array<uint32_t,4>{0x5400,0x5000,0x5800,0x5600}[index]+slide :
+                index==13 ? locations[12]+static_cast<uint32_t>(gi_fixture::windows[12].size()) :
                 static_cast<uint32_t>(0x1400+index*0x200+slide);
             locations.push_back(at);
             auto window=gi_fixture::windows[index];
@@ -41,13 +43,13 @@ struct ImageFixture {
                 if (ins.base()==discovery::x64::rip) {
                     const auto delta=static_cast<int32_t>(0x7200-ins.next());
                     std::memcpy(window.data()+offset+ins.h.len-ins.immediate_size()-4,&delta,4);
-                } else if (field_shift && index<8 && ins.base()>=0 && ins.base()!=4 && ins.displacement_size()==4) {
+                } else if (field_shift && (index<8 || index==14) && ins.base()>=0 && ins.base()!=4 && ins.displacement_size()==4) {
                     const auto displacement=ins.disp();
-                    if (displacement==864 || displacement==372) {
+                    if (displacement==864 || displacement==372 || displacement==832) {
                         const auto changed=displacement+field_shift;
                         std::memcpy(window.data()+offset+ins.h.len-ins.immediate_size()-4,&changed,4);
                     }
-                } else if (field_shift && index>=10 && ins.base()>=0 && ins.base()!=4 && ins.displacement_size()) {
+                } else if (field_shift && index>=10 && index<14 && ins.base()>=0 && ins.base()!=4 && ins.displacement_size()) {
                     // A second gesture/joystick object layout, independent of
                     // the UI/input fields and of the production generator.
                     const auto changed=ins.disp()+4;
@@ -55,7 +57,8 @@ struct ImageFixture {
                     else std::memcpy(window.data()+offset+ins.h.len-ins.immediate_size()-4,&changed,4);
                 }
                 if (ins.call() || ins.jump() || ins.conditional()) {
-                    const auto delta=static_cast<int32_t>(0x1100-ins.next());
+                    const auto target = (index==0 && offset==43) || (index==2 && offset==88) ? (alternate_order?0x5200:0x1b00)+slide : 0x1100;
+                    const auto delta=static_cast<int32_t>(target-ins.next());
                     // Preserve local short-branch topology; relocate external calls.
                     if (ins.immediate_size()==4) std::memcpy(window.data()+offset+ins.h.len-4,&delta,4);
                 }
@@ -89,8 +92,8 @@ struct MemoryFixture {
 };
 
 void discovery_tests() {
-    for (auto slide:{0u,0x70u,0x120u}) for (auto shift:{0u,48u}) {
-        ImageFixture fixture(slide,shift);
+    for (auto slide:{0u,0x70u,0x120u}) for (auto shift:{0u,16u,48u}) for (auto alternate:{false,true}) {
+        ImageFixture fixture(slide,shift,alternate);
         auto plan=resolve(fixture.image());
         require(plan.size()==11,"unexpected UI/joystick patch count");
         for (size_t i=0;i<plan.size();++i) require(plan[i].rva==fixture.locations[i],"discovery used a fixed RVA");
@@ -132,17 +135,38 @@ void discovery_tests() {
         rejects([&]{resolve(missing.image());},"missing signature accepted");
         auto duplicate=fixture;
         std::copy(plan[i].expected.begin(),plan[i].expected.end(),duplicate.bytes.begin()+0x6400);
-        // Use a duplicate without relative addressing to test candidate ambiguity.
-        if (i==3) rejects([&]{resolve(duplicate.image());},"ambiguous target accepted");
+        // A same-field leaf outside the connected UI component belongs to
+        // another type. It must not prevent discovery or be patched (7.2).
+        if (i==3) {
+            const auto filtered=resolve(duplicate.image());
+            require(filtered[3].rva==fixture.locations[3],"unrelated same-field leaf selected");
+            std::copy(plan[i].expected.begin(),plan[i].expected.end(),duplicate.bytes.begin()+0x1900);
+            rejects([&]{resolve(duplicate.image());},"ambiguous UI-component leaf accepted");
+        }
     }
     // Gesture producers are not part of discovery or patching anymore.
     auto without_gestures=fixture;
-    for (size_t i=11;i<gi_fixture::windows.size();++i)
+    for (size_t i=11;i<14;++i)
         std::fill_n(without_gestures.bytes.begin()+without_gestures.locations[i],gi_fixture::windows[i].size(),uint8_t{0xcc});
     const auto without_plan=resolve(without_gestures.image());
     require(without_plan.size()==plan.size(),"removed gesture signatures still required");
     for (size_t i=0;i<plan.size();++i)
         require(without_plan[i].rva==plan[i].rva,"gesture producers affected UI/joystick discovery");
+    // No fallback to a globally unique leaf if the component relationship is lost.
+    auto outside=fixture;
+    std::copy(plan[3].expected.begin(),plan[3].expected.end(),outside.bytes.begin()+0x6400);
+    outside.bytes[outside.locations[3]]=0xcc;
+    rejects([&]{resolve(outside.image());},"out-of-component unique leaf accepted");
+    auto helper_conflict=fixture;
+    helper_conflict.put<int32_t>(helper_conflict.locations[2]+89,
+        static_cast<int32_t>(0x1100-helper_conflict.locations[2]-93));
+    rejects([&]{resolve(helper_conflict.image());},"different layout calculators accepted");
+    auto layout_mode_conflict=fixture;
+    layout_mode_conflict.put<uint32_t>(layout_mode_conflict.locations[14]+23,868);
+    rejects([&]{resolve(layout_mode_conflict.image());},"layout calculator with different UI field accepted");
+    auto layout_field_conflict=fixture;
+    layout_field_conflict.put<uint32_t>(layout_field_conflict.locations[2]+95,836);
+    rejects([&]{resolve(layout_field_conflict.image());},"different layout result fields accepted");
     auto disagreement=fixture;
     disagreement.put<uint32_t>(disagreement.locations[2]+46,868);
     rejects([&]{resolve(disagreement.image());},"disagreeing UI fields accepted");
@@ -432,17 +456,19 @@ void joystick_and_unmodified_gesture_tests() {
 int wmain(int argc,wchar_t** argv) {
     try {
         if (argc==2 && std::wstring_view(argv[1])==L"--child") return 71;
-        if (argc==3 && (std::wstring_view(argv[1])==L"--sample" || std::wstring_view(argv[1])==L"--discover")) {
+        if (argc==3 && (std::wstring_view(argv[1])==L"--sample" || std::wstring_view(argv[1])==L"--sample-7.2" || std::wstring_view(argv[1])==L"--discover")) {
             PreparedImage image(argv[2]);
             for (size_t i=0;i<image.plan.size();++i) {
                 if (std::wstring_view(argv[1])==L"--sample")
                     require(image.plan[i].rva==gi_fixture::sample_rvas[i],"sample discovery differs from independent IDA oracle");
+                if (std::wstring_view(argv[1])==L"--sample-7.2")
+                    require(image.plan[i].rva==gi_fixture::sample72_rvas[i],"7.2 discovery differs from independent IDA oracle");
                 std::cout<<image.plan[i].name<<": 0x"<<std::hex<<image.plan[i].rva<<std::dec<<'\n';
             }
             std::cout<<"PASS: all eleven UI/joystick sample sites located by signatures (read-only). No game launched.\n";
             return 0;
         }
-        require(argc==1,"usage: GITouchTests [--sample <7.1-exe> | --discover <exe>]");
+        require(argc==1,"usage: GITouchTests [--sample <7.1-exe> | --sample-7.2 <7.2-exe> | --discover <exe>]");
         discovery_tests();execution_tests();child_tests();joystick_and_unmodified_gesture_tests();
         rejects([]{PreparedImage unsupported(module_path());},"unrelated executable accepted");
         std::cout<<"PASS: GI discovery, UI/joystick execution, unmodified gesture deltas and owned child lifecycle.\n";

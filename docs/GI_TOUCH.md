@@ -28,6 +28,13 @@ object field offsets. It scans executable, nonwritable PE sections and requires
 one validated match for every one of eleven instruction windows. Encoded
 addresses and object displacements are masked, then decoded. UI initializer
 and setter fields must agree; input transition and setter fields must agree.
+The initializer and refreshing setter must call the same layout calculator,
+store its result in the same separate field, and that calculator must read the
+UI-mode field. The leaf setter must lie inside the code interval spanned by
+this calculator and the three discovered UI entry points. This uses GI's
+observed per-type function clustering, not a fixed RVA, byte-distance limit,
+or whichever candidate appears first. An identical same-field setter outside
+that interval is ignored; multiple candidates inside it are rejected.
 Gesture producers are neither discovery requirements nor patch targets.
 Branch destinations used by the DPI and caption
 changes, the 360.0f fallback, executable call targets, and data references are
@@ -37,17 +44,54 @@ Offsets within matched instruction sequences describe instruction boundaries,
 not locations in a particular EXE. Register use, opcodes, field relationships,
 and relevant enum semantics must still match the analyzed code shape. A version
 that moves these routines, relocates their operands, or moves supported fields
-can be discovered automatically. A changed compiler/code shape or ambiguous
+can be discovered automatically. The leaf check additionally requires the
+observed UI method clustering: it cannot establish type ownership from the seven-byte leaf alone. A build
+that interleaves unrelated same-field leaves in that interval or moves the UI
+leaf outside it needs renewed analysis. A changed compiler/code shape or ambiguous
 match is rejected; there is no fixed-address fallback. This is not a promise
 of compatibility with every future build or runtime hotfix.
 
-Only the supplied 7.1 EXE has been checked as a real file. Its eleven
+The supplied 7.1 and 7.2 EXEs have been checked as real files. All eleven
 locations are compared with independent IDA oracles in
 [test-only evidence](../games/gi/tests/gi_pattern_fixture.hpp). The default tests
-also relocate code and UI/input/joystick fields in synthetic PEs, and verify
-that missing gesture-producer signatures do not prevent UI/joystick discovery.
-Other actual versions and this follow-up's live streaming behavior remain
-unverified.
+relocate and reorder the UI component, move UI/input/layout/joystick fields,
+exercise the loaded-image reader, reject inconsistent helper targets/fields
+and in-component duplicate leaves, and ignore out-of-component same-field
+leaves. Missing gesture-producer signatures still do not prevent discovery.
+Other actual versions and live streaming behavior remain unverified.
+
+### 7.2 logic review and ambiguity fix
+
+Static analysis of the supplied 7.2 executable supports retaining all existing
+eleven patches. Mobile UI and TouchScreen input remain independent states;
+no new touch-enabling patch was identified. Preferred-base VAs below are
+analysis evidence only; production does not consume this table.
+
+| 7.2 evidence | Finding |
+| --- | --- |
+| UI initialization `0x14A211520`, default selector `0x14A211A90` | Stores UI mode at `this+880` (7.1: `+864`). The selector still chooses mobile `0`, PC `1`, and console `2`; forcing its result to zero remains appropriate. |
+| Layout selection `0x14A1F6EC0`, calculator `0x14A205AB0` | Both read `+880`; modes `0/1/2` still select the mobile/PC/console canvas paths. Init and refresh both call the calculator and store its result at `+808` (7.1: `+832`). |
+| UI setters `0x14A212B20`, `0x14A2193A0`, `0x14A207BF0` | Conditional, refreshing and leaf setters still write the same UI mode. Existing argument/result clamps retain their meaning. |
+| Input initialization `0x14C29F420`, setter `0x14C2A8580`, transition `0x14C2A04C0` | Input field moves to `+344` (7.1: `+372`). Zero still follows the touch-only path; keyboard-with-touch, keyboard/mouse and joypad remain `1/2/3`. Existing refresh calls remain intact. |
+| Coordinator `0x14C2A7620` | Still carries UI mode in `ebx`, input mode in `r14d`, contains an inlined UI store and invokes the input transition. Both arguments must still be clamped. |
+| DPI `0x151D3B663`, caption `0x14D496DE3` | Same 360.0f fallback/store relationship and mobile caption branch topology. |
+| Joystick copy `0x153282E89` | Still copies cached physical width into joystick `+172`; the existing factor of 1.0 and untouched gesture producers are retained. |
+
+The original failure was reproducible before game creation:
+`UI property setter: expected one validated match, got 2`.
+Both `0x14A207BF0` and the unrelated `0x14FF516A0` have the identical body
+`mov [rcx+880],edx; ret` and matching alignment padding. Field agreement alone
+therefore no longer identifies the UI setter. The decoded shared calculator
+at `0x14A205AB0` and the UI entry points bound the interval
+`0x14A205AB0..0x14A2193A0`; only `0x14A207BF0` lies inside it. In 7.1 the
+same relationships select `0x14BA6FD00` without version-specific branching.
+The launcher continues to validate the entire discovered plan against loaded
+instructions before any write.
+
+Verification: the default nine-case CTest suite, CLI/package checks, and both
+read-only GI sample oracles pass. This is static/sample and owned-fixture
+evidence; it does not certify actual touchscreen delivery, camera gestures,
+or live joystick behavior in 7.2.
 
 ## Joystick and gesture-path evidence
 

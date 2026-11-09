@@ -158,12 +158,17 @@ slots, unreadable storage, unknown fixture hashes, removed backing files, and
 memory-only mutations. An unrecognized sample hash fails the test's oracle
 selection even though production discovery has no hash allowlist.
 
+GI's `-GiSample` wrapper option uses the 7.1 oracle. For the independently
+inspected 7.2 sample use `GITouchTests --sample-7.2`; `--discover` accepts a
+supplied EXE without an address oracle. These modes only read files.
+
 Direct read-only checks on a built tree are also available:
 
 ```powershell
 ./build/windows-x64-release/Release/ProfileDiscoveryTests.exe 'C:/Samples/ZZZ/3.1/GameAssembly.dll'
 ./build/windows-x64-release/Release/MobileUITests.exe 'C:/Samples/SR/GameAssembly.dll'
 ./build/windows-x64-release/Release/GITouchTests.exe --sample 'C:/Samples/GI/GenshinImpact.exe'
+./build/windows-x64-release/Release/GITouchTests.exe --sample-7.2 'C:/Samples/GI/7.2/GenshinImpact.exe'
 ```
 
 For direct use of the samples preset, configure its required paths first:
