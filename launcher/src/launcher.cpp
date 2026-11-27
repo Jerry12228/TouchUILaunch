@@ -84,10 +84,11 @@ void usage() {
         "  --game <exe>                          Required for GI/SR/WW/NTE; optional for ZZZ\n"
         "  --extra <arguments>                   Append one raw argument string to the selected game\n"
         "  --WW                                  Launch with -CloudGame -CloudGamePlatform=Android\n"
-        "  --NTE                                 Experimental NTE UI via owned official launcher\n"
-        "  --nte-launcher <exe>                   NTE official launcher path (otherwise locate beside Client)\n"
-        "  --nte-direct                           NTE: independent SDK login host and touch UI\n"
-        "  --nte-region <CN|Global>                NTE direct login region (otherwise auto-detect)\n"
+        "  --NTE                                 NTE: independent SDK login host and touch UI by default\n"
+        "  --nte-official                        NTE: use the official launcher relay instead\n"
+        "  --nte-launcher <exe>                   NTE: select official relay with this launcher path\n"
+        "  --nte-direct                          Compatibility alias for default independent NTE login\n"
+        "  --nte-region <CN|Global>               NTE independent login region (otherwise auto-detect)\n"
         "  --ZZZ --probe [--game <exe>]           Verify files only; never launch/inject\n"
         "  --probe-auto                          Compatibility alias for --probe (ZZZ)\n"
         "  --log                                 Console + launcher file logs; ZZZ/NTE DLL log\n"
@@ -119,7 +120,7 @@ int wmain(int argc,wchar_t** argv) {
         }
         fs::path payload=own_dir/L"TouchUILaunch.dll";
         std::wstring action,extra_arguments;bool explicit_game{},explicit_action{},explicit_extra{},explicit_nte_launcher{};
-        fs::path nte_launcher;bool nte_direct{};std::wstring nte_region;
+        fs::path nte_launcher;bool nte_direct{},nte_official{};std::wstring nte_region;
         std::optional<touchui::nte::LoginHostPlan> nte_host;
         std::optional<game::Kind> selected;
         std::vector<std::wstring> forwarded_args;
@@ -133,6 +134,7 @@ int wmain(int argc,wchar_t** argv) {
             else if(arg==L"--extra"&&i+1<argc){if(explicit_extra)throw std::runtime_error("Duplicate --extra");extra_arguments=argv[++i];explicit_extra=true;forwarded_args.push_back(extra_arguments);}
             else if(arg==L"--nte-launcher"&&i+1<argc){if(explicit_nte_launcher)throw std::runtime_error("Duplicate --nte-launcher");nte_launcher=fs::weakly_canonical(fs::absolute(argv[++i]));explicit_nte_launcher=true;forwarded_args.push_back(nte_launcher.wstring());}
             else if(arg==L"--nte-direct"){if(nte_direct)throw std::runtime_error("Duplicate --nte-direct");nte_direct=true;}
+            else if(arg==L"--nte-official"){if(nte_official)throw std::runtime_error("Duplicate --nte-official");nte_official=true;}
             else if(arg==L"--nte-region"&&i+1<argc){if(!nte_region.empty())throw std::runtime_error("Duplicate --nte-region");nte_region=argv[++i];forwarded_args.push_back(nte_region);if(nte_region!=L"CN"&&nte_region!=L"Global")throw std::runtime_error("--nte-region must be CN or Global");}
             else if(arg==L"--probe"||arg==L"--probe-auto") {
                 if(explicit_action)throw std::runtime_error("Choose only one action");action=arg.substr(2);explicit_action=true;
@@ -143,8 +145,11 @@ int wmain(int argc,wchar_t** argv) {
         game::validate(selected,game,explicit_game,!action.empty());
         if(explicit_nte_launcher&&*selected!=game::Kind::NTE)throw std::runtime_error("--nte-launcher requires --NTE");
         if(nte_direct&&*selected!=game::Kind::NTE)throw std::runtime_error("--nte-direct requires --NTE");
+        if(nte_official&&*selected!=game::Kind::NTE)throw std::runtime_error("--nte-official requires --NTE");
         if(nte_direct&&explicit_nte_launcher)throw std::runtime_error("--nte-direct cannot be combined with --nte-launcher");
-        if(!nte_region.empty()&&(!nte_direct||*selected!=game::Kind::NTE))throw std::runtime_error("--nte-region requires --NTE --nte-direct");
+        if(nte_direct&&nte_official)throw std::runtime_error("--nte-direct cannot be combined with --nte-official");
+        const bool nte_use_official=nte_official||explicit_nte_launcher;
+        if(!nte_region.empty()&&(*selected!=game::Kind::NTE||nte_use_official))throw std::runtime_error("--nte-region requires independent --NTE login");
         if(*selected==game::Kind::NTE)payload=own_dir/touchui::nte::payload_filename;
         if(log_enabled)std::cout<<"Selected game: "<<launcher_log::utf8(game::flag(*selected))<<"; executable: "<<launcher_log::utf8(game.wstring())<<std::endl;
         if(action==L"probe"||action==L"probe-auto") {
@@ -156,12 +161,12 @@ int wmain(int argc,wchar_t** argv) {
         }
         if((*selected==game::Kind::ZZZ||*selected==game::Kind::NTE)&&!fs::is_regular_file(payload))throw std::runtime_error("Selected payload DLL missing");
         game::require_stopped(!find_games(*selected).empty());
-        if(*selected==game::Kind::NTE&&!nte_direct) {
+        if(*selected==game::Kind::NTE&&nte_use_official) {
             nte_launcher=touchui::nte::launcher_for(game,nte_launcher);
             touchui::nte::installation_root(game,nte_launcher);
             touchui::nte::require_launcher_stopped();
         }
-        if(*selected==game::Kind::NTE&&nte_direct) {
+        if(*selected==game::Kind::NTE&&!nte_use_official) {
             nte_host=touchui::nte::login_host_for(game,own_dir,nte_region);
             touchui::nte::require_launcher_stopped();
             if(log_enabled)std::wcout<<L"NTE independent login region: "<<nte_host->region<<L"\n";
@@ -188,7 +193,7 @@ int wmain(int argc,wchar_t** argv) {
         game::require_stopped(!find_games(*selected).empty());
         if(*selected==game::Kind::NTE) {
             touchui::nte::launch_mobile(game,nte_launcher,payload,log_enabled,extra_arguments,
-                [&](std::string_view stage){diagnostics.stage(stage);},nte_direct,nte_host?&*nte_host:nullptr);
+                [&](std::string_view stage){diagnostics.stage(stage);},!nte_use_official,nte_host?&*nte_host:nullptr);
             return 0;
         }
         std::unique_ptr<touchui::gi::PreparedImage> gi_image;

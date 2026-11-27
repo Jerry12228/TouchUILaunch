@@ -48,6 +48,7 @@ def main():
         assert b'--extra' in result.stdout
         assert b'--nte-launcher' in result.stdout
         assert b'--nte-direct' in result.stdout
+        assert b'--nte-official' in result.stdout
         assert b'--nte-region' in result.stdout
         assert all(flag in result.stdout for flag in (b'--GI', b'--SR', b'--ZZZ', b'--WW', b'--NTE'))
         assert b'-CloudGame -CloudGamePlatform=Android' in result.stdout
@@ -129,7 +130,10 @@ def main():
         for options in (
                 ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-direct'],
                 ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-launcher', 'a'],
-                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-region', 'Global'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-official', '--nte-official'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-official'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-official', '--nte-region', 'Global'],
+                ['--ZZZ', '--game', str(fixture / 'ZenlessZoneZero.exe'), '--nte-official'],
                 ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-region', 'invalid'],
                 ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-region', 'CN', '--nte-region', 'Global'],
                 ['--ZZZ', '--game', str(fixture / 'ZenlessZoneZero.exe'), '--nte-direct'],
@@ -142,8 +146,13 @@ def main():
         wrong_arch.write_bytes(b'not a PE executable')
         result = run(['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-launcher', str(wrong_arch), '--log'], 2, logged=True)
         assert b'Invalid NTE launcher PE header' in result.stderr
-        result = run(['--NTE', '--nte-direct', '--game', str(fixture / 'HTGame.exe'), '--elevation-relaunch', '--log'], 2, logged=True)
-        assert b'NTE direct login requires the installed Client directory layout' in result.stderr
+        for mode in ([], ['--nte-direct'], ['--nte-region', 'CN'], ['--nte-region', 'Global']):
+            result = run(['--NTE', *mode, '--game', str(fixture / 'HTGame.exe'), '--elevation-relaunch', '--log'], 2, logged=True)
+            assert b'NTE direct login requires the installed Client directory layout' in result.stderr
+        result = run(['--NTE', '--nte-official', '--game', str(fixture / 'HTGame.exe'), '--elevation-relaunch', '--log'], 2, logged=True)
+        assert b'Invalid NTE launcher PE header' in result.stderr, 'official mode must select the launcher route'
+        result = run(['--NTE', '--nte-official', '--nte-launcher', str(wrong_arch), '--game', str(fixture / 'HTGame.exe'), '--elevation-relaunch', '--log'], 2, logged=True)
+        assert b'Invalid NTE launcher PE header' in result.stderr
         sdk_folder = fixture / 'NTEGlobal'
         sdk_folder.mkdir()
         (sdk_folder / 'WPGameClientSDK_64.dll').write_bytes(b'not a PE executable')

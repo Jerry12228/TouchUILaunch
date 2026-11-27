@@ -26,26 +26,29 @@
 .\TouchUILaunch.exe --SR --game "path_to_root\StarRail.exe"
 .\TouchUILaunch.exe --ZZZ --game "path_to_root\ZenlessZoneZero.exe"
 .\TouchUILaunch.exe --WW --game "path_to_root\Client\Binaries\Win64\Client-Win64-Shipping.exe"
-.\TouchUILaunch.exe --NTE --game "path_to_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
-.\TouchUILaunch.exe --NTE --nte-direct --nte-region CN --game "path_to_cn_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
-.\TouchUILaunch.exe --NTE --nte-direct --nte-region Global --game "path_to_global_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
+.\TouchUILaunch.exe --NTE --nte-region CN --game "path_to_cn_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
+.\TouchUILaunch.exe --NTE --nte-region Global --game "path_to_global_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
+.\TouchUILaunch.exe --NTE --nte-official --game "path_to_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
 .\TouchUILaunch.exe --GI --game "path_to_root\GenshinImpact.exe" --extra '-screen-width 1920 -screen-height 1080'
 ```
 
 请先退出目标游戏；异环还需退出官方启动器。NTE 使用启动器旁的
-`TouchUILaunch.NTE.dll`，ZZZ 使用 `TouchUILaunch.dll`。NTE 默认挂起创建已安装的官方启动器并加载进程创建桥接代码，请在五分钟内点击其中的开始游戏。新建游戏的主线程恢复前
+`TouchUILaunch.NTE.dll`，ZZZ 使用 `TouchUILaunch.dll`。添加 `--nte-official` 时，NTE 挂起创建已安装的官方启动器并加载进程创建桥接代码，请在五分钟内点击其中的开始游戏。新建游戏的主线程恢复前
 即加载我们的 DLL，之后等待 Unreal 初始化，安装移动端判定并通过原导航设置函数
 请求 Touch 输入。如果无法自动找到官方启动器，可补充 `--nte-launcher <exe路径>`。
 初始化失败会关闭本次新建的启动器及其游戏进程树。
 日志位于启动器旁的 `logs/`。2026-11-27 已通过本构建的日志、用户截图与操作反馈验证国际服 1.5.5 的移动 HUD
 及基本操作；多指、串流和场景切换仍按独立用例验收，详见 [NTE 实现与测试说明](docs/NTE_INTERNALS.md)。
 
-添加 `--nte-direct` 后，由随包的 `nte-login-host/Nte.LoginHost.exe` 提供独立的
+NTE 默认由随包的 `nte-login-host/Nte.LoginHost.exe` 提供独立的
 SDK 平台环境、登录窗口和会话，无需运行官方启动器进程。构建时加 `-NteLoginHost`，
 需要 .NET 10 SDK 和固定版本的 Avalonia 依赖；发布包自带运行时。请保留完整宿主目录。
 使用 `--nte-region CN` 选择国服，`--nte-region Global` 选择国际服；只有一个已安装区域时可自动识别。
 仍需保留对应区域的官方 SDK、配置及资源文件，客户端更新继续使用官方启动器。
 程序只接受已适配的启动器／SDK 组合。
+`--nte-direct` 保留为默认独立登录方式的兼容参数；
+`--nte-launcher <exe路径>` 也会选择官方中转方式并指定启动器路径。
+官方方式不能与 `--nte-region` 或 `--nte-direct` 同时使用。
 
 原生启动器挂起创建独立宿主并安装进程创建中转，新游戏主线程运行前会加载触控 DLL。
 宿主负责对应区域的启动参数、SDK 对象和真实登录，在游戏运行期间持续保留会话。

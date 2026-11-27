@@ -115,7 +115,7 @@ propagating to further children.
 
 ## Independent SDK login host
 
-`--NTE --nte-direct --nte-region CN|Global --game <installed HTGame.exe>`
+`--NTE --nte-region CN|Global --game <installed HTGame.exe>`
 starts the bundled self-contained `nte-login-host/Nte.LoginHost.exe`, rather
 than bare HTGame. `nte_login_host.hpp` resolves the exact installed Client
 layout and region before elevation; ambiguous installations require a region.
@@ -193,9 +193,10 @@ The previous bare direct experiment reached UI Ready but had no working login,
 including a no-payload control with WPGameClientSDK_64.dll loaded. Arguments
 and ArcGameSDKSharePath alone did not create a platform/session host. Server
 switching and exit worked, but Enter Game only played a click sound and Logout
-was absent. The bare path remains internal for owned loader fixtures; the public
-`--nte-direct` now uses the complete SDK host above. The working official relay
-remains the default. Both launch modes are included in the same source tree.
+was absent. The bare path remains internal for owned loader fixtures;
+the default `--NTE` route now uses the complete SDK host above.
+`--nte-direct` remains a compatibility alias. `--nte-official` (or an explicit
+`--nte-launcher` path) selects the official relay. Both launch modes are included in the same source tree.
 
 ## Current limits
 
@@ -252,10 +253,10 @@ Build/package and run the default fixture suite first. For independent login,
 include `-NteLoginHost` in the build and test commands. Exit NTE, its login host
 and the official launchers before each deliberate live session. Choose a route:
 
-- Official relay: `--NTE --game <installed HTGame.exe> --log`, then click Start
+- Official relay: `--NTE --nte-official --game <installed HTGame.exe> --log`, then click Start
   in the newly opened official launcher.
-- Independent CN: `--NTE --nte-direct --nte-region CN --game <installed HTGame.exe> --log`.
-- Independent Global: `--NTE --nte-direct --nte-region Global --game <installed HTGame.exe> --log`.
+- Independent CN: `--NTE --nte-region CN --game <installed HTGame.exe> --log`.
+- Independent Global: `--NTE --nte-region Global --game <installed HTGame.exe> --log`.
 
 The user completes account authentication in the host/provider UI. Record:
 

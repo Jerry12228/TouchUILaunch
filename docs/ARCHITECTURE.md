@@ -106,7 +106,7 @@ The common path in [wmain](../launcher/src/launcher.cpp) is:
 | SR | Suspended main thread; load/capture GameAssembly, resolve UI state, start repeated writer | After worker startup and main-thread resume |
 | WW | Normal process with cloud UI arguments | Immediately after process creation |
 | ZZZ | Normal process; wait for GameAssembly, inject adjacent DLL, observe startup event | After the payload worker publishes its startup event |
-| NTE | Suspended official launcher relay by default, or bundled regional SDK/login host with --nte-direct; bridge early-loads the newly created game DLL, then waits for UnrealWindow and installs UI hooks | After successful UI installation; failure/cancellation cleans the newly created launcher/game job |
+| NTE | Bundled regional SDK/login host by default; --nte-official selects the suspended official launcher relay; bridge early-loads the newly created game DLL, then waits for UnrealWindow and installs UI hooks | After successful UI installation; failure/cancellation cleans the newly created launcher/game job |
 
 `game::Child` closes its process/thread handles on destruction. Until
 `release()`, its destructor also terminates the process it created and waits

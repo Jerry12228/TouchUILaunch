@@ -102,7 +102,7 @@ should not terminate it. This distinction is covered by
 ## NTE payload loading failures
 
 An outer `elevated launcher exited with code 2` means the elevated launcher's
-own log contains the failing stage. `--nte-direct` now starts the independent
+own log contains the failing stage. Default `--NTE` startup uses the independent
 SDK host, with a creation relay that early-loads the touch DLL in its new game.
 The older bare direct path could show UI Ready without a login session; its
 Enter Game click sound was not an input failure. The public route now supplies
@@ -115,7 +115,8 @@ are under `%LocalAppData%\TouchUILaunch\NTE\Diagnostics\`: inspect fixed
 phase and failure keys, not account files. `sdk-environment-acknowledged`,
 `sdk-registration-validated`, `login-requested`, and
 `authenticated-identity-delivered` distinguish platform startup from login.
-Use the official relay while an SDK profile is unverified or unsupported.
+Use `--nte-official` for the official relay while an SDK profile is unverified
+or unsupported. There is no automatic fallback to a different login route.
 
 `native bool prologue is unsupported` occurs after DLL mapping, during UI
 discovery. Its RVA and bounded `entry` bytes identify an unrecognized native

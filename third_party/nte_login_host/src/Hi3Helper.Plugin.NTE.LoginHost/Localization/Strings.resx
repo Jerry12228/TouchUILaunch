@@ -528,7 +528,7 @@ Enable Remember this account when signing in with a verification code.</value>
     <value>Prefer the official login flow?</value>
   </data>
   <data name="NoticeChoice" xml:space="preserve">
-    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+    <value>To use official sign-in, exit the game and run TouchUILaunch with --nte-official. The official relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
   </data>
   <data name="OfficialLauncherConfirm" xml:space="preserve">
     <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>

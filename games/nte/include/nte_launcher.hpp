@@ -11,7 +11,8 @@ inline std::filesystem::path launcher_for(const std::filesystem::path& game,cons
     auto launcher=requested;
     if(launcher.empty()) {
         for(auto folder=game.parent_path();folder!=folder.root_path();folder=folder.parent_path()) {
-            for(const auto name:{L"NTEGlobalLauncher.exe",L"NTEGlobalGame.exe",L"NTEGame.exe"}) {
+            for(const auto name:{L"NTEGlobalLauncher.exe",L"NTEGlobalGame.exe",L"NTEGame.exe",
+                L"NTEGlobal/NTEGlobalGame.exe",L"NTELauncher/NTEGame.exe"}) {
                 if(std::filesystem::is_regular_file(folder/name)){launcher=folder/name;break;}
             }
             if(!launcher.empty())break;

@@ -37,9 +37,10 @@ commands and distribution instructions.
 | --- | --- |
 | `--game <exe>` | Canonicalize the selected executable path; duplicate occurrences are rejected |
 | `--extra <arguments>` | Append one raw argument string to the selected game; duplicate occurrences are rejected |
-| `--nte-direct` | NTE only: independent SDK login host and early-loaded touch DLL; incompatible with --nte-launcher |
-| `--nte-region <CN\|Global>` | NTE direct mode only: select installed SDK/login region; otherwise detect a unique region |
-| `--nte-launcher <exe>` | NTE only: select the official launcher; otherwise search ancestors of the game path |
+| `--nte-official` | NTE only: select the official launcher relay instead of the default independent SDK host |
+| `--nte-direct` | Compatibility alias for default independent NTE login; conflicts with official relay options |
+| `--nte-region <CN\|Global>` | NTE independent mode only: select installed SDK/login region; otherwise detect a unique region |
+| `--nte-launcher <exe>` | NTE only: select official relay with an explicit launcher path; --nte-official otherwise searches near the game |
 | `--log` | Enable console and launcher file diagnostics; also enable the ZZZ/NTE payload log |
 | `--ZZZ --probe` | Read-only GameAssembly file diagnostic and payload-existence check; no launch, injection, or elevation |
 | `--probe-auto` | Compatibility alias for `--probe`, restricted to ZZZ |
@@ -171,7 +172,7 @@ establish runtime compatibility.
 
 ## NTE launch and independent login
 
-`--NTE --game <HTGame.exe>` starts a new owned official launcher and loads the
+`--NTE --nte-official --game <HTGame.exe>` starts a new owned official launcher and loads the
 adjacent `TouchUILaunch.NTE.dll` as a process-creation bridge before resuming it.
 Exit existing official launchers first, then click Start in the newly opened
 launcher within five minutes. The bridge propagates through known official
@@ -188,7 +189,7 @@ to a discovered game or launcher PID is used. Original caller-requested child
 suspension is preserved. Module full-path verification and startup handshakes
 are required; a nonzero loader thread exit code never proves success.
 
-With `--nte-direct`, the coordinator starts the optional bundled independent
+By default, `--NTE --game <HTGame.exe>` starts the bundled independent
 SDK host suspended and installs the creation relay there. The host supplies
 regional SDK context and authenticates through the publisher service; its
 creation-owned game receives the touch DLL before main. `--nte-region CN` and
@@ -197,7 +198,9 @@ requires exactly one installed region. Keep the matching installed SDK files
 and the complete bundled host folder. The host remains alive for game session
 callbacks after native UI initialization completes. Login/world acceptance is
 separate from UI Ready. See [NTE internals](NTE_INTERNALS.md#independent-sdk-login-host)
-for profile coverage and current live results.
+for profile coverage and current live results. `--nte-direct` remains an alias
+for the default. An explicit `--nte-launcher` also selects the official route;
+its mode conflicts with `--nte-region` and `--nte-direct`.
 
 The payload captures the main module once, resolves UE registrations and code
 relationships, waits up to 30 seconds for live reflection caches, and installs

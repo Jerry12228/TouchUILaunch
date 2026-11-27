@@ -26,22 +26,22 @@ Examples:
 .\TouchUILaunch.exe --SR --game "path_to_root\StarRail.exe"
 .\TouchUILaunch.exe --ZZZ --game "path_to_root\ZenlessZoneZero.exe"
 .\TouchUILaunch.exe --WW --game "path_to_root\Client\Binaries\Win64\Client-Win64-Shipping.exe"
-.\TouchUILaunch.exe --NTE --game "path_to_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
-.\TouchUILaunch.exe --NTE --nte-direct --nte-region CN --game "path_to_cn_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
-.\TouchUILaunch.exe --NTE --nte-direct --nte-region Global --game "path_to_global_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
+.\TouchUILaunch.exe --NTE --nte-region CN --game "path_to_cn_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
+.\TouchUILaunch.exe --NTE --nte-region Global --game "path_to_global_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
+.\TouchUILaunch.exe --NTE --nte-official --game "path_to_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
 .\TouchUILaunch.exe --GI --game "path_to_root\GenshinImpact.exe" --extra '-screen-width 1920 -screen-height 1080'
 ```
 
 Exit the selected game before launching. For NTE, also exit the official launcher.
 NTE requires the adjacent `TouchUILaunch.NTE.dll`; ZZZ uses `TouchUILaunch.dll`.
-NTE starts the official launcher with a process-creation relay. Click Start in
+With `--nte-official`, NTE starts the official launcher with a process-creation relay. Click Start in
 that launcher within five minutes. Its new game child loads our DLL before its
 main thread resumes; the worker then waits for Unreal initialization and installs
 mobile predicates and Touch navigation requests. Use `--nte-launcher <exe>` if
 the official launcher cannot be located beside `Client`. Setup failure closes
 this newly created launcher/game tree. Logs are under `logs/` beside the launcher.
 
-With `--nte-direct`, the optional bundled `nte-login-host/Nte.LoginHost.exe`
+By default, NTE uses the bundled `nte-login-host/Nte.LoginHost.exe`, which
 provides the SDK platform context, login window and session for the game without
 starting an official launcher process. Build with `-NteLoginHost` (requires .NET
 10 SDK and the pinned Avalonia packages). The published host is self-contained.
@@ -49,6 +49,9 @@ Choose `--nte-region CN` or `--nte-region Global`; a single installed region can
 be detected automatically. Keep the complete host folder beside the launcher.
 The selected region's installed SDK/configuration files are still required;
 updates use the official launcher. Only supported launcher/SDK pairs are accepted.
+`--nte-direct` remains a compatibility alias for this default.
+`--nte-launcher <exe>` also selects official relay mode with an explicit path.
+Official mode cannot be combined with `--nte-region` or `--nte-direct`.
 
 The native coordinator starts the login host suspended and installs the same
 creation relay so the newly owned game loads the touch DLL before main. The

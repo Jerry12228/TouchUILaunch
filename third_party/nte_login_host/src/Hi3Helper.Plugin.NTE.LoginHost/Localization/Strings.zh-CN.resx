@@ -528,7 +528,7 @@
     <value>不放心时，可以使用官方登录流程</value>
   </data>
   <data name="NoticeChoice" xml:space="preserve">
-    <value>如需使用官方登录流程，请先正常退出游戏，再运行 TouchUILaunch 时省略 --nte-direct。默认模式会打开对应安装目录的官方启动器，随后点击开始游戏；已保存账户不会因此删除。</value>
+    <value>如需使用官方登录流程，请先正常退出游戏，再运行 TouchUILaunch 时添加 --nte-official。官方中转模式会打开对应安装目录的官方启动器，随后点击开始游戏；已保存账户不会因此删除。</value>
   </data>
   <data name="OfficialLauncherConfirm" xml:space="preserve">
     <value>官方启动器必须位于当前游戏安装目录内：国服 NTELauncher，国际版 NTEGlobal。点击“确定”后，将修改该区服在 TouchUILaunch 中的游戏设置，启用官方启动器后台静默启动，并关闭当前游戏进程；下次启动使用官方启动器。官方登录、验证或更新所需窗口仍可能出现。已保存账号会保留。是否继续？</value>

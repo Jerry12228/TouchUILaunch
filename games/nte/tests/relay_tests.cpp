@@ -114,6 +114,15 @@ void run(const fs::path& managed_host={}) {
     relay::copy(config.login_host,(folder.parent_path()/L"Nte.LoginHost.exe").wstring());
     check(relay::classify(config,config.login_host)==relay::Role::Bridge,"explicit SDK host outside installation accepted");
     check(!relay::classify(config,folder/L"Nte.LoginHost.exe"),"same host filename at different path rejected");
+    for(const auto region:{L"CN",L"Global"}) {
+        const auto root=folder/region;
+        const auto client=root/L"Client/WindowsNoEditor/HT/Binaries/Win64/HTGame.exe";
+        const auto launcher=root/(std::wstring_view(region)==L"CN"?L"NTELauncher/NTEGame.exe":L"NTEGlobal/NTEGlobalGame.exe");
+        fs::create_directories(client.parent_path());fs::create_directories(launcher.parent_path());
+        fs::copy_file(own,client);fs::copy_file(own,launcher);
+        check(relay::same_path(launcher_for(client),launcher),"official mode locates installed regional launcher");
+        check(relay::same_path(installation_root(client,launcher),root),"regional official launcher shares exact installation root");
+    }
     {
         const auto client=folder/L"Client/WindowsNoEditor/HT/Binaries/Win64/HTGame.exe";
         fs::create_directories(client.parent_path());fs::copy_file(own,client);
