@@ -10,14 +10,48 @@ This project enables touch UI support for several PC games.
 - Honkai: Star Rail
 - Zenless Zone Zero
 - Wuthering Waves
-- Neverness to Everness (NTE; CN direct login/touch accepted, Global relay HUD/controls and direct login verified)
+- Neverness to Everness (NTE)
 
 ## Usage
 
-1. Download a build from [Releases](https://github.com/Jerry12228/TouchUILaunch/releases), or build from source. Keep the packaged executable and DLLs together; NTE direct login also needs the complete `nte-login-host/` folder.
+1. Download the latest build from [Releases](https://github.com/Jerry12228/TouchUILaunch/releases), or build from source. Keep the packaged launcher and DLLs in the same directory; NTE direct login also requires the complete `nte-login-host/` folder.
 2. Run one of the commands below from that directory, replacing the sample path with the path to your game's executable.
 
-Choose the target game with exactly one of `--GI`, `--SR`, `--ZZZ`, `--WW`, or `--NTE`. Use `--game` to provide the executable path, `--log` to enable console logging, and `--extra <arguments>` to append one raw argument string. Quote the complete extra string when it contains spaces. NTE relay mode passes extra arguments to its official launcher; NTE direct mode and other games receive them directly. WW keeps its built-in cloud UI arguments before them.
+### Parameters
+
+The parameters are divided into four categories: **game selection, game path, game-specific options, and other options**.
+
+1. **Game selection (required):**
+   - Genshin Impact: `--GI`
+   - Honkai: Star Rail: `--SR`
+   - Zenless Zone Zero: `--ZZZ`
+   - Wuthering Waves: `--WW`
+   - Neverness to Everness: `--NTE`
+
+2. **Game path (required):**
+
+   Use `--game` to specify the path to the game executable, for example:
+
+   ```sh
+   --game 'path/to/your/game/xxxx.exe'
+   ```
+
+3. **Game-specific options:**
+
+   NTE:
+
+   | Option | Required | Description | Value |
+   | --- | --- | --- | --- |
+   | `--nte-region <region>` | No | Select the NTE client region to launch | `CN` or `Global` |
+   | `--nte-official` | No | Use the official launcher to start the game. Run this launcher first, then start the game from the official launcher while this launcher is waiting. | None |
+   | `--nte-launcher <path-to-exe>` | No | Specify the official launcher path when it cannot be found automatically in official relay mode | String |
+
+4. **Other options:**
+
+   | Option | Required | Description | Value |
+   | --- | --- | --- | --- |
+   | `--log` | No | Enable console logging; otherwise, the launcher is silent | None |
+   | `--extra '<arguments>'` | No | Append one raw string of launch arguments when starting the game | String |
 
 Examples:
 
@@ -27,45 +61,16 @@ Examples:
 .\TouchUILaunch.exe --ZZZ --game "path_to_root\ZenlessZoneZero.exe"
 .\TouchUILaunch.exe --WW --game "path_to_root\Client\Binaries\Win64\Client-Win64-Shipping.exe"
 .\TouchUILaunch.exe --NTE --nte-region CN --game "path_to_cn_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
-.\TouchUILaunch.exe --NTE --nte-region Global --game "path_to_global_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
 .\TouchUILaunch.exe --NTE --nte-official --game "path_to_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
 .\TouchUILaunch.exe --GI --game "path_to_root\GenshinImpact.exe" --extra '-screen-width 1920 -screen-height 1080'
 ```
 
-Exit the selected game before launching. For NTE, also exit the official launcher.
-NTE requires the adjacent `TouchUILaunch.NTE.dll`; ZZZ uses `TouchUILaunch.dll`.
-With `--nte-official`, NTE starts the official launcher with a process-creation relay. Click Start in
-that launcher within five minutes. Its new game child loads our DLL before its
-main thread resumes; the worker then waits for Unreal initialization and installs
-mobile predicates and Touch navigation requests. Use `--nte-launcher <exe>` if
-the official launcher cannot be located beside `Client`. Setup failure closes
-this newly created launcher/game tree. Logs are under `logs/` beside the launcher.
+### Notes
 
-By default, NTE uses the bundled `nte-login-host/Nte.LoginHost.exe`, which
-provides the SDK platform context, login window and session for the game without
-starting an official launcher process. Build with `-NteLoginHost` (requires .NET
-10 SDK and the pinned Avalonia packages). The published host is self-contained.
-Choose `--nte-region CN` or `--nte-region Global`; a single installed region can
-be detected automatically. Keep the complete host folder beside the launcher.
-The selected region's installed SDK/configuration files are still required;
-updates use the official launcher. Only supported launcher/SDK pairs are accepted.
-`--nte-direct` remains a compatibility alias for this default.
-`--nte-launcher <exe>` also selects official relay mode with an explicit path.
-Official mode cannot be combined with `--nte-region` or `--nte-direct`.
-
-The native coordinator starts the login host suspended and installs the same
-creation relay so the newly owned game loads the touch DLL before main. The
-host supplies regional startup arguments, SDK objects and authenticated login;
-it stays alive for the game's lifetime. Complete login in its window yourself.
-Saved accounts, when enabled, use a separate TouchUILaunch store. UI Ready only
-confirms touch hooks; login and world entry require separate live acceptance.
-On 2026-11-27, the user confirmed the CN SDK 2.0.9 direct-login, world-entry
-and basic-touch retest passed after adapting its saved-register native entry.
-For Global, the international 1.5.5 official relay's mobile HUD/basic controls
-were confirmed with a screenshot and user feedback, and independent-host login
-was subsequently confirmed. Direct-host Global world/touch acceptance was not
-separately itemized. Multitouch, streaming and scene transitions remain separate
-acceptance cases. See [NTE implementation and testing](docs/NTE_INTERNALS.md).
+1. Exit the selected game before launching; for NTE, also exit the official launcher.
+2. Logs are stored in the `logs/` directory beside the launcher.
+3. If only one NTE region is installed, the client can be detected automatically; `--nte-region` is not required.
+4. Official NTE mode cannot be combined with `--nte-region` or `--nte-direct`.
 
 ## TODO
 
