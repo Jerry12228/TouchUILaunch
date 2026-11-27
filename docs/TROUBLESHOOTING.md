@@ -41,6 +41,7 @@ whether `--log` was supplied, and which process emitted the message.
 | Unexpected files in `dist` | CMake installation does not clean old files; inspect install manifest and destination before packaging |
 | `python` missing or wrong interpreter | Supply `-Python` to `test.ps1`/`full.ps1`; scan-rule generation additionally needs Capstone in that interpreter |
 | No tests or incorrect subset | Inspect CTest enumeration in the actual configured tree, not just test executable filenames |
+| `LoaderDiagnostics` times out with a Windows “Bad Image” dialog for `invalid image.dll` | This is the deliberately invalid test fixture. Rebuild the fixed `LoaderTests`: its owned process tree suppresses loader hard-error dialogs and checks error 193 directly. Keep the invalid-image case enabled; increasing the timeout does not fix the dialog wait. |
 
 Commands and sources: [Development](DEVELOPMENT.md),
 [CMake configuration](../CMakeLists.txt), [presets](../CMakePresets.json), and

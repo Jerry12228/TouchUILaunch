@@ -64,6 +64,13 @@ There are twelve default CTest registrations in
 | `NTERelay` | `NteRelayTests` | Real project DLL in owned fixture processes: two-level launcher propagation, mapping before main, requested suspension, normal resume, excluded children, original create failure, rejected DLL cleanup, inactive controller and transferred game handle; direct Game-role loading before main, forwarding the international entry map/profile flags before extras, inherited Unicode environment/SDK-path delivery, SDK discovery, and production direct-coordinator failure/cleanup |
 | `LoaderDiagnostics` | `LoaderTests` | Direct loading before main with suspension preserved; full 64-bit module result, same-thread remote errors 126/193/1114, Unicode paths, rejected DLL initialization, and retained loader allocation after timeout, all in an owned test child |
 
+`LoaderDiagnostics` deliberately writes a non-PE `invalid image.dll` and expects
+Windows error 193. Its test processes set `SEM_FAILCRITICALERRORS` before child
+creation/readiness so DLL failures return to the remote loader thread without
+interactive Windows error dialogs. This is local to the synthetic test process
+tree; production launcher/game error modes are not changed. Each expected
+failure is printed before execution to identify a stalled step.
+
 Test sources: [GI discovery/joystick tests](../games/gi/tests/gi_touch_tests.cpp),
 [process tests](../common/process/mobile_tests.cpp),
 [touch state](../games/zzz/tests/touch_state_tests.cpp),

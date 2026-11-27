@@ -39,12 +39,15 @@ void run() {
     struct Cleanup {std::filesystem::path directory;~Cleanup(){std::error_code ignored;std::filesystem::remove_all(directory,ignored);}} cleanup{fixture};
     const auto invalid=fixture/L"invalid image.dll";
     {std::ofstream file(invalid,std::ios::binary);file<<"This is a test, not a PE image.";}
+    std::cout<<"Checking invalid image rejection (expected Windows error 193)\n"<<std::flush;
     const auto bad_image=load(child.info.hProcess,invalid);
     check(!bad_image.success()&&bad_image.phase==2&&bad_image.error==ERROR_BAD_EXE_FORMAT,"invalid image captures remote error 193");
+    std::cout<<"Checking missing image rejection (expected Windows error 126)\n"<<std::flush;
     const auto missing=load(child.info.hProcess,fixture/L"missing library.dll");
     check(!missing.success()&&missing.phase==2&&missing.error==ERROR_MOD_NOT_FOUND,"missing image captures remote error 126");
     const auto unicode=fixture/L"拒绝初始化 with spaces.dll";
     std::filesystem::copy_file(directory/L"LoaderRejectFixture.dll",unicode);
+    std::cout<<"Checking DllMain rejection (expected Windows error 1114)\n"<<std::flush;
     const auto rejected=load(child.info.hProcess,unicode);
     check(!rejected.success()&&rejected.phase==2&&rejected.error==ERROR_DLL_INIT_FAILED,"Unicode path and rejected DllMain capture remote error 1114");
     check(rejected.failure().find("LoadLibraryW returned NULL")!=std::string::npos,"completed failed load has an explicit NULL-return diagnosis");
@@ -54,6 +57,7 @@ void run() {
     Handle done(CreateEventW(nullptr,TRUE,FALSE,event_name(child.info.dwProcessId,L"SlowDone").c_str()));
     check(done.value!=nullptr,"owned slow-loader event");
     bool timed_out{};
+    std::cout<<"Checking retained allocation after an intentional loader timeout\n"<<std::flush;
     try {load(child.info.hProcess,directory/L"LoaderSlowFixture.dll",1);}
     catch(const std::runtime_error& error){timed_out=std::string(error.what()).find("retained until owned process exit")!=std::string::npos;}
     check(timed_out,"timeout retains remote code, context and path");
@@ -64,6 +68,11 @@ void run() {
 }
 }
 int wmain(int argc,wchar_t** argv) {
+    // Invalid DLLs are deliberate fixtures. Configure this test process before
+    // creating children, and each child before Ready: remote loader threads
+    // must return errors instead of waiting for a Windows hard-error dialog.
+    // A thread-local setting on the test's main thread would not cover them.
+    SetErrorMode(GetErrorMode()|SEM_FAILCRITICALERRORS);
     if(argc==2&&std::wstring_view(argv[1])==L"--child") {
         Handle ready(CreateEventW(nullptr,TRUE,TRUE,event_name(GetCurrentProcessId(),L"Ready").c_str()));
         Sleep(30000);return 0;
