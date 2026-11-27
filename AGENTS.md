@@ -16,7 +16,7 @@ a stale description.
 ## Project boundaries
 
 - `launcher/` owns CLI selection, logging, elevation, and launch coordination.
-- `games/{gi,sr,ww,zzz}/` owns game behavior; ZZZ includes discovery and the DLL
+- `games/{gi,sr,ww,zzz,nte}/` owns game behavior; ZZZ includes discovery and the DLL
   touch bridge. Keep game signatures out of the launcher.
 - `common/` contains Windows, binary, process, and test helpers. Keep new shared
   utilities independent of game modules; existing process-layer coupling is
@@ -38,6 +38,7 @@ checked-in presets require 3.25 or later.
 ./scripts/build.ps1        # Configure, build Release, package into dist/
 ./scripts/test.ps1         # Verify existing build and package artifacts
 ./scripts/full.ps1         # Build, package, and verify
+./scripts/full.ps1 -NteLoginHost # Also build/package/test independent NTE login (.NET 10 SDK)
 ctest --preset windows-x64-release
 python games/zzz/tools/generate_profiles.py --check
 ```

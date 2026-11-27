@@ -5,7 +5,9 @@ param(
     [string]$DistDir = '',
     [string]$ZZZSampleRoot = '',
     [string]$SRSample = '',
-    [string]$GiSample = ''
+    [string]$GiSample = '',
+    [switch]$NteLoginHost,
+    [string]$NteNugetSource = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -20,6 +22,8 @@ $buildArguments = @{
     DistDir = $DistDir
     ZZZSampleRoot = $ZZZSampleRoot
     SRSample = $SRSample
+    NteLoginHost = $NteLoginHost
+    NteNugetSource = $NteNugetSource
 }
 & (Join-Path $PSScriptRoot 'build.ps1') @buildArguments
 if ($LASTEXITCODE) { throw 'Minimal build failed' }
@@ -31,6 +35,7 @@ $testArguments = @{
     ZZZSampleRoot = $ZZZSampleRoot
     SRSample = $SRSample
     GiSample = $GiSample
+    NteLoginHost = $NteLoginHost
 }
 & (Join-Path $PSScriptRoot 'test.ps1') @testArguments
 if ($LASTEXITCODE) { throw 'Native verification suite failed' }

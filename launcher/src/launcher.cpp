@@ -6,7 +6,10 @@
 #include "gi_touch.hpp"
 #include "sr_mobile.hpp"
 #include "ww_launch.hpp"
+#include "nte_launch.hpp"
+#include "nte_launcher.hpp"
 #include "launcher_log.hpp"
+#include "load_library_diagnostic.hpp"
 #include <tlhelp32.h>
 #include <iostream>
 #include <optional>
@@ -52,14 +55,13 @@ void* remote_load_library(DWORD pid) {
     const uintptr_t offset=reinterpret_cast<uintptr_t>(local)-reinterpret_cast<uintptr_t>(host);
     return reinterpret_cast<void*>(remote->base+offset);
 }
-void inject(DWORD pid,const fs::path& payload) {
-    if(!fs::is_regular_file(payload))throw std::runtime_error("TouchUILaunch.dll must be beside the launcher");
-    Handle process(OpenProcess(PROCESS_CREATE_THREAD|PROCESS_QUERY_INFORMATION|PROCESS_VM_OPERATION|PROCESS_VM_WRITE|PROCESS_VM_READ|SYNCHRONIZE,FALSE,pid));
-    if(!process.value)throw std::runtime_error("OpenProcess for injection failed, Windows error "+std::to_string(GetLastError()));
-    // Recheck the handle's identity immediately before the mutation (PID reuse).
-    if(_wcsicmp(process_path(process).filename().c_str(),L"ZenlessZoneZero.exe")!=0)throw std::runtime_error("Target process identity changed");
-    auto assembly=find_module(pid,L"GameAssembly.dll");
-    if(!assembly)throw std::runtime_error("GameAssembly module disappeared");
+void inject(const game::Child& child,game::Kind kind,const fs::path& payload) {
+    if(!fs::is_regular_file(payload))throw std::runtime_error("Selected payload DLL must be beside the launcher");
+    const auto process=child.info.hProcess;const auto pid=child.info.dwProcessId;
+    // Use the retained owned-child handle, never reopen an arbitrary PID.
+    if(!game::accepts(kind,process_path(process)))throw std::runtime_error("Target process identity changed");
+    if(kind==game::Kind::ZZZ&&!find_module(pid,L"GameAssembly.dll"))throw std::runtime_error("GameAssembly module disappeared");
+    if(kind!=game::Kind::ZZZ)throw std::runtime_error("Unexpected DLL injection target");
     const auto text=payload.wstring();SIZE_T bytes=(text.size()+1)*sizeof(wchar_t);
     auto loader=remote_load_library(pid);
     void* remote=VirtualAllocEx(process,nullptr,bytes,MEM_COMMIT|MEM_RESERVE,PAGE_READWRITE);
@@ -78,13 +80,17 @@ void inject(DWORD pid,const fs::path& payload) {
 }
 void usage() {
     std::cout<<"TouchUILaunch (Windows x64, experimental)\n"
-        "  --GI | --SR | --ZZZ | --WW             Required: choose exactly one game\n"
-        "  --game <exe>                          Required for GI/SR/WW; optional for ZZZ\n"
+        "  --GI | --SR | --ZZZ | --WW | --NTE     Required: choose exactly one game\n"
+        "  --game <exe>                          Required for GI/SR/WW/NTE; optional for ZZZ\n"
         "  --extra <arguments>                   Append one raw argument string to the selected game\n"
         "  --WW                                  Launch with -CloudGame -CloudGamePlatform=Android\n"
+        "  --NTE                                 Experimental NTE UI via owned official launcher\n"
+        "  --nte-launcher <exe>                   NTE official launcher path (otherwise locate beside Client)\n"
+        "  --nte-direct                           NTE: independent SDK login host and touch UI\n"
+        "  --nte-region <CN|Global>                NTE direct login region (otherwise auto-detect)\n"
         "  --ZZZ --probe [--game <exe>]           Verify files only; never launch/inject\n"
         "  --probe-auto                          Compatibility alias for --probe (ZZZ)\n"
-        "  --log                                 Console + launcher file logs; ZZZ DLL log\n"
+        "  --log                                 Console + launcher file logs; ZZZ/NTE DLL log\n"
         "  --help                                Show this help\n"
         "Game commands request Windows administrator approval automatically when needed.\n"
         "WW starts with cloud UI arguments after elevation, without injection.\n"
@@ -96,7 +102,7 @@ int wmain(int argc,wchar_t** argv) {
     // Read the logging option before validation, including errors preceding --log.
     for(int i=1;i<argc;++i) {
         const std::wstring_view argument=argv[i];
-        if((argument==L"--game"||argument==L"--extra")&&i+1<argc){++i;continue;}
+        if((argument==L"--game"||argument==L"--extra"||argument==L"--nte-launcher"||argument==L"--nte-region")&&i+1<argc){++i;continue;}
         if(argument==L"--log")log_enabled=true;
     }
     launcher_log::Session diagnostics(log_enabled);
@@ -112,7 +118,9 @@ int wmain(int argc,wchar_t** argv) {
             }
         }
         fs::path payload=own_dir/L"TouchUILaunch.dll";
-        std::wstring action,extra_arguments;bool explicit_game{},explicit_action{},explicit_extra{};
+        std::wstring action,extra_arguments;bool explicit_game{},explicit_action{},explicit_extra{},explicit_nte_launcher{};
+        fs::path nte_launcher;bool nte_direct{};std::wstring nte_region;
+        std::optional<touchui::nte::LoginHostPlan> nte_host;
         std::optional<game::Kind> selected;
         std::vector<std::wstring> forwarded_args;
         for(int i=1;i<argc;++i) {
@@ -123,6 +131,9 @@ int wmain(int argc,wchar_t** argv) {
             if(const auto kind=game::parse(arg)){game::select(selected,*kind);}
             else if(arg==L"--game"&&i+1<argc){if(explicit_game)throw std::runtime_error("Duplicate --game");game=fs::weakly_canonical(fs::absolute(argv[++i]));explicit_game=true;forwarded_args.push_back(game.wstring());}
             else if(arg==L"--extra"&&i+1<argc){if(explicit_extra)throw std::runtime_error("Duplicate --extra");extra_arguments=argv[++i];explicit_extra=true;forwarded_args.push_back(extra_arguments);}
+            else if(arg==L"--nte-launcher"&&i+1<argc){if(explicit_nte_launcher)throw std::runtime_error("Duplicate --nte-launcher");nte_launcher=fs::weakly_canonical(fs::absolute(argv[++i]));explicit_nte_launcher=true;forwarded_args.push_back(nte_launcher.wstring());}
+            else if(arg==L"--nte-direct"){if(nte_direct)throw std::runtime_error("Duplicate --nte-direct");nte_direct=true;}
+            else if(arg==L"--nte-region"&&i+1<argc){if(!nte_region.empty())throw std::runtime_error("Duplicate --nte-region");nte_region=argv[++i];forwarded_args.push_back(nte_region);if(nte_region!=L"CN"&&nte_region!=L"Global")throw std::runtime_error("--nte-region must be CN or Global");}
             else if(arg==L"--probe"||arg==L"--probe-auto") {
                 if(explicit_action)throw std::runtime_error("Choose only one action");action=arg.substr(2);explicit_action=true;
             } else if(arg==L"--log") {
@@ -130,6 +141,11 @@ int wmain(int argc,wchar_t** argv) {
             } else throw std::runtime_error("Unknown or incomplete argument (use --help)");
         }
         game::validate(selected,game,explicit_game,!action.empty());
+        if(explicit_nte_launcher&&*selected!=game::Kind::NTE)throw std::runtime_error("--nte-launcher requires --NTE");
+        if(nte_direct&&*selected!=game::Kind::NTE)throw std::runtime_error("--nte-direct requires --NTE");
+        if(nte_direct&&explicit_nte_launcher)throw std::runtime_error("--nte-direct cannot be combined with --nte-launcher");
+        if(!nte_region.empty()&&(!nte_direct||*selected!=game::Kind::NTE))throw std::runtime_error("--nte-region requires --NTE --nte-direct");
+        if(*selected==game::Kind::NTE)payload=own_dir/touchui::nte::payload_filename;
         if(log_enabled)std::cout<<"Selected game: "<<launcher_log::utf8(game::flag(*selected))<<"; executable: "<<launcher_log::utf8(game.wstring())<<std::endl;
         if(action==L"probe"||action==L"probe-auto") {
             diagnostics.stage("ZZZ: read-only file probe");
@@ -138,8 +154,18 @@ int wmain(int argc,wchar_t** argv) {
             if(!fs::is_regular_file(payload))throw std::runtime_error("Payload DLL missing");
             if(log_enabled)std::wcout<<L"Payload: "<<payload<<L"\nProbe passed. No game process was launched or modified.\n";return 0;
         }
+        if((*selected==game::Kind::ZZZ||*selected==game::Kind::NTE)&&!fs::is_regular_file(payload))throw std::runtime_error("Selected payload DLL missing");
         game::require_stopped(!find_games(*selected).empty());
-        if(*selected==game::Kind::ZZZ&&!fs::is_regular_file(payload))throw std::runtime_error("Payload DLL missing");
+        if(*selected==game::Kind::NTE&&!nte_direct) {
+            nte_launcher=touchui::nte::launcher_for(game,nte_launcher);
+            touchui::nte::installation_root(game,nte_launcher);
+            touchui::nte::require_launcher_stopped();
+        }
+        if(*selected==game::Kind::NTE&&nte_direct) {
+            nte_host=touchui::nte::login_host_for(game,own_dir,nte_region);
+            touchui::nte::require_launcher_stopped();
+            if(log_enabled)std::wcout<<L"NTE independent login region: "<<nte_host->region<<L"\n";
+        }
         // Elevate the launcher before any launch or injection, so the
         // parent cannot perform the action twice. The child verifies its token.
         diagnostics.stage("check administrator privileges");
@@ -160,6 +186,11 @@ int wmain(int argc,wchar_t** argv) {
         if(lock_result!=WAIT_OBJECT_0&&lock_result!=WAIT_ABANDONED)throw std::runtime_error("Another launcher is starting this game");
         struct Unlock {HANDLE handle;~Unlock(){ReleaseMutex(handle);}} unlock{launch_lock};
         game::require_stopped(!find_games(*selected).empty());
+        if(*selected==game::Kind::NTE) {
+            touchui::nte::launch_mobile(game,nte_launcher,payload,log_enabled,extra_arguments,
+                [&](std::string_view stage){diagnostics.stage(stage);},nte_direct,nte_host?&*nte_host:nullptr);
+            return 0;
+        }
         std::unique_ptr<touchui::gi::PreparedImage> gi_image;
         if(*selected==game::Kind::GI) {
             diagnostics.stage("GI: discover and validate UI and joystick instructions");
@@ -209,7 +240,7 @@ int wmain(int argc,wchar_t** argv) {
         Handle logging(CreateEventW(nullptr,TRUE,log_enabled,log_event_name(pid).c_str()));
         if(!logging.value)throw std::runtime_error("Cannot create payload logging event");
         if(!(log_enabled?SetEvent(logging):ResetEvent(logging)))throw std::runtime_error("Cannot configure payload logging");
-        diagnostics.stage("ZZZ: load touch payload");inject(pid,payload);
+        diagnostics.stage("ZZZ: load touch payload");inject(child,*selected,payload);
         HANDLE started{};
         for(int i=0;i<200&&!started;++i) {
             started=OpenEventW(SYNCHRONIZE,FALSE,started_event_name(pid).c_str());

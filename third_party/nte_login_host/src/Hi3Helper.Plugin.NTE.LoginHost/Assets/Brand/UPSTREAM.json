@@ -1,0 +1,29 @@
+{
+  "retrieved": "2026-10-29",
+  "usage": "Unmodified official identity marks for the existing provider sign-in actions. Trademarks remain with their owners.",
+  "assets": [
+    {
+      "file": "google-g.png",
+      "source": "https://developers.google.com/static/identity/images/g-logo.png",
+      "guidelines": "https://developers.google.com/identity/branding-guidelines",
+      "sha256": "D1CE9C2AF0B10A7333ABC99BC706F9A6A199E5B65BF3E3009624F076B8638E6A",
+      "dimensions": [
+        200,
+        204
+      ],
+      "transform": "None; WPF scales uniformly and preserves the original colors."
+    },
+    {
+      "file": "facebook-primary.png",
+      "source": "https://www.meta.com/brand/resources/facebook/logo/",
+      "archive": "Facebook-Brand-Asset-Pack.zip",
+      "entry": "Facebook Brand Asset Pack/Logo/Primary Logo/Facebook_Logo_Primary.png",
+      "sha256": "2ADFD474D91FD20C51084309ED000C1AE6CC7F5F70AF14D375930F5A71301308",
+      "dimensions": [
+        2084,
+        2084
+      ],
+      "transform": "None; the complete circular primary mark is scaled uniformly."
+    }
+  ]
+}

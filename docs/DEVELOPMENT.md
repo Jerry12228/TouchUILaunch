@@ -26,7 +26,7 @@ its report with `Path.write_text(..., newline=...)`, added in Python 3.10.
 
 C++ is C++20 without language extensions. MSVC uses `/W4`, `/EHsc`, and
 `/utf-8`, with the static runtime (`/MT`, or `/MTd` for Debug). The default
-workflow builds Release. Bundled HDE64 is compiled with `/W0`. Do not change
+workflow builds Release. Bundled HDE64 and MinHook are compiled with `/W0`. Do not change
 ABI, architecture, runtime linkage, or MASM layout as incidental cleanup.
 
 Inspect the environment without building:
@@ -100,11 +100,13 @@ The CMake install rules package:
 dist/
   TouchUILaunch.exe
   TouchUILaunch.dll
+  TouchUILaunch.NTE.dll
   README.md
   LICENSE
   THIRD-PARTY-NOTICES.txt
   licenses/hde64/LICENSE.txt
   licenses/gi_sr/LICENSE.txt
+  licenses/minhook/LICENSE.txt
 ```
 
 `test.ps1` additionally writes `dist/memory-boundary.json`. Test executables,
@@ -113,9 +115,10 @@ current rules. The installer does not clear an existing destination; old files
 may remain there. Inspect the actual install manifest and destination before
 describing package contents or distributing a build.
 
-Keep the DLL beside the EXE for ZZZ launch and probe. GI/SR/WW launch paths do
-not load this DLL, although the standard package and verification suite expect
-both artifacts. See [Game support](GAME_SUPPORT.md).
+Keep `TouchUILaunch.dll` beside the EXE for ZZZ launch/probe and
+`TouchUILaunch.NTE.dll` for NTE launch. GI/SR/WW do not load either game DLL.
+The standard package and verification suite expect all three program artifacts.
+See [Game support](GAME_SUPPORT.md).
 
 [.gitignore](../.gitignore) excludes `build/`, `dist/`, Python bytecode, and
 `__pycache__/`. Put generated reports under those output roots. A custom output
@@ -218,6 +221,25 @@ The project license is [GPL-3.0-only](../LICENSE). HDE64 retains its
 [source provenance](../third_party/gi_sr/README.md) and an
 [MIT license](../third_party/gi_sr/LICENSE.txt). Preserve these and the bundled
 [distribution notices](THIRD-PARTY-NOTICES.txt) when touching derived code.
-The recorded upstream snapshot is provenance, not a required sibling checkout.
+MinHook v1.3.4 is vendored with per-file hashes in
+[UPSTREAM.json](../third_party/minhook/UPSTREAM.json) and its BSD license.
+Its decoder symbols are renamed at compilation to avoid collisions with HDE64.
+The recorded upstream snapshots are provenance, not required sibling checkouts.
 The build installs existing notice files; update them deliberately when
 dependencies change.
+
+## Optional NTE login host
+
+Build/package with `scripts/build.ps1 -NteLoginHost`; requires .NET 10 SDK and
+NuGet access for the pinned Avalonia packages. `-NteNugetSource` can select a
+local package feed. The published x64 host includes its runtime; keep the entire
+`nte-login-host/` folder. `full.ps1` forwards `-NteLoginHost` to both build and
+verification. Its license/provenance files are packaged under
+`licenses/nte_login_host/`; provider/style notices stay inside the host folder. Source/provenance are in `third_party/nte_login_host/`.
+Run `scripts/test.ps1 -NteLoginHost` to add offline SDK/resource checks and an
+actual owned .NET Process.Start relay fixture to the native suite. These checks
+need no game/account/network. Use `--verify-installation <root> Global` on the
+host for read-only installed SDK/config checks. This does not test authentication.
+The public `--nte-region CN|Global` selects the independent SDK host region;
+CN and Global have separate login protocols. See NTE_INTERNALS.md for live
+acceptance status and ownership details.

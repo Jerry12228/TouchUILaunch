@@ -18,6 +18,7 @@ INCLUDE_ROOTS = (
     NATIVE_ROOT / 'games' / 'gi' / 'include',
     NATIVE_ROOT / 'games' / 'sr' / 'include',
     NATIVE_ROOT / 'games' / 'ww' / 'include',
+    NATIVE_ROOT / 'games' / 'nte' / 'include',
     ZZZ_ROOT / 'include',
 )
 

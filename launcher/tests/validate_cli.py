@@ -46,7 +46,10 @@ def main():
         assert b'TouchUILaunch' in result.stdout
         assert b'--log' in result.stdout
         assert b'--extra' in result.stdout
-        assert all(flag in result.stdout for flag in (b'--GI', b'--SR', b'--ZZZ', b'--WW'))
+        assert b'--nte-launcher' in result.stdout
+        assert b'--nte-direct' in result.stdout
+        assert b'--nte-region' in result.stdout
+        assert all(flag in result.stdout for flag in (b'--GI', b'--SR', b'--ZZZ', b'--WW', b'--NTE'))
         assert b'-CloudGame -CloudGamePlatform=Android' in result.stdout
         for removed in (b'--status', b'--disable', b'--enable', b'--pid', b'--zzz-button-layout'):
             assert removed not in result.stdout
@@ -63,6 +66,9 @@ def main():
                     ['--WW'], ['--WW', '--WW'], ['--WW', '--GI'],
                     ['--SR', '--WW'], ['--ZZZ', '--WW'],
                     ['--WW', '--probe'], ['--WW', '--probe-auto'],
+                    ['--NTE'], ['--NTE', '--NTE'], ['--NTE', '--ZZZ'],
+                    ['--NTE', '--GI'], ['--NTE', '--WW'], ['--NTE', '--SR'],
+                    ['--NTE', '--probe'], ['--NTE', '--probe-auto'],
                     ['--ZZZ', '--game', 'a', '--game', 'b']):
         run(options, 2)
         result = run(['--log', *options], 2, logged=True)
@@ -77,7 +83,7 @@ def main():
     # Values of --extra are never reinterpreted as launcher options.
     run(['--ZZZ', '--extra', '--log', '--probe', '--game', missing_game], 2)
     for selection, name in (('--GI', 'YuanShen.exe'), ('--SR', 'StarRail.exe'), ('--ZZZ', 'ZenlessZoneZero.exe'),
-                            ('--WW', 'Client-Win64-Shipping.exe')):
+                            ('--WW', 'Client-Win64-Shipping.exe'), ('--NTE', 'HTGame.exe')):
         missing = str(launcher.parent / 'missing-cli-fixture' / name)
         run([selection, '--game', missing, '--log'], 2, logged=True)
         result = run([selection, '--game', missing, '--extra', '-screen-width 1920', '--log'], 2, logged=True)
@@ -90,7 +96,7 @@ def main():
     with fixture_directory(launcher.parent) as fixture:
         for selection, name in (('--GI', 'YuanShen.exe'), ('--GI', 'GenshinImpact.exe'),
                                 ('--SR', 'StarRail.exe'), ('--ZZZ', 'ZenlessZoneZero.exe'),
-                                ('--WW', 'Client-Win64-Shipping.exe')):
+                                ('--WW', 'Client-Win64-Shipping.exe'), ('--NTE', 'HTGame.exe')):
             exe = fixture / name
             shutil.copyfile(child_fixture, exe)
             for probe in ('--probe', '--probe-auto'):
@@ -119,8 +125,37 @@ def main():
         # Copy the launcher alone: WW must not need the touch DLL, game modules,
         # or suspended initialization. The relaunch marker prevents real UAC;
         # a standard token must fail its elevation guard before starting WW.
+        # NTE relay option validation happens before elevation or process creation.
+        for options in (
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-direct'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-launcher', 'a'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-region', 'Global'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-region', 'invalid'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-region', 'CN', '--nte-region', 'Global'],
+                ['--ZZZ', '--game', str(fixture / 'ZenlessZoneZero.exe'), '--nte-direct'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-launcher'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-launcher', 'a', '--nte-launcher', 'b'],
+                ['--ZZZ', '--game', str(fixture / 'ZenlessZoneZero.exe'), '--nte-launcher', 'a'],
+                ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-launcher', str(fixture / 'missing-launcher.exe')]):
+            run(['--log', *options], 2, logged=True)
+        wrong_arch = fixture / 'NTEGlobalLauncher.exe'
+        wrong_arch.write_bytes(b'not a PE executable')
+        result = run(['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-launcher', str(wrong_arch), '--log'], 2, logged=True)
+        assert b'Invalid NTE launcher PE header' in result.stderr
+        result = run(['--NTE', '--nte-direct', '--game', str(fixture / 'HTGame.exe'), '--elevation-relaunch', '--log'], 2, logged=True)
+        assert b'NTE direct login requires the installed Client directory layout' in result.stderr
+        sdk_folder = fixture / 'NTEGlobal'
+        sdk_folder.mkdir()
+        (sdk_folder / 'WPGameClientSDK_64.dll').write_bytes(b'not a PE executable')
+        result = run(['--NTE', '--nte-direct', '--game', str(fixture / 'HTGame.exe'), '--elevation-relaunch', '--log'], 2, logged=True)
+        assert b'NTE direct login requires the installed Client directory layout' in result.stderr
         standalone = fixture / launcher.name
         shutil.copyfile(launcher, standalone)
+        # A separate launcher with no adjacent NTE DLL fails before UAC/creation.
+        result = subprocess.run([str(standalone), '--NTE', '--game', str(fixture / 'HTGame.exe'), '--elevation-relaunch', '--log'],
+                                capture_output=True, timeout=15)
+        assert result.returncode == 2 and b'Selected payload DLL missing' in result.stderr, (result.returncode, result.stderr)
+        checks += 1
         ww = fixture / 'Client-Win64-Shipping.exe'
         extra = '--fixture-extra "two words" "中文 路径" "embedded \\"quote\\"" "trailing\\\\"'
         result = subprocess.run([str(standalone), '--WW', '--game', str(ww), '--extra', extra, '--elevation-relaunch'],

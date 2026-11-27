@@ -13,6 +13,7 @@ or future client build. Validation scope is defined in [Testing](TESTING.md).
 | `--SR` | `StarRail.exe` | Required | Suspended startup and periodic UI-state writer |
 | `--ZZZ` | `ZenlessZoneZero.exe` | Optional | Normal startup, injected DLL, memory discovery, Windows touch bridge |
 | `--WW` | `Client-Win64-Shipping.exe` | Required | Normal startup with Android cloud UI arguments |
+| `--NTE` | `HTGame.exe` | Required | Official relay or independent CN/Global SDK login host; early separate DLL load, UE mobile predicates and Touch navigation requests |
 
 Choose exactly one game; duplicate selectors, even for the same game, are
 rejected. The file must exist and its filename must match the selected family.
@@ -36,12 +37,15 @@ commands and distribution instructions.
 | --- | --- |
 | `--game <exe>` | Canonicalize the selected executable path; duplicate occurrences are rejected |
 | `--extra <arguments>` | Append one raw argument string to the selected game; duplicate occurrences are rejected |
-| `--log` | Enable console and launcher file diagnostics; also enable the ZZZ payload log |
+| `--nte-direct` | NTE only: independent SDK login host and early-loaded touch DLL; incompatible with --nte-launcher |
+| `--nte-region <CN\|Global>` | NTE direct mode only: select installed SDK/login region; otherwise detect a unique region |
+| `--nte-launcher <exe>` | NTE only: select the official launcher; otherwise search ancestors of the game path |
+| `--log` | Enable console and launcher file diagnostics; also enable the ZZZ/NTE payload log |
 | `--ZZZ --probe` | Read-only GameAssembly file diagnostic and payload-existence check; no launch, injection, or elevation |
 | `--probe-auto` | Compatibility alias for `--probe`, restricted to ZZZ |
 | `--help`, `-h` | Print usage without requiring a game or elevation |
 
-Only one probe action is allowed. Probe with GI/SR/WW is rejected. Unknown or
+Only one probe action is allowed. Probe with GI/SR/WW/NTE is rejected. Unknown or
 incomplete options fail. `--extra` consumes exactly one following launcher
 argument without parsing its contents; quote that value when it contains spaces.
 It is accepted by the read-only ZZZ probe but is not used because no game is
@@ -81,7 +85,7 @@ is neither attached to nor terminated. See
 [process lifetime](ARCHITECTURE.md#launch-and-process-lifetime).
 
 With logging enabled, files reside beside the executable/DLL under `logs/`:
-`launcher-<launcher-pid>.log` and, for ZZZ, `touch-<game-pid>.log`.
+`launcher-<launcher-pid>.log`, for ZZZ `touch-<game-pid>.log`, and for NTE `nte-<game-pid>.log`.
 An elevated relaunch has a different launcher PID. The payload retains the
 logging event after the launcher exits. See [Troubleshooting](TROUBLESHOOTING.md#collect-the-right-diagnostics).
 
@@ -164,6 +168,45 @@ automatic discovery, and checks that the adjacent payload exists. `--log`
 controls output, including the JSON result; the probe computes the diagnostic
 hash even without logging. It does not select by hash, start the game, or
 establish runtime compatibility.
+
+## NTE launch and independent login
+
+`--NTE --game <HTGame.exe>` starts a new owned official launcher and loads the
+adjacent `TouchUILaunch.NTE.dll` as a process-creation bridge before resuming it.
+Exit existing official launchers first, then click Start in the newly opened
+launcher within five minutes. The bridge propagates through known official
+launcher children and loads the game DLL before its main thread resumes.
+`--nte-launcher <exe>` selects an explicit x64 official launcher if ancestor
+search cannot find it. It is accepted with `--NTE` only. NTE's `--extra` is
+passed to that official launcher; its internal game arguments are preserved.
+
+The game worker then waits for `UnrealWindow` (120 seconds) and live reflection
+initialization (30 seconds). Only UI Ready releases the newly created tree.
+Failure, timeout or controller closure terminates that owned launcher/game tree.
+A transferred owned creation handle reports early game exit status; no attach
+to a discovered game or launcher PID is used. Original caller-requested child
+suspension is preserved. Module full-path verification and startup handshakes
+are required; a nonzero loader thread exit code never proves success.
+
+With `--nte-direct`, the coordinator starts the optional bundled independent
+SDK host suspended and installs the creation relay there. The host supplies
+regional SDK context and authenticates through the publisher service; its
+creation-owned game receives the touch DLL before main. `--nte-region CN` and
+`--nte-region Global` select separate protocols/configuration. Auto-detection
+requires exactly one installed region. Keep the matching installed SDK files
+and the complete bundled host folder. The host remains alive for game session
+callbacks after native UI initialization completes. Login/world acceptance is
+separate from UI Ready. See [NTE internals](NTE_INTERNALS.md#independent-sdk-login-host)
+for profile coverage and current live results.
+
+The payload captures the main module once, resolves UE registrations and code
+relationships, waits up to 30 seconds for live reflection caches, and installs
+mobile bool and navigation callbacks. The supplied Global entry uses aligned
+atomic publication; the supplied CN entry uses a validated saved-register
+MinHook detour. The 2026-11-27 live acceptance covers CN independent login,
+world entry and basic touch, Global official-relay HUD/basic controls, and Global
+independent login. Exact evidence levels and remaining manual cases are listed
+in [NTE internals](NTE_INTERNALS.md#accepted-live-scenarios--2026-11-27).
 
 ## Adding or changing game support
 

@@ -1,0 +1,28 @@
+{
+  "files": [
+    {
+      "sha256": "6e547e746d693151cffc1cbfe9f251c233172110738070c9e3f360c10d2c860c",
+      "local": "AccentButton.xaml",
+      "path": "CollapseLauncher/XAMLs/Theme/Button/AccentButton.xaml"
+    },
+    {
+      "sha256": "6d4f630ecda08f7c5f505b3fe5ff52ea409a0123dad3dffbbd763ac1da3914df",
+      "local": "AcrylicButton.xaml",
+      "path": "CollapseLauncher/XAMLs/Theme/Button/AcrylicButton.xaml"
+    },
+    {
+      "sha256": "3f711573dbc56c253e489d71b85b5d7b305452b0fd02c98141a46b6c6d443990",
+      "local": "LICENSE",
+      "path": "LICENSE"
+    }
+  ],
+  "repository": "https://github.com/CollapseLauncher/Collapse",
+  "license": "MIT",
+  "normalization": "UTF-8 without BOM, LF line endings, terminal newline",
+  "modifications": "Original WinUI files are retained as provenance and are not compiled in WPF. WPF adaptations, segmented selector, remember-account toggle and explicit scrollbar templates are local in Styles/Collapse.Adapted.xaml; no upstream project reference.",
+  "commit": "4767fb3f7e81b09a9dc159f55626a74d27e13f42",
+  "adaptedFile": {
+    "sha256": "f658fe74c15e46314d4e8e61c8d69f3cde607450401dd0f1481c037538758f60",
+    "path": "Styles/Collapse.Adapted.xaml"
+  }
+}

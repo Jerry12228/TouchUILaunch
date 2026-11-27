@@ -31,10 +31,17 @@ target_include_directories(TouchUIHeaders INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/games/zzz/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/games/gi/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/games/sr/include"
-  "${CMAKE_CURRENT_SOURCE_DIR}/games/ww/include")
+  "${CMAKE_CURRENT_SOURCE_DIR}/games/ww/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/games/nte/include")
 
 add_library(Hde64 STATIC third_party/hde64/hde64.c)
 target_compile_options(Hde64 PRIVATE /W0)
+add_library(MinHook STATIC third_party/minhook/src/buffer.c third_party/minhook/src/hook.c
+  third_party/minhook/src/trampoline.c third_party/minhook/src/hde/hde64.c)
+target_include_directories(MinHook PUBLIC third_party/minhook/include)
+# Keep the pristine vendored decoder separate from the project's existing HDE.
+target_compile_definitions(MinHook PRIVATE hde64_disasm=mh_hde64_disasm hde64_table=mh_hde64_table)
+target_compile_options(MinHook PRIVATE /W0)
 
 add_library(RemoteLoaderStubs STATIC common/process/src/load_library.asm)
 target_link_libraries(RemoteLoaderStubs PUBLIC TouchUIHeaders)
@@ -59,6 +66,12 @@ target_link_libraries(TouchUIWW INTERFACE TouchUIHeaders)
 add_library(TouchUILaunchPayload SHARED games/zzz/src/payload.cpp)
 set_target_properties(TouchUILaunchPayload PROPERTIES OUTPUT_NAME TouchUILaunch)
 target_link_libraries(TouchUILaunchPayload PRIVATE TouchUIZZZDiscovery user32)
+
+add_library(TouchUINTE INTERFACE)
+target_link_libraries(TouchUINTE INTERFACE TouchUIHeaders Hde64)
+add_library(TouchUILaunchNTEPayload SHARED games/nte/src/payload.cpp games/nte/src/relay.cpp)
+set_target_properties(TouchUILaunchNTEPayload PROPERTIES OUTPUT_NAME TouchUILaunch.NTE)
+target_link_libraries(TouchUILaunchNTEPayload PRIVATE TouchUINTE MinHook RemoteLoaderStubs user32 psapi)
 
 add_executable(TouchUILaunch launcher/src/launcher.cpp)
 target_link_libraries(TouchUILaunch PRIVATE TouchUIGI TouchUISR TouchUIWW user32 bcrypt shell32 advapi32 ole32)
@@ -98,6 +111,23 @@ target_link_libraries(ProfileDiscoveryTests PRIVATE TouchUIZZZDiscovery bcrypt)
 add_executable(ButtonLayoutTests games/zzz/tests/button_layout_tests.cpp)
 target_link_libraries(ButtonLayoutTests PRIVATE TouchUIZZZDiscovery)
 
+add_executable(NteTests games/nte/tests/nte_tests.cpp)
+target_link_libraries(NteTests PRIVATE TouchUINTE MinHook)
+add_dependencies(NteTests TouchUILaunchNTEPayload)
+add_executable(NteRelayTests games/nte/tests/relay_tests.cpp)
+target_link_libraries(NteRelayTests PRIVATE TouchUIHeaders RemoteLoaderStubs user32 psapi)
+add_dependencies(NteRelayTests TouchUILaunchNTEPayload LoaderRejectFixture LoaderSuccessFixture)
+
+foreach(fixture IN ITEMS Success Reject Slow)
+  add_library(Loader${fixture}Fixture SHARED common/process/tests/loader_test_dll.cpp)
+  target_link_libraries(Loader${fixture}Fixture PRIVATE TouchUIHeaders)
+endforeach()
+target_compile_definitions(LoaderRejectFixture PRIVATE TOUCHUI_LOADER_REJECT=1)
+target_compile_definitions(LoaderSlowFixture PRIVATE TOUCHUI_LOADER_SLOW=1)
+add_executable(LoaderTests common/process/tests/loader_tests.cpp)
+target_link_libraries(LoaderTests PRIVATE TouchUIHeaders RemoteLoaderStubs psapi)
+add_dependencies(LoaderTests LoaderSuccessFixture LoaderRejectFixture LoaderSlowFixture)
+
 enable_testing()
 add_test(NAME ButtonLayout COMMAND ButtonLayoutTests)
 add_test(NAME GITouch COMMAND GITouchTests)
@@ -110,6 +140,12 @@ add_test(NAME TouchBridge32 COMMAND TouchBridgeTests 3.2)
 add_test(NAME LauncherElevation COMMAND LauncherElevationTests)
 add_test(NAME LauncherLog COMMAND LauncherLogTests)
 add_test(NAME MemoryReader COMMAND MemoryReaderTests)
+add_test(NAME NTE COMMAND NteTests)
+set_tests_properties(NTE PROPERTIES TIMEOUT 30)
+add_test(NAME NTERelay COMMAND NteRelayTests)
+set_tests_properties(NTERelay PROPERTIES TIMEOUT 120)
+add_test(NAME LoaderDiagnostics COMMAND LoaderTests)
+set_tests_properties(LoaderDiagnostics PROPERTIES TIMEOUT 60)
 
 if(TOUCHUI_ENABLE_EXTERNAL_SAMPLES)
   if(TOUCHUI_SR_SAMPLE)
@@ -124,9 +160,10 @@ if(TOUCHUI_ENABLE_EXTERNAL_SAMPLES)
   endforeach()
 endif()
 
-install(TARGETS TouchUILaunch TouchUILaunchPayload RUNTIME DESTINATION . LIBRARY DESTINATION .)
+install(TARGETS TouchUILaunch TouchUILaunchPayload TouchUILaunchNTEPayload RUNTIME DESTINATION . LIBRARY DESTINATION .)
 install(FILES README.md DESTINATION .)
 install(FILES LICENSE DESTINATION .)
 install(FILES docs/THIRD-PARTY-NOTICES.txt DESTINATION .)
 install(FILES third_party/hde64/LICENSE.txt DESTINATION licenses/hde64)
 install(FILES third_party/gi_sr/LICENSE.txt DESTINATION licenses/gi_sr)
+install(FILES third_party/minhook/LICENSE.txt DESTINATION licenses/minhook)

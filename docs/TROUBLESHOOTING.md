@@ -17,6 +17,8 @@ For file-only ZZZ investigation, use its documented `--probe` command instead.
 | Launcher | `logs/launcher-<launcher-pid>.log` beside the EXE | Selected path, stage transitions, `ERROR: stage=...`, relaunch result |
 | Elevated launcher | A second launcher log with a different PID | Inspect this for work performed after UAC |
 | ZZZ payload | `logs/touch-<game-pid>.log` beside the DLL | Resolver stages, fields, window/hooks, UI changes, recurring status, later failures |
+| NTE launcher relay | `logs/nte-relay-<launcher-pid>.log` beside the DLL | New child identities, role selection, verified module/startup handshake and failures |
+| NTE payload | `logs/nte-<game-pid>.log` beside the DLL | Module discovery, reflection readiness and installation result; absent if loading never reached the worker |
 | Boundary verifier | `memory-boundary.json` under the selected dist directory | Static source/import/fingerprint check scope and source digests |
 | CTest | Output on failure; build tree's `Testing/Temporary/LastTest.log` after execution | Individual fixture/sample failure; enumeration alone produces no pass result |
 
@@ -96,6 +98,48 @@ If a newly created game exits after setup fails, consult
 terminates the still-owned child. After successful release, launcher exit
 should not terminate it. This distinction is covered by
 [process tests](../common/process/mobile_tests.cpp).
+
+## NTE payload loading failures
+
+An outer `elevated launcher exited with code 2` means the elevated launcher's
+own log contains the failing stage. `--nte-direct` now starts the independent
+SDK host, with a creation relay that early-loads the touch DLL in its new game.
+The older bare direct path could show UI Ready without a login session; its
+Enter Game click sound was not an input failure. The public route now supplies
+the full regional login host. UI Ready still does not prove authentication.
+
+For independent login, keep `nte-login-host/` intact, select `--nte-region CN`
+or `--nte-region Global`, and exit existing games/platform processes first.
+Missing/unknown SDK pairs fail closed. The host's sanitized startup diagnostics
+are under `%LocalAppData%\TouchUILaunch\NTE\Diagnostics\`: inspect fixed
+phase and failure keys, not account files. `sdk-environment-acknowledged`,
+`sdk-registration-validated`, `login-requested`, and
+`authenticated-identity-delivered` distinguish platform startup from login.
+Use the official relay while an SDK profile is unverified or unsupported.
+
+`native bool prologue is unsupported` occurs after DLL mapping, during UI
+discovery. Its RVA and bounded `entry` bytes identify an unrecognized native
+entry, not an injection failure. Current support handles the observed Global
+stack-only entry and CN saved-RBX frame via different publication methods;
+other forms remain rejected. Restart with an adapted build; do not reinject or
+skip the entry validation in an already running game.
+
+The direct loader verifies the full module path. Its thread exit value truncates
+a module handle and can contain a termination status, so nonzero never proves
+loading succeeded. Unlike the older diagnostic stub, this path does not capture
+a same-thread `GetLastError` from a failed remote LoadLibrary call.
+
+The prior direct-game experiment recorded phase `0` and thread status
+`0xDEADC0DE`, before the diagnostic stub entered. It did not reach DLL loading or
+UI code. That result describes the previous late-loading route, not a successful
+or failed test of the official-launcher relay. Process protections are not
+altered. Report the current stage, relay/worker logs and actual game exit code
+before attributing a failure to the loader, static discovery or UI behavior.
+
+A failed setup closes only the newly created launcher/game tree. An unrelated
+existing process is not adopted. On successful initialization the controller
+releases the job and the game survives its exit. Afterward relay hooks remain
+resident but forward calls without further DLL propagation.
 
 ## GI, SR, and WW failures
 

@@ -1,0 +1,597 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="GlobalTitle" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>Correo electrónico</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>Contraseña</value>
+  </data>
+  <data name="EmailCode" xml:space="preserve">
+    <value>Código de verificación por correo</value>
+  </data>
+  <data name="UsePassword" xml:space="preserve">
+    <value>Usar correo y contraseña</value>
+  </data>
+  <data name="SendEmailCode" xml:space="preserve">
+    <value>Enviar código</value>
+  </data>
+  <data name="Agreement" xml:space="preserve">
+    <value>Acepto los términos de servicio y la política de privacidad</value>
+  </data>
+  <data name="ReadTerms" xml:space="preserve">
+    <value>Términos de servicio y privacidad</value>
+  </data>
+  <data name="EmailSignIn" xml:space="preserve">
+    <value>Iniciar sesión con correo</value>
+  </data>
+  <data name="RetryConnection" xml:space="preserve">
+    <value>Reintentar conexión</value>
+  </data>
+  <data name="ChooseSignIn" xml:space="preserve">
+    <value>Elige un método de inicio de sesión.</value>
+  </data>
+  <data name="EmailCodeSent" xml:space="preserve">
+    <value>Código enviado. Revisa tu correo. Puedes solicitar otro código después de 60 segundos.</value>
+  </data>
+  <data name="BrowserPending" xml:space="preserve">
+    <value>Completa la autorización en el navegador del sistema y permite abrir el componente de inicio de sesión.</value>
+  </data>
+  <data name="AuthorizationCancelled" xml:space="preserve">
+    <value>La autorización se canceló o caducó. Puedes intentarlo de nuevo.</value>
+  </data>
+  <data name="GlobalSignInFailed" xml:space="preserve">
+    <value>No se pudo completar el inicio de sesión. Comprueba la conexión y los datos e inténtalo de nuevo.</value>
+  </data>
+  <data name="GlobalHelpTitle" xml:space="preserve">
+    <value>Inicio de sesión Global</value>
+  </data>
+  <data name="GlobalHelp" xml:space="preserve">
+    <value>Si se activa Recordar cuenta, solo se cifra la sesión de PC para el usuario actual de Windows y se valida con el servicio oficial antes de restaurarla. No se guardan contraseñas, códigos ni tokens del proveedor.</value>
+  </data>
+  <data name="BackToSignIn" xml:space="preserve">
+    <value>Volver al inicio de sesión</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Cerrar</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>Conectando al servicio…</value>
+  </data>
+  <data name="EmailCooldown" xml:space="preserve">
+    <value>Espera 60 segundos desde la última solicitud antes de pedir otro código.</value>
+  </data>
+  <data name="InvalidEmail" xml:space="preserve">
+    <value>Introduce una dirección de correo válida.</value>
+  </data>
+  <data name="InvalidSecret" xml:space="preserve">
+    <value>Introduce una contraseña o un código de verificación válido.</value>
+  </data>
+  <data name="ServiceUnavailable" xml:space="preserve">
+    <value>El servicio oficial no está disponible. Comprueba la conexión e inténtalo de nuevo.</value>
+  </data>
+  <data name="ServiceRejected" xml:space="preserve">
+    <value>El servicio oficial rechazó la solicitud ({0}). Comprueba los datos o inténtalo más tarde.</value>
+  </data>
+  <data name="GlobalFilesMissing" xml:space="preserve">
+    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+  </data>
+  <data name="GlobalWrongPlatform" xml:space="preserve">
+    <value>La instalación seleccionada no es NTE Global. Comprueba la carpeta del juego.</value>
+  </data>
+  <data name="GlobalWrongRegion" xml:space="preserve">
+    <value>La carpeta seleccionada pertenece a otra región. Vuelve a seleccionar la carpeta del juego global.</value>
+  </data>
+  <data name="GlobalConfigInvalid" xml:space="preserve">
+    <value>La configuración de la instalación global no es válida. Comprueba y repara los archivos del juego.</value>
+  </data>
+  <data name="GlobalAlreadyRunning" xml:space="preserve">
+    <value>Ya se está ejecutando un juego NTE o un componente de inicio de sesión. Ciérralo antes de reintentarlo.</value>
+  </data>
+  <data name="GlobalSdkUnsupported" xml:space="preserve">
+    <value>Esta versión del SDK global o de la configuración de autenticación aún no es compatible. Actualiza el plugin cuando se añada compatibilidad.</value>
+  </data>
+  <data name="GlobalStartFailed" xml:space="preserve">
+    <value>No se pudo iniciar NTE Global. Comprueba la instalación del juego y los permisos.</value>
+  </data>
+  <data name="GlobalCommunicationFailed" xml:space="preserve">
+    <value>No se pudo iniciar la comunicación del acceso global. Cierra el juego en ejecución antes de reintentarlo.</value>
+  </data>
+  <data name="GlobalSaveDirectoryConflict" xml:space="preserve">
+    <value>Un argumento de inicio adicional entra en conflicto con la carpeta de configuración de la versión global. Elimina saveddirsuffix y enginesaveddirsuffix de los argumentos adicionales del juego.</value>
+  </data>
+  <data name="GlobalOtherMethods" xml:space="preserve">
+    <value>Otras formas de iniciar sesión</value>
+  </data>
+  <data name="GlobalBrowserHint" xml:space="preserve">
+    <value>La autorización se abre en el navegador del sistema.</value>
+  </data>
+  <data name="GlobalSavedUnavailable" xml:space="preserve">
+    <value>El inicio guardado no está disponible. Reintenta o accede con correo, Google o Facebook. El registro de la cuenta se conserva.</value>
+  </data>
+  <data name="CancelSignIn" xml:space="preserve">
+    <value>Cancelar este inicio de sesión</value>
+  </data>
+  <data name="SavedAccounts" xml:space="preserve">
+    <value>Cuentas guardadas</value>
+  </data>
+  <data name="ChooseSavedAccount" xml:space="preserve">
+    <value>Selecciona una cuenta guardada.</value>
+  </data>
+  <data name="EditLabel" xml:space="preserve">
+    <value>Editar nombre</value>
+  </data>
+  <data name="RemoveLocalAccount" xml:space="preserve">
+    <value>Quitar esta cuenta de este dispositivo</value>
+  </data>
+  <data name="RememberAccount" xml:space="preserve">
+    <value>Recordar esta cuenta</value>
+  </data>
+  <data name="SignInSelected" xml:space="preserve">
+    <value>Entrar con la cuenta seleccionada</value>
+  </data>
+  <data name="PreviewNoAuthentication" xml:space="preserve">
+    <value>Vista previa · sin acceso a cuentas ni autenticación</value>
+  </data>
+  <data name="SignInHelp" xml:space="preserve">
+    <value>Inicio de sesión y privacidad</value>
+  </data>
+  <data name="ReadSignInHelp" xml:space="preserve">
+    <value>Leer información de inicio de sesión y privacidad</value>
+  </data>
+  <data name="SaveLabel" xml:space="preserve">
+    <value>Guardar nombre</value>
+  </data>
+  <data name="PreparingSavedAccount" xml:space="preserve">
+    <value>Cifrando los datos de acceso…</value>
+  </data>
+  <data name="LogoutStateNotSaved" xml:space="preserve">
+    <value>No se pudo borrar la selección automática de cuenta.</value>
+  </data>
+  <data name="GlobalRemoveAccount" xml:space="preserve">
+    <value>Quitar cuenta</value>
+  </data>
+  <data name="GlobalNoSavedAccounts" xml:space="preserve">
+    <value>No hay cuentas guardadas. Accede con correo, Google o Facebook para recordar una cuenta.</value>
+  </data>
+  <data name="ProtectionSettingsUnavailable" xml:space="preserve">
+    <value>No se pudo leer la configuración de protección de inicio de sesión. Revísala y guárdala de nuevo en los ajustes del juego del lanzador.</value>
+  </data>
+  <data name="UnlockAccountWithHello" xml:space="preserve">
+    <value>Desbloquea la cuenta seleccionada con Windows Hello…</value>
+  </data>
+  <data name="ReadingSavedAccount" xml:space="preserve">
+    <value>Leyendo la cuenta guardada…</value>
+  </data>
+  <data name="ProtectAccountWithHello" xml:space="preserve">
+    <value>Protege esta cuenta local con Windows Hello…</value>
+  </data>
+  <data name="HelloProtectionFailed" xml:space="preserve">
+    <value>Windows Hello no pudo proteger o desbloquear esta cuenta (código {0}). La cuenta guardada no ha cambiado. Revisa las opciones de inicio de sesión de Windows y vuelve a intentarlo.</value>
+  </data>
+  <data name="ManageAccounts" xml:space="preserve">
+    <value>Gestionar</value>
+  </data>
+  <data name="CancelEdit" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="RemoveAccountConfirmation" xml:space="preserve">
+    <value>¿Eliminar esta cuenta del dispositivo? Podrás iniciar sesión de nuevo. Tu cuenta oficial se conservará.</value>
+  </data>
+  <data name="ConfirmRemove" xml:space="preserve">
+    <value>Eliminar cuenta</value>
+  </data>
+  <data name="ContinueSignIn" xml:space="preserve">
+    <value>Continuar</value>
+  </data>
+  <data name="UseOtherAccount" xml:space="preserve">
+    <value>Usar otra cuenta</value>
+  </data>
+  <data name="BackToSavedAccounts" xml:space="preserve">
+    <value>Volver a las cuentas guardadas</value>
+  </data>
+  <data name="BackToMethods" xml:space="preserve">
+    <value>Otros métodos de acceso</value>
+  </data>
+  <data name="SignInGoogle" xml:space="preserve">
+    <value>Iniciar sesión con Google</value>
+  </data>
+  <data name="SignInFacebook" xml:space="preserve">
+    <value>Continuar con Facebook</value>
+  </data>
+  <data name="SignInEmail" xml:space="preserve">
+    <value>Acceder con correo</value>
+  </data>
+  <data name="PasswordSignIn" xml:space="preserve">
+    <value>Contraseña</value>
+  </data>
+  <data name="CodeSignIn" xml:space="preserve">
+    <value>Código de acceso</value>
+  </data>
+  <data name="AgreementInline" xml:space="preserve">
+    <value>He leído y acepto los {0} y la {1}.</value>
+  </data>
+  <data name="TermsName" xml:space="preserve">
+    <value>Términos y condiciones</value>
+  </data>
+  <data name="PrivacyName" xml:space="preserve">
+    <value>Política de privacidad</value>
+  </data>
+  <data name="AgreementRequired" xml:space="preserve">
+    <value>Lee y acepta los términos y la política de privacidad para continuar.</value>
+  </data>
+  <data name="EnterPassword" xml:space="preserve">
+    <value>Introduce tu contraseña.</value>
+  </data>
+  <data name="EnterEmailCode" xml:space="preserve">
+    <value>Introduce el código recibido por correo.</value>
+  </data>
+  <data name="CancelOperation" xml:space="preserve">
+    <value>Cancelar</value>
+  </data>
+  <data name="EmailNotProvided" xml:space="preserve">
+    <value>Correo no disponible</value>
+  </data>
+  <data name="SavedAccountNumber" xml:space="preserve">
+    <value>Cuenta {0}</value>
+  </data>
+  <data name="LegacyAccount" xml:space="preserve">
+    <value>Registro anterior</value>
+  </data>
+  <data name="HelloProtectionHelp" xml:space="preserve">
+    <value>La protección con Windows Hello es opcional y está desactivada de forma predeterminada en cada región. Las cuentas protegidas requieren verificación antes de acceder. Al desactivarla se necesita un último desbloqueo.</value>
+  </data>
+  <data name="DisplayInfoHelp" xml:space="preserve">
+    <value>El correo y el nombre disponibles se guardan cifrados para este usuario de Windows. Cambiar la etiqueta los conserva. Los registros antiguos sin correo no requieren otra autorización solo para completarlos.</value>
+  </data>
+  <data name="DisplayInfoUnavailable" xml:space="preserve">
+    <value>No se pudieron leer algunos detalles. Los datos de acceso se conservan; puedes seleccionar una cuenta e intentar acceder.</value>
+  </data>
+  <data name="SaveOnDevice" xml:space="preserve">
+    <value>Guardar cuenta en este dispositivo</value>
+  </data>
+  <data name="SendSmsCode" xml:space="preserve">
+    <value>Enviar código</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="MainlandTitle" xml:space="preserve">
+    <value>Iniciar sesión</value>
+  </data>
+  <data name="PhonePlaceholder" xml:space="preserve">
+    <value>Número de teléfono</value>
+  </data>
+  <data name="CodePlaceholder" xml:space="preserve">
+    <value>Código de verificación</value>
+  </data>
+  <data name="Phone" xml:space="preserve">
+    <value>Teléfono</value>
+  </data>
+  <data name="SmsCode" xml:space="preserve">
+    <value>Código SMS</value>
+  </data>
+  <data name="RestoringLastAccount" xml:space="preserve">
+    <value>Accediendo a la última cuenta…</value>
+  </data>
+  <data name="InitializingSignIn" xml:space="preserve">
+    <value>Preparando el servicio de acceso…</value>
+  </data>
+  <data name="ChooseSavedOrSms" xml:space="preserve">
+    <value>Elige una cuenta guardada o accede con un código SMS.</value>
+  </data>
+  <data name="UiPreview" xml:space="preserve">
+    <value>Vista previa de la interfaz</value>
+  </data>
+  <data name="PreviewMainAccount" xml:space="preserve">
+    <value>Principal · 138****5678</value>
+  </data>
+  <data name="OperationCancelled" xml:space="preserve">
+    <value>La operación se ha cancelado.</value>
+  </data>
+  <data name="AccountUnlockFailed" xml:space="preserve">
+    <value>No se pudo desbloquear la cuenta. Reinténtalo o accede con un código.</value>
+  </data>
+  <data name="SavedAccountUnavailable" xml:space="preserve">
+    <value>El registro ha caducado o no está disponible. Vuelve a acceder con un código.</value>
+  </data>
+  <data name="SignInIncomplete" xml:space="preserve">
+    <value>No se ha completado el acceso. Inténtalo más tarde.</value>
+  </data>
+  <data name="ComponentUnavailable" xml:space="preserve">
+    <value>Componente de acceso no disponible</value>
+  </data>
+  <data name="CheckStartup" xml:space="preserve">
+    <value>Comprueba los requisitos de inicio y reinténtalo</value>
+  </data>
+  <data name="InvalidMainlandPhone" xml:space="preserve">
+    <value>Introduce un teléfono de China continental de 11 dígitos.</value>
+  </data>
+  <data name="InvalidSmsCode" xml:space="preserve">
+    <value>Introduce el código SMS de 4 a 8 dígitos.</value>
+  </data>
+  <data name="SmsCooldown" xml:space="preserve">
+    <value>Espera 60 segundos desde la última solicitud.</value>
+  </data>
+  <data name="PasswordStateUnavailable" xml:space="preserve">
+    <value>No se pudo comprobar el estado de la cuenta. No se ha enviado ningún SMS.</value>
+  </data>
+  <data name="SignInRejected" xml:space="preserve">
+    <value>El servicio rechazó el acceso. Comprueba los datos o inténtalo más tarde.</value>
+  </data>
+  <data name="SavedCredentialsRejected" xml:space="preserve">
+    <value>Se rechazaron los datos guardados. Accede con un código. La cuenta local se conserva.</value>
+  </data>
+  <data name="SavedValidationNetworkFailure" xml:space="preserve">
+    <value>No se pudo verificar la cuenta guardada. Comprueba la conexión. La cuenta se conserva.</value>
+  </data>
+  <data name="SavedValidationRejected" xml:space="preserve">
+    <value>El servicio oficial rechazó la verificación. Inténtalo más tarde. La cuenta se conserva.</value>
+  </data>
+  <data name="SavedValidationUnknown" xml:space="preserve">
+    <value>La respuesta de verificación no es compatible. Se ha detenido el acceso; la cuenta se conserva.</value>
+  </data>
+  <data name="OfficialInteractionRequired" xml:space="preserve">
+    <value>Se requiere una confirmación adicional. Complétala en el cliente oficial y reinténtalo.</value>
+  </data>
+  <data name="SignInServiceUnavailable" xml:space="preserve">
+    <value>El servicio de acceso no está disponible. Inténtalo más tarde.</value>
+  </data>
+  <data name="PreviewPrimary" xml:space="preserve">
+    <value>Principal · 138****0000</value>
+  </data>
+  <data name="PreviewSecondary" xml:space="preserve">
+    <value>Secundaria · 139****0000</value>
+  </data>
+  <data name="PreviewSpare" xml:space="preserve">
+    <value>Reserva · 137****0000</value>
+  </data>
+  <data name="RememberAccountDescription" xml:space="preserve">
+    <value>Recordar la cuenta y guardar el acceso en este dispositivo</value>
+  </data>
+  <data name="RemoveAccountPrefix" xml:space="preserve">
+    <value>Eliminar cuenta: </value>
+  </data>
+  <data name="HelloSignIn" xml:space="preserve">
+    <value>Desbloquear con Windows Hello y acceder</value>
+  </data>
+  <data name="AddAccountWithCode" xml:space="preserve">
+    <value>Añadir cuenta con un código</value>
+  </data>
+  <data name="RemoveAccountFailed" xml:space="preserve">
+    <value>No se pudo eliminar la cuenta. Inténtalo más tarde.</value>
+  </data>
+  <data name="AccountRemoved" xml:space="preserve">
+    <value>Se ha eliminado el registro local de la cuenta.</value>
+  </data>
+  <data name="AccountRemovedStateRetained" xml:space="preserve">
+    <value>Se eliminó la cuenta, pero no la última selección. Selecciona una cuenta manualmente.</value>
+  </data>
+  <data name="AccountLabel" xml:space="preserve">
+    <value>Etiqueta de la cuenta</value>
+  </data>
+  <data name="InvalidLabel" xml:space="preserve">
+    <value>Introduce una etiqueta válida.</value>
+  </data>
+  <data name="LabelUpdated" xml:space="preserve">
+    <value>Se ha actualizado la etiqueta.</value>
+  </data>
+  <data name="CancellingPrevious" xml:space="preserve">
+    <value>Cancelando la operación anterior…</value>
+  </data>
+  <data name="UseSmsSignIn" xml:space="preserve">
+    <value>Accede con un código SMS.</value>
+  </data>
+  <data name="VerifyingSmsCode" xml:space="preserve">
+    <value>Verificando el código SMS…</value>
+  </data>
+  <data name="ObtainingGameIdentity" xml:space="preserve">
+    <value>Preparando la identidad de juego…</value>
+  </data>
+  <data name="CheckingAdmission" xml:space="preserve">
+    <value>Verificando la cuenta y completando el acceso…</value>
+  </data>
+  <data name="PreviewSmsCooldown" xml:space="preserve">
+    <value>Cuenta atrás de prueba. No se ha enviado ningún SMS.</value>
+  </data>
+  <data name="RequestingSmsCode" xml:space="preserve">
+    <value>Solicitando un código SMS…</value>
+  </data>
+  <data name="SmsCodeSent" xml:space="preserve">
+    <value>Código enviado. Revisa tu teléfono.</value>
+  </data>
+  <data name="WelcomeTitle" xml:space="preserve">
+    <value>NTE · Bienvenido de nuevo</value>
+  </data>
+  <data name="WelcomePrefix" xml:space="preserve">
+    <value>Bienvenido: </value>
+  </data>
+  <data name="ElevationRequired" xml:space="preserve">
+    <value>El juego requiere permisos de administrador. Reinicia el componente de acceso con los mismos permisos.</value>
+  </data>
+  <data name="StartupFailed" xml:space="preserve">
+    <value>No se pudo iniciar el componente de acceso. Comprueba la instalación, la versión y las instancias del juego.</value>
+  </data>
+  <data name="NoSavedAccounts" xml:space="preserve">
+    <value>No hay cuentas guardadas. Puedes guardar una al iniciar sesión.</value>
+  </data>
+  <data name="SmsResendCountdown" xml:space="preserve">
+    <value>Reenviar en {0} s</value>
+  </data>
+  <data name="HelpSubtitle" xml:space="preserve">
+    <value>Inicio, privacidad y restricciones</value>
+  </data>
+  <data name="HelpStartupTitle" xml:space="preserve">
+    <value>Acceso e inicio</value>
+  </data>
+  <data name="HelpStartup" xml:space="preserve">
+    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+  </data>
+  <data name="HelpCompatibilityTitle" xml:space="preserve">
+    <value>Compatibilidad externa</value>
+  </data>
+  <data name="HelpCompatibility" xml:space="preserve">
+    <value>Los servicios oficiales autentican tu cuenta. Este complemento no está afiliado al operador del juego. Los cambios del protocolo pueden requerir una actualización.</value>
+  </data>
+  <data name="HelpPrivacyTitle" xml:space="preserve">
+    <value>Privacidad y protección local</value>
+  </data>
+  <data name="HelpPrivacy" xml:space="preserve">
+    <value>No se guardan contraseñas, códigos SMS ni teléfonos completos. Se conservan datos de acceso cifrados y un número oculto para el usuario actual de Windows. Windows Hello es opcional. Los diagnósticos no registran teléfonos, identificadores, tokens ni claves.</value>
+  </data>
+  <data name="HelpRetentionTitle" xml:space="preserve">
+    <value>Conservación y eliminación</value>
+  </data>
+  <data name="HelpRetention" xml:space="preserve">
+    <value>Las cuentas nuevas se guardan hasta eliminarlas. Cada acceso requiere validación oficial y una nueva identidad de juego; el servicio puede rechazarla. No se amplían los registros antiguos de 24 horas. Desactivar Hello requiere un último desbloqueo. Las acciones locales no borran la cuenta oficial. Cierra sesión o reinicia el juego para cambiar de cuenta.</value>
+  </data>
+  <data name="HelpRestrictionsTitle" xml:space="preserve">
+    <value>Restricciones de cuenta y servicio</value>
+  </data>
+  <data name="HelpRestrictions" xml:space="preserve">
+    <value>El acceso se detiene ante verificaciones, límites de juego, rechazos o estados desconocidos. Contacta con el soporte oficial por problemas de cuenta.</value>
+  </data>
+  <data name="HelpTroubleshootingTitle" xml:space="preserve">
+    <value>Solución de problemas</value>
+  </data>
+  <data name="HelpTroubleshooting" xml:space="preserve">
+    <value>Los errores de red, cambios del servicio o sesiones caducadas pueden requerir un nuevo acceso. La protección local no elimina todos los riesgos.</value>
+  </data>
+  <data name="HelloContext" xml:space="preserve">
+    <value>Proteger o desbloquear la cuenta NTE guardada en este dispositivo</value>
+  </data>
+  <data name="NoticeUnderstood" xml:space="preserve">
+    <value>I understand</value>
+  </data>
+  <data name="UseOfficialLauncher" xml:space="preserve">
+    <value>Use official launcher</value>
+  </data>
+  <data name="ConfirmOfficialLauncher" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="NoticePurposeTitle" xml:space="preserve">
+    <value>Why a separate login service?</value>
+  </data>
+  <data name="NoticePurpose" xml:space="preserve">
+    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+  </data>
+  <data name="NoticeRiskTitle" xml:space="preserve">
+    <value>Account suspension risk</value>
+  </data>
+  <data name="NoticeRisk" xml:space="preserve">
+    <value>Using a self-implemented login flow may violate the game's terms or trigger risk controls or anti-cheat checks, resulting in restricted access, account suspension or a permanent ban. Compatibility and account safety are not guaranteed, even if a previous login succeeded. Continue only if you understand and accept these risks.</value>
+  </data>
+  <data name="NoticeDataTitle" xml:space="preserve">
+    <value>What is saved?</value>
+  </data>
+  <data name="NoticeData" xml:space="preserve">
+    <value>If “Save account on this device” is checked (on by default), we save the game/channel user ID, login token, provider/region/device context, an identity digest for deduplication, the last selected account, and optional official email/nickname/masked phone display data. Remarks, local record IDs, save time and protection type are readable metadata. Passwords and SMS/email codes are processed in memory and are not saved to the account vault. Without saving, credentials remain in memory for the current session. Global login also keeps a random local device ID in device.bin, even without a saved account.</value>
+  </data>
+  <data name="NoticeStorageTitle" xml:space="preserve">
+    <value>Protection and exact locations</value>
+  </data>
+  <data name="NoticeStorage" xml:space="preserve">
+    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+  </data>
+  <data name="NoticeNetworkTitle" xml:space="preserve">
+    <value>Where data is sent and other local changes</value>
+  </data>
+  <data name="NoticeNetwork" xml:space="preserve">
+    <value>Login credentials, tokens, device context and necessary version/system/hardware information are sent to the publisher's authentication/game services over HTTPS or the local game SDK. The services can see your IP address. Google/Facebook authorization opens official pages in your system browser and temporarily registers the wmgooglelogin callback under HKCU\Software\Classes; the prior command is restored on normal completion. A crash may leave that registration behind. This component does not upload accounts to its developer or read the official launcher's account database. The game, browser and official launcher have their own data policies and logs. Global also supplies the game SDK with the computer name, network adapter MAC address, CPU/GPU models, memory/disk capacity, resolution, language, region and time zone. These measurements stay in this component's session memory and are not saved to its account vault; the official SDK may upload or log them independently.</value>
+  </data>
+  <data name="NoticeRealName" xml:space="preserve">
+    <value>Mainland China only: the official service checks real-name and anti-addiction status before login. If unavailable or rejected, login is blocked; complete verification through official channels. This component does not collect or save your legal name or identity-card number.</value>
+  </data>
+  <data name="NoticeRetentionTitle" xml:space="preserve">
+    <value>Settings, retention and removal</value>
+  </data>
+  <data name="NoticeRetention" xml:space="preserve">
+    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+  </data>
+  <data name="NoticeChoiceTitle" xml:space="preserve">
+    <value>Prefer the official login flow?</value>
+  </data>
+  <data name="NoticeChoice" xml:space="preserve">
+    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+  </data>
+  <data name="OfficialLauncherConfirm" xml:space="preserve">
+    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
+  </data>
+  <data name="OfficialLauncherMissing" xml:space="preserve">
+    <value>Official launcher not found inside the game installation directory. Install it there, then try again. The setting has not been changed.</value>
+  </data>
+  <data name="OfficialSwitchFailed" xml:space="preserve">
+    <value>Could not complete the switch. Check the game directory and settings permissions, then try again. If the setting was saved but the game could not close, exit the game manually.</value>
+  </data>
+  <data name="NoticeSaveFailed" xml:space="preserve">
+    <value>Could not save your acknowledgement. Check access to the local settings directory and try again. This notice will appear again until saving succeeds.</value>
+  </data>
+  <data name="OfficialPreviewOnly" xml:space="preserve">
+    <value>Preview only: no setting was changed and no game was closed.</value>
+  </data>
+  <data name="NoticeSharingTitle" xml:space="preserve">
+    <value>Se prohíbe la promoción pública</value>
+  </data>
+  <data name="NoticeSharing" xml:space="preserve">
+    <value>Debido a la naturaleza particular de este complemento, no se permite promocionarlo ni recomendarlo a un público indeterminado en ninguna red social pública, incluidas {0}. La lista es solo ilustrativa. De ocurrir, el autor dejará de mantenerlo de inmediato y eliminará el repositorio.</value>
+  </data>
+  <data name="NoticeSharingExamplesMainland" xml:space="preserve">
+    <value>Bilibili (B站), Douyin, public forums</value>
+  </data>
+  <data name="NoticeSharingExamplesGlobal" xml:space="preserve">
+    <value>YouTube, TikTok, Reddit, X</value>
+  </data>
+  <data name="ServerSwitchTitle" xml:space="preserve"><value>Switch NTE server</value></data>
+  <data name="ServerTaiwan" xml:space="preserve"><value>Taiwan / Hong Kong / Macau</value></data>
+  <data name="ServerGlobal" xml:space="preserve"><value>Global</value></data>
+  <data name="ServerSwitchHint" xml:space="preserve"><value>Shared resources are reused. The selected server keeps its own signed programs and official login configuration. Close the game and both official launchers first.</value></data>
+  <data name="ServerSwitchCheck" xml:space="preserve"><value>Check resources</value></data>
+  <data name="ServerSwitchApply" xml:space="preserve"><value>Switch server</value></data>
+  <data name="ServerSwitchCancel" xml:space="preserve"><value>Cancel operation</value></data>
+  <data name="ServerSwitchPreparing" xml:space="preserve"><value>Preparing server switch…</value></data>
+  <data name="ServerSwitchChecking" xml:space="preserve"><value>Checking existing resources…</value></data>
+  <data name="ServerSwitchDownloading" xml:space="preserve"><value>Preparing missing resources…</value></data>
+  <data name="ServerSwitchActivating" xml:space="preserve"><value>Activating the selected server…</value></data>
+  <data name="ServerSwitchReady" xml:space="preserve"><value>Ready to switch</value></data>
+  <data name="ServerSwitchSummary" xml:space="preserve"><value>Target version: {0}
+Reuse: {1} files · Cached/local: {2} files
+Download: {3} files ({4:F3} GB)</value></data>
+  <data name="ServerSwitchRecovery" xml:space="preserve"><value>The previous server switch was interrupted. Start switching to recover it safely.</value></data>
+  <data name="ServerSwitchCompleted" xml:space="preserve"><value>Server switch completed</value></data>
+  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in TouchUILaunch. Both regions now use this installation directory.</value></data>
+  <data name="ServerSwitchFailed" xml:space="preserve"><value>Server switching could not complete</value></data>
+  <data name="ServerSwitchCancelled" xml:space="preserve"><value>Operation cancelled</value></data>
+  <data name="ServerSwitchCancelledHint" xml:space="preserve"><value>Any activated files are rolled back. Verified downloads are kept for the next attempt.</value></data>
+  <data name="TaiwanTitle" xml:space="preserve"><value>Taiwan account sign-in</value></data>
+  <data name="LoginMethodUnavailable" xml:space="preserve"><value>This sign-in method is not available in the selected region.</value></data>
+  <data name="PhoneSignIn" xml:space="preserve">
+    <value>Iniciar sesión con teléfono</value>
+  </data>
+  <data name="CountryCode" xml:space="preserve">
+    <value>Región / prefijo</value>
+  </data>
+  <data name="InvalidOverseasPhone" xml:space="preserve">
+    <value>Elige un prefijo admitido e introduce un número de teléfono válido.</value>
+  </data>
+  <data name="NoticeTaiwanData" xml:space="preserve">
+    <value>Taiwán: las cuentas y un ID de dispositivo aleatorio persistente se guardan por separado en %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\. La información visible del teléfono solo conserva el prefijo y los últimos cuatro dígitos; el número completo, la contraseña y el código de verificación no se guardan en el almacén de cuentas. Taiwán también proporciona al SDK del juego la información del dispositivo indicada abajo para Global. Ajustes legibles: %LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json y NteTaiwan\launch.json. Los diagnósticos rotativos de las devoluciones del navegador en %LocalAppData%\TouchUILaunch\NTE\Diagnostics\ solo registran hora, región, etapa y bytes, sin URL de devolución, tokens ni datos de cuenta. La opción del lanzador oficial requiere NTETW\NTETWGame.exe en la instalación del juego seleccionada.</value>
+  </data>
+  <data name="CnUnsupportedSdk" xml:space="preserve"><value>La versión china del iniciador o del SDK instalado aún no es compatible. Actualiza el complemento.</value></data>
+  <data name="CnFilesMissing" xml:space="preserve"><value>Faltan archivos del juego necesarios para iniciar sesión. Verifica o repara el juego.</value></data>
+  <data name="CnClientRunning" xml:space="preserve"><value>El juego o el iniciador oficial sigue abierto. Ciérralo y vuelve a intentarlo.</value></data>
+  <data name="CnLoginHostRunning" xml:space="preserve"><value>Ya hay un componente de inicio de sesión abierto. Vuelve a su ventana o ciérralo e inténtalo de nuevo.</value></data>
+</root>

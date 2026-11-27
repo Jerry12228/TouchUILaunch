@@ -46,7 +46,7 @@ The verification script performs these steps:
 7. Check source boundaries and packaged imports/fingerprint strings, writing
    `memory-boundary.json` in the selected dist directory.
 
-There are nine default CTest registrations in
+There are twelve default CTest registrations in
 [CMakeLists.txt](../CMakeLists.txt):
 
 | CTest name | Executable | Main coverage |
@@ -60,6 +60,9 @@ There are nine default CTest registrations in
 | `LauncherElevation` | `LauncherElevationTests` | Argument quoting, relaunch guard, cancellation/error propagation, owned argument round-trip child |
 | `LauncherLog` | `LauncherLogTests` | Opt-in logs, default silence, Unicode paths, captured streams, restoration, error-dialog policy |
 | `MemoryReader` | `MemoryReaderTests` | Raw offsets versus RVAs, cross-page reads, BSS slots, owned snapshots, module retention, invalid headers/protection rejection |
+| `NTE` | `NteTests` | Synthetic UE registrations, owner and bool ABI validation, pending/ambiguous metadata, chained unwind, actual atomic and saved-register detour execution with concurrent callers, ownership CAS, partial install and protection/cache failures; real payload worker failure handshake in the owned test process |
+| `NTERelay` | `NteRelayTests` | Real project DLL in owned fixture processes: two-level launcher propagation, mapping before main, requested suspension, normal resume, excluded children, original create failure, rejected DLL cleanup, inactive controller and transferred game handle; direct Game-role loading before main, forwarding the international entry map/profile flags before extras, inherited Unicode environment/SDK-path delivery, SDK discovery, and production direct-coordinator failure/cleanup |
+| `LoaderDiagnostics` | `LoaderTests` | Direct loading before main with suspension preserved; full 64-bit module result, same-thread remote errors 126/193/1114, Unicode paths, rejected DLL initialization, and retained loader allocation after timeout, all in an owned test child |
 
 Test sources: [GI discovery/joystick tests](../games/gi/tests/gi_touch_tests.cpp),
 [process tests](../common/process/mobile_tests.cpp),
@@ -94,6 +97,18 @@ cases with `ctest --preset windows-x64-release`, or the complete script to also
 cover CLI and packaged boundaries.
 
 ## External sample tests
+
+NTE has an independent, optional read-only check of a recovered **RVA-layout
+memory image**, not the packed on-disk EXE:
+
+```powershell
+./build/windows-x64-release/Release/NteTests.exe --sample 'C:/Samples/NTE/1.5.5/HTGame.module.memory.bin'
+```
+
+This compares static discovery against independent 1.5.5 IDA oracles kept only
+in test code. It does not execute the image, recover heap UFunctions, or prove
+visible UI/input. Default fixtures need no game files. See [NTE acceptance
+cases](NTE_INTERNALS.md#manual-acceptance) before reporting real-game results.
 
 External checks read game files as data. They do not execute or load the
 supplied game binaries through the OS loader. The discovery fixtures simulate
@@ -325,4 +340,30 @@ failure. Report known unverified manual scenarios plainly.
 
 For example: “Default verification passed; external sample checks were skipped
 because no inputs were supplied; no real game was launched.” Do not report
-that result as verified support for all four games or all ZZZ versions.
+that result as verified support for every game or every client version.
+
+## NTE live result — 2026-11-27
+
+The user confirmed that the CN independent-host retest passed after adapting
+the saved-register native entry. The requested test covered login, world entry
+and basic touch. Logs confirm early DLL mapping, saved-register detour selection
+and successful UI installation. Global official-relay HUD/basic controls had
+already been confirmed by screenshot/user feedback; independent Global login
+was subsequently confirmed. These results do not imply separate acceptance of
+multitouch, streaming, scene transitions or independent Global world/touch.
+See [the live acceptance table](NTE_INTERNALS.md#accepted-live-scenarios--2026-11-27)
+for evidence and the preserved Global relay session.
+
+## Optional NTE login host
+
+Build/package with `scripts/build.ps1 -NteLoginHost`; requires .NET 10 SDK and
+NuGet access for the pinned Avalonia packages. `-NteNugetSource` can select a
+local package feed. The published x64 host includes its runtime; keep the entire
+`nte-login-host/` folder. Source/provenance are in `third_party/nte_login_host/`.
+Run `scripts/test.ps1 -NteLoginHost` to add offline SDK/resource checks and an
+actual owned .NET Process.Start relay fixture to the native suite. These checks
+need no game/account/network. Use `--verify-installation <root> Global` on the
+host for read-only installed SDK/config checks. This does not test authentication.
+The public `--nte-region CN|Global` selects the independent SDK host region;
+CN and Global have separate login protocols. See NTE_INTERNALS.md for live
+acceptance status and ownership details.

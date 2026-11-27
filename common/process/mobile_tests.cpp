@@ -170,12 +170,13 @@ void child_tests() {
               "WW child receives cloud arguments before extra arguments and uses its executable working directory");
         std::filesystem::remove(path.parent_path()/L"ww-launch-passed.txt");
     }
-    for(auto kind:{game::Kind::GI,game::Kind::SR,game::Kind::ZZZ,game::Kind::WW}) {
+    for(auto kind:{game::Kind::GI,game::Kind::SR,game::Kind::ZZZ,game::Kind::WW,game::Kind::NTE}) {
         std::optional<game::Kind> selected;game::select(selected,kind);check(*selected==kind,"explicit selection");
         rejects([&]{game::select(selected,kind);},"duplicate selection rejected");
         rejects([&]{game::validate(selected,path,true,false);},"wrong executable rejected");
     }
     check(game::accepts(game::Kind::GI,L"YuanShen.exe")&&game::accepts(game::Kind::GI,L"genshinimpact.EXE")&&game::accepts(game::Kind::SR,L"StarRail.exe"),"supported filenames");
+    check(game::accepts(game::Kind::NTE,L"HTGame.exe")&&!game::accepts(game::Kind::NTE,L"HTGameBase.dll"),"NTE executable identity");
     rejects([]{game::require_stopped(true);},"running game rejected before creation");game::require_stopped(false);
 }
 }

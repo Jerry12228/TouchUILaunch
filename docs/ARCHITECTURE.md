@@ -1,9 +1,11 @@
 # Architecture
 
 TouchUILaunch is a Windows x64 C++20 launcher with per-game mobile UI paths and
-a separate ZZZ touch DLL. The production package has two program artifacts:
-`TouchUILaunch.exe` and `TouchUILaunch.dll`. Their shared filename stem does not
-mean every game loads the DLL.
+a separate DLL for ZZZ and NTE. The base package has three program artifacts:
+`TouchUILaunch.exe`, `TouchUILaunch.dll`, and `TouchUILaunch.NTE.dll`. Their shared filename stem does not
+mean every game loads the DLL. Optional NTE direct login adds a self-contained
+.NET/Avalonia SDK host under `nte-login-host/`; the native process relay injects
+only into its newly created, exact-path game child.
 
 Read [Game support](GAME_SUPPORT.md) for CLI details,
 [ZZZ internals](ZZZ_INTERNALS.md) for resolver and bridge mechanics, and
@@ -18,6 +20,7 @@ Read [Game support](GAME_SUPPORT.md) for CLI details,
 | SR adapter | SR entry adapter and repeated UI-state worker | [sr_mobile.hpp](../games/sr/include/sr_mobile.hpp), [sr_stubs.asm](../games/sr/src/sr_stubs.asm) |
 | WW | Android cloud UI launch arguments | [ww_launch.hpp](../games/ww/include/ww_launch.hpp) |
 | ZZZ | Memory discovery, optional file probe, injected input/UI bridge, fixtures and generators | [profile_resolver.hpp](../games/zzz/include/profile_resolver.hpp), [payload.cpp](../games/zzz/src/payload.cpp) |
+| NTE | Owned official/independent SDK-host relay, regional login sessions, UE registration discovery, mobile predicates and navigation callbacks | [nte_discovery.hpp](../games/nte/include/nte_discovery.hpp), [payload.cpp](../games/nte/src/payload.cpp), [NTE internals](NTE_INTERNALS.md) |
 | Windows helpers | RAII handles, module/address helpers, event names, elevation and argument quoting | [win_util.hpp](../common/windows/include/win_util.hpp), [elevation.hpp](../common/windows/include/elevation.hpp) |
 | Binary helpers | PE section/RVA access, masked patterns, bounded x64 decoding | [pe_image.hpp](../common/binary/include/pe_image.hpp), [x64_reader.hpp](../common/binary/include/x64_reader.hpp), [pattern.hpp](../common/binary/include/pattern.hpp) |
 | Process helpers | Remote memory operations, loader bootstrap, GI/SR installation and contexts | [mobile_runtime.hpp](../common/process/include/mobile_runtime.hpp), [load_library.asm](../common/process/src/load_library.asm) |
@@ -65,12 +68,14 @@ editing a guide or adding a small fix.
 | --- | --- |
 | `TouchUIHeaders` | Interface include surface for project headers |
 | `Hde64` | Bundled static x64 decoder |
+| `MinHook` | Pinned v1.3.4 static hooks for the NTE launcher relay and saved-register predicate; separate decoder symbols |
 | `RemoteLoaderStubs`, `GIMobileStubs`, `SRMobileStubs` | Separate static MASM blocks |
 | `TouchUIProcess` | Header implementation plus decoder, stubs, `user32`, and `psapi` |
 | `TouchUIGI`, `TouchUISR`, `TouchUIWW` | Interface targets connecting game adapters to their dependencies |
 | `TouchUIZZZDiscovery` | Header discovery implementation and HDE64 |
 | `TouchUILaunch` | Launcher EXE; also compiles the explicit ZZZ file diagnostic through included headers |
 | `TouchUILaunchPayload` | Production DLL, output name `TouchUILaunch`; ZZZ discovery and `user32` |
+| `TouchUINTE`, `TouchUILaunchNTEPayload` | NTE discovery/callback module and separate `TouchUILaunch.NTE.dll` |
 | `TouchUIZZZBridgeTestHarness` | Separate object build of the payload with `TOUCHUI_BRIDGE_TESTING=1` |
 
 Test executables and CTest registrations are described in [Testing](TESTING.md).
@@ -85,7 +90,7 @@ The common path in [wmain](../launcher/src/launcher.cpp) is:
 
 1. Detect `--log` early, open optional diagnostics, and parse/validate selection
    and paths. Help returns directly. A ZZZ probe uses a separate read-only path.
-2. Reject an already-running process of the selected game family. For ZZZ,
+2. Reject an already-running process of the selected game family. For ZZZ/NTE,
    check that the adjacent payload exists.
 3. If necessary, relaunch the launcher with Windows elevation. The original
    launcher waits and returns the elevated child's exit code; it does not
@@ -101,6 +106,7 @@ The common path in [wmain](../launcher/src/launcher.cpp) is:
 | SR | Suspended main thread; load/capture GameAssembly, resolve UI state, start repeated writer | After worker startup and main-thread resume |
 | WW | Normal process with cloud UI arguments | Immediately after process creation |
 | ZZZ | Normal process; wait for GameAssembly, inject adjacent DLL, observe startup event | After the payload worker publishes its startup event |
+| NTE | Suspended official launcher relay by default, or bundled regional SDK/login host with --nte-direct; bridge early-loads the newly created game DLL, then waits for UnrealWindow and installs UI hooks | After successful UI installation; failure/cancellation cleans the newly created launcher/game job |
 
 `game::Child` closes its process/thread handles on destruction. Until
 `release()`, its destructor also terminates the process it created and waits
@@ -125,6 +131,12 @@ thread or installed callback can reference a block, retain it. In particular,
 a loader timeout must not free memory that the remote thread may still use.
 Retained legacy GI C++ context offsets must match MASM operands, enforced partly by
 `static_assert` declarations and [MobileUI tests](../common/process/mobile_tests.cpp).
+
+NTE's [diagnostic loader](../common/process/include/load_library_diagnostic.hpp)
+uses a separate additive MASM entry to capture full `HMODULE`, completion and
+same-thread loader error. Its code and writable context/path occupy separate
+pages; a wait timeout retains the allocation until the owned child exits.
+The existing GI/SR loader entry and ZZZ loading path are unchanged.
 
 ZZZ's resolver pins GameAssembly for process lifetime. The payload's installed
 callbacks and window procedure must remain resident until process exit; there
@@ -160,3 +172,8 @@ Similarly, successful GI patch installation does not prove the target initializa
 function has run, SR worker startup does not prove visible UI, and WW process
 creation does not prove the game honored its arguments. Use
 [evidence levels](TESTING.md#evidence-levels) when reporting results.
+
+NTE waits for installation rather than a worker-start event, but visible HUD,
+input mappings, and touch delivery still require manual acceptance. Its
+[process-lifetime callbacks](NTE_INTERNALS.md#installation-and-lifetime) remain
+pinned and use the game's original navigation setter on its calling thread.

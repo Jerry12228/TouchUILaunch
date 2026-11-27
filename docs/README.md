@@ -2,7 +2,7 @@
 
 This handbook explains how to work on the standalone TouchUILaunch repository.
 It serves Codex, Claude, other coding assistants, and human maintainers. The
-project enables mobile UI for GI, SR, ZZZ, and WW; ZZZ additionally implements a
+project enables mobile UI for GI, SR, ZZZ, and WW, with an experimental NTE path; ZZZ additionally implements a
 Windows touch bridge. Their implementations and validation requirements differ.
 
 All command examples use PowerShell from the repository root: the directory
@@ -35,6 +35,7 @@ tool automatically reads every linked document.
 | Change active GI UI discovery or joystick sizing | [GI touch](GI_TOUCH.md), [0.2.0 evidence](GI_TOUCH_71.md) | [Initializer](../games/gi/include/gi_touch.hpp), [discovery plan](../games/gi/include/gi_touch_plan.hpp), [joystick helper](../games/gi/include/gi_joystick_code.hpp) |
 | Independently inspect the supplied GI 7.1 metadata | [Offline metadata recovery](GI_METADATA_71.md) | [Recovery tool](../games/gi/tools/recover_metadata71.py), [read-only query tool](../games/gi/tools/query_metadata71.py) |
 | Change WW launch behavior | [Game support](GAME_SUPPORT.md#ww-launch) | [WW arguments](../games/ww/include/ww_launch.hpp) |
+| Develop experimental NTE UI/input switching | [NTE internals](NTE_INTERNALS.md), [Testing](TESTING.md) | [NTE discovery](../games/nte/include/nte_discovery.hpp), [payload](../games/nte/src/payload.cpp) |
 | Diagnose or extend ZZZ discovery | [ZZZ internals](ZZZ_INTERNALS.md#discovery-pipeline), [Testing](TESTING.md#external-sample-tests) | [Memory resolver](../games/zzz/include/profile_resolver.hpp), [semantic discovery](../games/zzz/include/short_discovery.hpp) |
 | Change ZZZ touch or layout behavior | [ZZZ internals](ZZZ_INTERNALS.md#touch-state-and-frame-contract), [Testing](TESTING.md) | [Payload](../games/zzz/src/payload.cpp), [touch state](../games/zzz/include/touch_state.hpp) |
 | Update generated schemas, rules, or evidence | [Development](DEVELOPMENT.md#generated-files), [ZZZ internals](ZZZ_INTERNALS.md#evidence-and-version-adaptation) | [ZZZ tools](../games/zzz/tools), [test data](../games/zzz/testdata/README.md) |

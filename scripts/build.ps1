@@ -3,7 +3,9 @@ param(
     [string]$BuildDir = '',
     [string]$DistDir = '',
     [string]$ZZZSampleRoot = '',
-    [string]$SRSample = ''
+    [string]$SRSample = '',
+    [switch]$NteLoginHost,
+    [string]$NteNugetSource = ''
 )
 
 $ErrorActionPreference = 'Stop'
@@ -57,5 +59,9 @@ if ($LASTEXITCODE) { throw 'Native build failed' }
 New-Item -ItemType Directory -Path $dist -Force | Out-Null
 & cmake --install $build --config Release --prefix $dist
 if ($LASTEXITCODE) { throw 'Packaging failed' }
+
+if ($NteLoginHost) {
+    & (Join-Path $nativeRoot 'scripts\build-nte-login-host.ps1') -DistDir $dist -NugetSource $NteNugetSource
+}
 
 Write-Output "Artifacts: $dist"

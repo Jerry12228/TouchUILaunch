@@ -3,8 +3,28 @@ HDE64
 The project includes the HDE64 instruction decoder under its upstream BSD
 license. See licenses/hde64/LICENSE.txt in a packaged distribution.
 
+MinHook
+
+The NTE launcher relay includes MinHook v1.3.4, copyright (C) 2009-2017
+Tsuda Kageyu, under its upstream BSD license, including its HDE64 decoder.
+Source: https://github.com/TsudaKageyu/minhook/tree/v1.3.4
+See licenses/minhook/LICENSE.txt in a packaged distribution. Vendored files
+and SHA-256 values are recorded in third_party/minhook/UPSTREAM.json.
+
 GI/SR mobile UI adaptation
 
 The GI and SR mobile-UI routines are adapted from
 Genshin_StarRail_fps_unlocker, copyright (c) 2024 NullName, under the MIT
 license. See licenses/gi_sr/LICENSE.txt in a packaged distribution.
+
+NTE independent login host
+
+Adapted from Hi3Helper.Plugin.NTE, copyright (c) 2025 Collapse Launcher,
+under the MIT license. Pinned source:
+https://github.com/maxinglo/Hi3Helper.Plugin.NTE/tree/79863eeb2daa04d7558c54e2e6dc9a733102217e
+See licenses/nte_login_host/LICENSE, its UPSTREAM.json and the vendored
+ADAPTATIONS.md. The host also retains bundled Collapse style and provider brand
+notices under its ThirdParty/ and Assets/ directories. Restored dependency
+metadata, license terms and available third-party notices for Avalonia, Skia,
+HarfBuzz, MicroCom and the .NET runtime are packaged under
+licenses/nte_login_host/packages/ using the resolved NuGet dependency graph.

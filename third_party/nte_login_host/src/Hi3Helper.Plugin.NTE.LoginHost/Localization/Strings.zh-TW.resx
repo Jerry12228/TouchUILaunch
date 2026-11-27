@@ -1,0 +1,597 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="GlobalTitle" xml:space="preserve">
+    <value>帳號登入</value>
+  </data>
+  <data name="Email" xml:space="preserve">
+    <value>電子郵件</value>
+  </data>
+  <data name="Password" xml:space="preserve">
+    <value>密碼</value>
+  </data>
+  <data name="EmailCode" xml:space="preserve">
+    <value>電子郵件驗證碼</value>
+  </data>
+  <data name="UsePassword" xml:space="preserve">
+    <value>使用電子郵件密碼</value>
+  </data>
+  <data name="SendEmailCode" xml:space="preserve">
+    <value>取得電子郵件驗證碼</value>
+  </data>
+  <data name="Agreement" xml:space="preserve">
+    <value>我已閱讀並同意使用者協議和隱私權政策</value>
+  </data>
+  <data name="ReadTerms" xml:space="preserve">
+    <value>查看使用者協議與隱私權政策</value>
+  </data>
+  <data name="EmailSignIn" xml:space="preserve">
+    <value>電子郵件登入</value>
+  </data>
+  <data name="RetryConnection" xml:space="preserve">
+    <value>重試連線</value>
+  </data>
+  <data name="ChooseSignIn" xml:space="preserve">
+    <value>請選擇登入方式。</value>
+  </data>
+  <data name="EmailCodeSent" xml:space="preserve">
+    <value>驗證碼已傳送，請檢查電子郵件；60 秒後可重新取得。</value>
+  </data>
+  <data name="BrowserPending" xml:space="preserve">
+    <value>請在系統瀏覽器完成授權，並允許瀏覽器開啟登入元件。</value>
+  </data>
+  <data name="AuthorizationCancelled" xml:space="preserve">
+    <value>本次授權已取消或逾時，可以重新登入。</value>
+  </data>
+  <data name="GlobalSignInFailed" xml:space="preserve">
+    <value>國際服登入尚未完成，請檢查網路和輸入後重試。</value>
+  </data>
+  <data name="GlobalHelpTitle" xml:space="preserve">
+    <value>國際服登入說明</value>
+  </data>
+  <data name="GlobalHelp" xml:space="preserve">
+    <value>勾選記住帳號後，僅在目前 Windows 使用者下加密儲存 PC 工作階段，還原前仍須官方驗證。不儲存密碼、驗證碼或第三方網頁授權權杖。</value>
+  </data>
+  <data name="BackToSignIn" xml:space="preserve">
+    <value>返回登入</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>關閉</value>
+  </data>
+  <data name="Connecting" xml:space="preserve">
+    <value>正在連線登入服務…</value>
+  </data>
+  <data name="EmailCooldown" xml:space="preserve">
+    <value>請在上次請求滿 60 秒後再取得驗證碼。</value>
+  </data>
+  <data name="InvalidEmail" xml:space="preserve">
+    <value>請輸入有效的電子郵件地址。</value>
+  </data>
+  <data name="InvalidSecret" xml:space="preserve">
+    <value>請輸入有效的密碼或電子郵件驗證碼。</value>
+  </data>
+  <data name="ServiceUnavailable" xml:space="preserve">
+    <value>官方登入服務暫時無法使用，請檢查網路後重試。</value>
+  </data>
+  <data name="ServiceRejected" xml:space="preserve">
+    <value>官方服務未接受本次請求（{0}），請檢查輸入或稍後重試。</value>
+  </data>
+  <data name="GlobalFilesMissing" xml:space="preserve">
+    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+  </data>
+  <data name="GlobalWrongPlatform" xml:space="preserve">
+    <value>所選安裝不屬於異環國際服，請檢查國際服遊戲目錄。</value>
+  </data>
+  <data name="GlobalWrongRegion" xml:space="preserve">
+    <value>所選目錄記錄的區服不是國際服，請重新選擇國際服遊戲目錄。</value>
+  </data>
+  <data name="GlobalConfigInvalid" xml:space="preserve">
+    <value>國際服安裝設定無效，請檢查並修復遊戲檔案。</value>
+  </data>
+  <data name="GlobalAlreadyRunning" xml:space="preserve">
+    <value>已有異環遊戲或登入元件正在執行，請先退出後重試。</value>
+  </data>
+  <data name="GlobalSdkUnsupported" xml:space="preserve">
+    <value>目前國際服 SDK 或認證設定版本尚未相容，請在外掛完成適配後更新。</value>
+  </data>
+  <data name="GlobalStartFailed" xml:space="preserve">
+    <value>無法啟動異環國際服，請檢查遊戲安裝和執行權限。</value>
+  </data>
+  <data name="GlobalCommunicationFailed" xml:space="preserve">
+    <value>國際服登入通訊無法初始化。遊戲仍在執行，請退出遊戲後重試。</value>
+  </data>
+  <data name="GlobalSaveDirectoryConflict" xml:space="preserve">
+    <value>額外啟動參數與國際服設定目錄衝突。請從遊戲額外參數中移除 saveddirsuffix 和 enginesaveddirsuffix。</value>
+  </data>
+  <data name="GlobalOtherMethods" xml:space="preserve">
+    <value>其他登入方式</value>
+  </data>
+  <data name="GlobalBrowserHint" xml:space="preserve">
+    <value>將在系統瀏覽器中完成授權</value>
+  </data>
+  <data name="GlobalSavedUnavailable" xml:space="preserve">
+    <value>儲存的登入暫時無法使用。請重試，或透過電子郵件、Google、Facebook 重新登入；帳號記錄仍會保留。</value>
+  </data>
+  <data name="CancelSignIn" xml:space="preserve">
+    <value>取消此次登入</value>
+  </data>
+  <data name="SavedAccounts" xml:space="preserve">
+    <value>已儲存帳號</value>
+  </data>
+  <data name="ChooseSavedAccount" xml:space="preserve">
+    <value>選擇已儲存的帳號登入。</value>
+  </data>
+  <data name="EditLabel" xml:space="preserve">
+    <value>編輯備註</value>
+  </data>
+  <data name="RemoveLocalAccount" xml:space="preserve">
+    <value>從此裝置移除帳號</value>
+  </data>
+  <data name="RememberAccount" xml:space="preserve">
+    <value>記住此帳號</value>
+  </data>
+  <data name="SignInSelected" xml:space="preserve">
+    <value>登入所選帳號</value>
+  </data>
+  <data name="PreviewNoAuthentication" xml:space="preserve">
+    <value>預覽模式 · 不讀取帳號或發送驗證請求</value>
+  </data>
+  <data name="SignInHelp" xml:space="preserve">
+    <value>登入說明與隱私</value>
+  </data>
+  <data name="ReadSignInHelp" xml:space="preserve">
+    <value>檢視登入說明與隱私</value>
+  </data>
+  <data name="SaveLabel" xml:space="preserve">
+    <value>儲存備註</value>
+  </data>
+  <data name="PreparingSavedAccount" xml:space="preserve">
+    <value>正在加密儲存登入資訊…</value>
+  </data>
+  <data name="LogoutStateNotSaved" xml:space="preserve">
+    <value>無法清除自動登入選擇。</value>
+  </data>
+  <data name="GlobalRemoveAccount" xml:space="preserve">
+    <value>移除帳號</value>
+  </data>
+  <data name="GlobalNoSavedAccounts" xml:space="preserve">
+    <value>尚未儲存帳號。透過電子郵件、Google 或 Facebook 登入後即可記住帳號。</value>
+  </data>
+  <data name="ProtectionSettingsUnavailable" xml:space="preserve">
+    <value>無法讀取登入保護設定，請在啟動器遊戲設定中檢查並重新儲存。</value>
+  </data>
+  <data name="UnlockAccountWithHello" xml:space="preserve">
+    <value>請在 Windows Hello 中解鎖所選帳號…</value>
+  </data>
+  <data name="ReadingSavedAccount" xml:space="preserve">
+    <value>正在讀取已儲存帳號…</value>
+  </data>
+  <data name="ProtectAccountWithHello" xml:space="preserve">
+    <value>請使用 Windows Hello 保護本機帳號…</value>
+  </data>
+  <data name="HelloProtectionFailed" xml:space="preserve">
+    <value>Windows Hello 無法保護或解鎖此帳號（代碼 {0}）。已儲存帳號未變更，請檢查 Windows 登入設定後重試。</value>
+  </data>
+  <data name="ManageAccounts" xml:space="preserve">
+    <value>管理帳號</value>
+  </data>
+  <data name="CancelEdit" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="RemoveAccountConfirmation" xml:space="preserve">
+    <value>要從此裝置移除此帳號嗎？之後可以重新登入，不影響官方帳號。</value>
+  </data>
+  <data name="ConfirmRemove" xml:space="preserve">
+    <value>確認移除</value>
+  </data>
+  <data name="ContinueSignIn" xml:space="preserve">
+    <value>繼續登入</value>
+  </data>
+  <data name="UseOtherAccount" xml:space="preserve">
+    <value>使用其他帳號</value>
+  </data>
+  <data name="BackToSavedAccounts" xml:space="preserve">
+    <value>返回已儲存帳號</value>
+  </data>
+  <data name="BackToMethods" xml:space="preserve">
+    <value>其他登入方式</value>
+  </data>
+  <data name="SignInGoogle" xml:space="preserve">
+    <value>使用 Google 登入</value>
+  </data>
+  <data name="SignInFacebook" xml:space="preserve">
+    <value>使用 Facebook 登入</value>
+  </data>
+  <data name="SignInEmail" xml:space="preserve">
+    <value>使用電子郵件登入</value>
+  </data>
+  <data name="PasswordSignIn" xml:space="preserve">
+    <value>密碼登入</value>
+  </data>
+  <data name="CodeSignIn" xml:space="preserve">
+    <value>驗證碼登入</value>
+  </data>
+  <data name="AgreementInline" xml:space="preserve">
+    <value>我已閱讀並同意{0}及{1}</value>
+  </data>
+  <data name="TermsName" xml:space="preserve">
+    <value>《使用者協議》</value>
+  </data>
+  <data name="PrivacyName" xml:space="preserve">
+    <value>《隱私政策》</value>
+  </data>
+  <data name="AgreementRequired" xml:space="preserve">
+    <value>請先閱讀並同意使用者協議及隱私政策。</value>
+  </data>
+  <data name="EnterPassword" xml:space="preserve">
+    <value>請輸入密碼。</value>
+  </data>
+  <data name="EnterEmailCode" xml:space="preserve">
+    <value>請輸入電子郵件收到的驗證碼。</value>
+  </data>
+  <data name="CancelOperation" xml:space="preserve">
+    <value>取消操作</value>
+  </data>
+  <data name="EmailNotProvided" xml:space="preserve">
+    <value>未提供電子郵件</value>
+  </data>
+  <data name="SavedAccountNumber" xml:space="preserve">
+    <value>帳號 {0}</value>
+  </data>
+  <data name="LegacyAccount" xml:space="preserve">
+    <value>舊記錄</value>
+  </data>
+  <data name="HelloProtectionHelp" xml:space="preserve">
+    <value>可在啟動器對應區服的遊戲設定中啟用 Windows Hello 保護，預設關閉。受保護帳號登入前須驗證；關閉後仍須解鎖一次才能轉換儲存方式。</value>
+  </data>
+  <data name="DisplayInfoHelp" xml:space="preserve">
+    <value>可用的電子郵件與名稱會為目前 Windows 使用者加密儲存，方便辨認帳號；修改備註會保留這些資訊。舊記錄可能沒有電子郵件，不會僅為補齊資料要求重新授權。</value>
+  </data>
+  <data name="DisplayInfoUnavailable" xml:space="preserve">
+    <value>部分帳號資料無法讀取，已儲存憑據仍保留。可選擇帳號嘗試登入。</value>
+  </data>
+  <data name="SaveOnDevice" xml:space="preserve">
+    <value>在此裝置儲存帳號</value>
+  </data>
+  <data name="SendSmsCode" xml:space="preserve">
+    <value>取得驗證碼</value>
+  </data>
+  <data name="SignIn" xml:space="preserve">
+    <value>登入</value>
+  </data>
+  <data name="MainlandTitle" xml:space="preserve">
+    <value>帳號登入</value>
+  </data>
+  <data name="PhonePlaceholder" xml:space="preserve">
+    <value>請輸入手機號碼</value>
+  </data>
+  <data name="CodePlaceholder" xml:space="preserve">
+    <value>請輸入驗證碼</value>
+  </data>
+  <data name="Phone" xml:space="preserve">
+    <value>手機號碼</value>
+  </data>
+  <data name="SmsCode" xml:space="preserve">
+    <value>簡訊驗證碼</value>
+  </data>
+  <data name="RestoringLastAccount" xml:space="preserve">
+    <value>正在登入上次使用的帳號…</value>
+  </data>
+  <data name="InitializingSignIn" xml:space="preserve">
+    <value>正在初始化登入服務…</value>
+  </data>
+  <data name="ChooseSavedOrSms" xml:space="preserve">
+    <value>選擇已儲存帳號，或使用簡訊驗證碼登入。</value>
+  </data>
+  <data name="UiPreview" xml:space="preserve">
+    <value>介面預覽</value>
+  </data>
+  <data name="PreviewMainAccount" xml:space="preserve">
+    <value>我的主帳號 · 138****5678</value>
+  </data>
+  <data name="OperationCancelled" xml:space="preserve">
+    <value>已取消此操作。</value>
+  </data>
+  <data name="AccountUnlockFailed" xml:space="preserve">
+    <value>無法解鎖已儲存帳號，請重試或改用驗證碼登入。</value>
+  </data>
+  <data name="SavedAccountUnavailable" xml:space="preserve">
+    <value>已儲存記錄已過期或無法使用，請使用驗證碼重新登入。</value>
+  </data>
+  <data name="SignInIncomplete" xml:space="preserve">
+    <value>登入尚未完成，請稍後重試。</value>
+  </data>
+  <data name="ComponentUnavailable" xml:space="preserve">
+    <value>登入元件暫時無法使用</value>
+  </data>
+  <data name="CheckStartup" xml:space="preserve">
+    <value>請檢查啟動條件後重試</value>
+  </data>
+  <data name="InvalidMainlandPhone" xml:space="preserve">
+    <value>請輸入 11 位中國大陸手機號碼。</value>
+  </data>
+  <data name="InvalidSmsCode" xml:space="preserve">
+    <value>請輸入簡訊中的 4 至 8 位驗證碼。</value>
+  </data>
+  <data name="SmsCooldown" xml:space="preserve">
+    <value>請在上次要求滿 60 秒後再取得驗證碼。</value>
+  </data>
+  <data name="PasswordStateUnavailable" xml:space="preserve">
+    <value>無法確認帳號狀態，未傳送簡訊。</value>
+  </data>
+  <data name="SignInRejected" xml:space="preserve">
+    <value>服務未接受此次登入，請檢查輸入或稍後重試。</value>
+  </data>
+  <data name="SavedCredentialsRejected" xml:space="preserve">
+    <value>服務未接受已儲存憑據，請使用驗證碼登入。本機帳號仍保留。</value>
+  </data>
+  <data name="SavedValidationNetworkFailure" xml:space="preserve">
+    <value>暫時無法驗證已儲存帳號，請檢查網路後重試。本機帳號仍保留。</value>
+  </data>
+  <data name="SavedValidationRejected" xml:space="preserve">
+    <value>官方服務未接受帳號驗證，請稍後重試。本機帳號仍保留。</value>
+  </data>
+  <data name="SavedValidationUnknown" xml:space="preserve">
+    <value>驗證回應暫不相容，已停止登入。本機帳號仍保留。</value>
+  </data>
+  <data name="OfficialInteractionRequired" xml:space="preserve">
+    <value>官方服務要求額外協議確認，請先透過官方用戶端處理後重試。</value>
+  </data>
+  <data name="SignInServiceUnavailable" xml:space="preserve">
+    <value>登入服務暫時無法使用，請稍後重試。</value>
+  </data>
+  <data name="PreviewPrimary" xml:space="preserve">
+    <value>主帳號 · 138****0000</value>
+  </data>
+  <data name="PreviewSecondary" xml:space="preserve">
+    <value>小號 · 139****0000</value>
+  </data>
+  <data name="PreviewSpare" xml:space="preserve">
+    <value>備用 · 137****0000</value>
+  </data>
+  <data name="RememberAccountDescription" xml:space="preserve">
+    <value>記住此帳號並在此裝置儲存登入資訊</value>
+  </data>
+  <data name="RemoveAccountPrefix" xml:space="preserve">
+    <value>移除帳號：</value>
+  </data>
+  <data name="HelloSignIn" xml:space="preserve">
+    <value>Windows Hello 解鎖並登入</value>
+  </data>
+  <data name="AddAccountWithCode" xml:space="preserve">
+    <value>使用驗證碼新增帳號</value>
+  </data>
+  <data name="RemoveAccountFailed" xml:space="preserve">
+    <value>無法移除此帳號，請稍後重試。</value>
+  </data>
+  <data name="AccountRemoved" xml:space="preserve">
+    <value>已移除此帳號的本機記錄。</value>
+  </data>
+  <data name="AccountRemovedStateRetained" xml:space="preserve">
+    <value>帳號已移除，但無法清除上次登入狀態，請手動選擇帳號。</value>
+  </data>
+  <data name="AccountLabel" xml:space="preserve">
+    <value>帳號備註</value>
+  </data>
+  <data name="InvalidLabel" xml:space="preserve">
+    <value>請輸入有效的帳號備註。</value>
+  </data>
+  <data name="LabelUpdated" xml:space="preserve">
+    <value>帳號備註已更新。</value>
+  </data>
+  <data name="CancellingPrevious" xml:space="preserve">
+    <value>正在取消上一個操作…</value>
+  </data>
+  <data name="UseSmsSignIn" xml:space="preserve">
+    <value>使用手機簡訊驗證碼登入。</value>
+  </data>
+  <data name="VerifyingSmsCode" xml:space="preserve">
+    <value>正在驗證簡訊驗證碼…</value>
+  </data>
+  <data name="ObtainingGameIdentity" xml:space="preserve">
+    <value>正在取得本次遊戲身分…</value>
+  </data>
+  <data name="CheckingAdmission" xml:space="preserve">
+    <value>正在檢查帳號驗證並完成登入…</value>
+  </data>
+  <data name="PreviewSmsCooldown" xml:space="preserve">
+    <value>預覽倒數，未傳送任何簡訊。</value>
+  </data>
+  <data name="RequestingSmsCode" xml:space="preserve">
+    <value>正在要求簡訊驗證碼…</value>
+  </data>
+  <data name="SmsCodeSent" xml:space="preserve">
+    <value>驗證碼已傳送，請查看手機。</value>
+  </data>
+  <data name="WelcomeTitle" xml:space="preserve">
+    <value>異環 · 歡迎回來</value>
+  </data>
+  <data name="WelcomePrefix" xml:space="preserve">
+    <value>歡迎回來：</value>
+  </data>
+  <data name="ElevationRequired" xml:space="preserve">
+    <value>遊戲需要系統管理員權限，請以相同權限重新啟動登入元件。</value>
+  </data>
+  <data name="StartupFailed" xml:space="preserve">
+    <value>無法啟動登入元件，請檢查遊戲安裝、支援版本及已執行的遊戲。</value>
+  </data>
+  <data name="NoSavedAccounts" xml:space="preserve">
+    <value>此裝置尚無已儲存帳號。登入時可勾選儲存帳號。</value>
+  </data>
+  <data name="SmsResendCountdown" xml:space="preserve">
+    <value>{0} 秒後可重傳</value>
+  </data>
+  <data name="HelpSubtitle" xml:space="preserve">
+    <value>啟動、隱私與帳號限制</value>
+  </data>
+  <data name="HelpStartupTitle" xml:space="preserve">
+    <value>登入與啟動</value>
+  </data>
+  <data name="HelpStartup" xml:space="preserve">
+    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+  </data>
+  <data name="HelpCompatibilityTitle" xml:space="preserve">
+    <value>第三方相容性</value>
+  </data>
+  <data name="HelpCompatibility" xml:space="preserve">
+    <value>帳號由官方服務驗證，此插件與遊戲營運方無隸屬關係；未來協定變更可能需要更新插件。</value>
+  </data>
+  <data name="HelpPrivacyTitle" xml:space="preserve">
+    <value>隱私與本機保護</value>
+  </data>
+  <data name="HelpPrivacy" xml:space="preserve">
+    <value>不儲存密碼、簡訊驗證碼或完整手機號碼。儲存帳號只保留加密渠道憑據與打碼號碼；由目前 Windows 使用者保護，可選擇額外的 Windows Hello 驗證。診斷不記錄電話號碼、使用者 ID、權杖或金鑰。</value>
+  </data>
+  <data name="HelpRetentionTitle" xml:space="preserve">
+    <value>保留期限與移除帳號</value>
+  </data>
+  <data name="HelpRetention" xml:space="preserve">
+    <value>新帳號會保留至手動移除；每次登入仍須官方驗證並取得新的遊戲身分，服務可能拒絕請求。舊版 24 小時記錄不延長。關閉 Hello 須先解鎖一次。編輯備註或移除本機記錄不會刪除官方帳號；換號請先登出或重啟遊戲。</value>
+  </data>
+  <data name="HelpRestrictionsTitle" xml:space="preserve">
+    <value>帳號與服務限制</value>
+  </data>
+  <data name="HelpRestrictions" xml:space="preserve">
+    <value>遇到身分驗證、遊玩時間限制、官方拒絕或未知狀態時會停止登入；帳號問題請聯絡官方客服。</value>
+  </data>
+  <data name="HelpTroubleshootingTitle" xml:space="preserve">
+    <value>疑難排解</value>
+  </data>
+  <data name="HelpTroubleshooting" xml:space="preserve">
+    <value>網路故障、服務變更或工作階段過期可能需要重新登入；本機保護無法消除所有風險。</value>
+  </data>
+  <data name="HelloContext" xml:space="preserve">
+    <value>保護或解鎖此裝置儲存的異環帳號</value>
+  </data>
+  <data name="NoticeUnderstood" xml:space="preserve">
+    <value>我知道了</value>
+  </data>
+  <data name="UseOfficialLauncher" xml:space="preserve">
+    <value>使用官方啟動器</value>
+  </data>
+  <data name="ConfirmOfficialLauncher" xml:space="preserve">
+    <value>確定</value>
+  </data>
+  <data name="NoticePurposeTitle" xml:space="preserve">
+    <value>為什麼需要自行實作的登入服務？</value>
+  </data>
+  <data name="NoticePurpose" xml:space="preserve">
+    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+  </data>
+  <data name="NoticeRiskTitle" xml:space="preserve">
+    <value>請明確了解封號風險</value>
+  </data>
+  <data name="NoticeRisk" xml:space="preserve">
+    <value>自行實作的登入流程可能違反遊戲服務條款，或觸發風控與反作弊偵測，導致登入受限、帳號停權，甚至永久封號。無法保證帳號安全或持續相容；先前成功登入也不代表沒有風險。請在理解並願意承擔這些風險後繼續。</value>
+  </data>
+  <data name="NoticeDataTitle" xml:space="preserve">
+    <value>會儲存哪些資料？</value>
+  </data>
+  <data name="NoticeData" xml:space="preserve">
+    <value>「在此裝置儲存帳號」預設勾選。勾選後會儲存遊戲／渠道使用者 ID、登入權杖、渠道／地區／裝置資訊、帳號去重用身分摘要、上次選擇的帳號，以及官方提供的電子郵件、暱稱、遮罩手機號碼等選填顯示資料。備註、本機記錄 ID、儲存時間與保護類型等是可讀的中繼資料。密碼與簡訊／電子郵件驗證碼僅在記憶體處理，不寫入帳號庫；未勾選時，憑證僅供本次工作階段使用。國際版另會保留隨機產生的本機裝置 ID（device.bin），即使未儲存帳號也會保留。</value>
+  </data>
+  <data name="NoticeStorageTitle" xml:space="preserve">
+    <value>如何保護，儲存在哪裡？</value>
+  </data>
+  <data name="NoticeStorage" xml:space="preserve">
+    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+  </data>
+  <data name="NoticeNetworkTitle" xml:space="preserve">
+    <value>資料傳給誰，還有哪些本機變更？</value>
+  </data>
+  <data name="NoticeNetwork" xml:space="preserve">
+    <value>認證需要的憑證、權杖、裝置資訊與必要的版本／系統／硬體資訊會透過 HTTPS 或本機遊戲 SDK 交給官方認證及遊戲服務；伺服器可看見你的 IP 位址。Google／Facebook 授權透過系統瀏覽器開啟官方網頁，期間暫時修改 HKCU\Software\Classes 下的 wmgooglelogin 回呼命令，正常結束時還原；異常退出可能留下註冊。本元件不向開發者上傳帳號，也不讀取官方啟動器帳號庫。遊戲、瀏覽器與官方啟動器有各自的資料處理與記錄。 國際版另向遊戲 SDK 提供電腦名稱、網卡 MAC 位址、CPU／GPU 型號、記憶體與磁碟容量、解析度、語言、地區與時區等裝置資訊。這些資訊僅在本元件工作階段記憶體中使用，不寫入帳號庫；官方 SDK 可能自行上傳或記錄。</value>
+  </data>
+  <data name="NoticeRealName" xml:space="preserve">
+    <value>僅中國大陸版：登入前由官方服務檢查實名認證及防沉迷狀態；無法確認或未通過時阻止登入，請透過官方管道完成驗證。本元件不收集或儲存你的真實姓名或身分證號碼。</value>
+  </data>
+  <data name="NoticeRetentionTitle" xml:space="preserve">
+    <value>設定、保存期限與刪除方式</value>
+  </data>
+  <data name="NoticeRetention" xml:space="preserve">
+    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+  </data>
+  <data name="NoticeChoiceTitle" xml:space="preserve">
+    <value>不放心時，可以使用官方登入流程</value>
+  </data>
+  <data name="NoticeChoice" xml:space="preserve">
+    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+  </data>
+  <data name="OfficialLauncherConfirm" xml:space="preserve">
+    <value>官方啟動器必須位於目前遊戲安裝目錄內：中國大陸版 NTELauncher，國際版 NTEGlobal。點擊「確定」後將修改該區服在 TouchUILaunch 的遊戲設定，啟用官方背景靜默啟動，並關閉目前遊戲進程；下次使用官方啟動器。官方登入、驗證或更新視窗仍可能出現。已儲存帳號會保留。是否繼續？</value>
+  </data>
+  <data name="OfficialLauncherMissing" xml:space="preserve">
+    <value>遊戲安裝目錄內找不到官方啟動器。請先安裝到該目錄再重試。此次未修改設定。</value>
+  </data>
+  <data name="OfficialSwitchFailed" xml:space="preserve">
+    <value>無法完成切換，請檢查遊戲目錄與設定寫入權限後重試。若設定已儲存但遊戲無法關閉，請手動退出。</value>
+  </data>
+  <data name="NoticeSaveFailed" xml:space="preserve">
+    <value>無法儲存知悉記錄。請檢查本機設定目錄權限並重試；儲存成功前，下次仍會顯示說明。</value>
+  </data>
+  <data name="OfficialPreviewOnly" xml:space="preserve">
+    <value>目前為介面預覽：未修改設定，也未關閉遊戲。</value>
+  </data>
+  <data name="NoticeSharingTitle" xml:space="preserve">
+    <value>禁止面向不特定人群公開推薦</value>
+  </data>
+  <data name="NoticeSharing" xml:space="preserve">
+    <value>因外掛的特殊性，不得在任何公開社交媒體（如 {0}）面向不特定人群宣傳或推薦本外掛；上述僅為舉例，並非完整清單。否則，作者將直接停止維護並刪除儲存庫（刪庫跑路）。</value>
+  </data>
+  <data name="NoticeSharingExamplesMainland" xml:space="preserve">
+    <value>B站、抖音、公開論壇等</value>
+  </data>
+  <data name="NoticeSharingExamplesGlobal" xml:space="preserve">
+    <value>YouTube、TikTok、Reddit、X 等</value>
+  </data>
+  <data name="ServerSwitchTitle" xml:space="preserve"><value>切換異環伺服器</value></data>
+  <data name="ServerTaiwan" xml:space="preserve"><value>台港澳</value></data>
+  <data name="ServerGlobal" xml:space="preserve"><value>国际服</value></data>
+  <data name="ServerSwitchHint" xml:space="preserve"><value>重用共同資源，為所選地區保留獨立的簽章程式和官方登入設定。請先關閉遊戲及兩服官方啟動器。</value></data>
+  <data name="ServerSwitchCheck" xml:space="preserve"><value>檢查資源</value></data>
+  <data name="ServerSwitchApply" xml:space="preserve"><value>切換伺服器</value></data>
+  <data name="ServerSwitchCancel" xml:space="preserve"><value>取消操作</value></data>
+  <data name="ServerSwitchPreparing" xml:space="preserve"><value>正在準備切服…</value></data>
+  <data name="ServerSwitchChecking" xml:space="preserve"><value>正在檢查現有資源…</value></data>
+  <data name="ServerSwitchDownloading" xml:space="preserve"><value>正在準備缺少的資源…</value></data>
+  <data name="ServerSwitchActivating" xml:space="preserve"><value>正在啟用所選地區…</value></data>
+  <data name="ServerSwitchReady" xml:space="preserve"><value>已準備好切換</value></data>
+  <data name="ServerSwitchSummary" xml:space="preserve"><value>目標版本：{0}
+可直接重用：{1} 個檔案 · 快取或本機：{2} 個檔案
+需要下載：{3} 個檔案（{4:F3} GB）</value></data>
+  <data name="ServerSwitchRecovery" xml:space="preserve"><value>上次切服意外中斷，開始切換會先還原該操作。</value></data>
+  <data name="ServerSwitchCompleted" xml:space="preserve"><value>伺服器切換完成</value></data>
+  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>請在 TouchUILaunch 中選擇目標地區。兩服現在共用這個安裝資料夾。</value></data>
+  <data name="ServerSwitchFailed" xml:space="preserve"><value>伺服器切換未能完成</value></data>
+  <data name="ServerSwitchCancelled" xml:space="preserve"><value>操作已取消</value></data>
+  <data name="ServerSwitchCancelledHint" xml:space="preserve"><value>已啟用的檔案會還原，通過驗證的下載會保留供下次使用。</value></data>
+  <data name="TaiwanTitle" xml:space="preserve"><value>台港澳帳號登入</value></data>
+  <data name="LoginMethodUnavailable" xml:space="preserve"><value>此地區未開放這種登入方式。</value></data>
+  <data name="PhoneSignIn" xml:space="preserve">
+    <value>手機號碼登入</value>
+  </data>
+  <data name="CountryCode" xml:space="preserve">
+    <value>地區 / 電話區碼</value>
+  </data>
+  <data name="InvalidOverseasPhone" xml:space="preserve">
+    <value>請選擇支援的電話區碼，並輸入正確的手機號碼。</value>
+  </data>
+  <data name="NoticeTaiwanData" xml:space="preserve">
+    <value>台服：帳號和持續保留的隨機裝置 ID 獨立儲存在 %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\。手機號碼顯示資料只保留國碼和末四碼，完整號碼、密碼與驗證碼不寫入帳號庫。台服也向遊戲 SDK 提供下文列出的國際版裝置資訊。可讀設定：%LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json 和 NteTaiwan\launch.json。%LocalAppData%\TouchUILaunch\NTE\Diagnostics\ 中的瀏覽器回呼診斷輪替記錄時間、地區、階段與位元組數，不記錄回呼網址、權杖或帳號。使用官方啟動器需在目前遊戲安裝目錄內提供 NTETW\NTETWGame.exe。</value>
+  </data>
+  <data name="CnUnsupportedSdk" xml:space="preserve"><value>目前國服啟動器或 SDK 版本尚未適配。請更新外掛後重試。</value></data>
+  <data name="CnFilesMissing" xml:space="preserve"><value>遊戲安裝缺少登入所需檔案。請驗證或修復遊戲後重試。</value></data>
+  <data name="CnClientRunning" xml:space="preserve"><value>遊戲或官方啟動器仍在執行。請先結束後重試。</value></data>
+  <data name="CnLoginHostRunning" xml:space="preserve"><value>已有登入元件正在執行。請返回現有視窗或關閉後重試。</value></data>
+</root>

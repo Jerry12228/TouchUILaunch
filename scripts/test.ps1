@@ -5,7 +5,8 @@ param(
     [string]$DistDir = '',
     [string]$ZZZSampleRoot = '',
     [string]$SRSample = '',
-    [string]$GiSample = ''
+    [string]$GiSample = '',
+    [switch]$NteLoginHost
 )
 
 $ErrorActionPreference = 'Stop'
@@ -32,6 +33,7 @@ if (-not (Test-Path -LiteralPath $build -PathType Container)) {
 Assert-File (Join-Path $build 'Release\TouchUILaunch.exe') 'Built launcher'
 Assert-File (Join-Path $dist 'TouchUILaunch.exe') 'Packaged launcher'
 Assert-File (Join-Path $dist 'TouchUILaunch.dll') 'Packaged payload DLL'
+Assert-File (Join-Path $dist 'TouchUILaunch.NTE.dll') 'Packaged NTE payload DLL'
 
 # The check deliberately does not regenerate source.  Updating generated rules
 # remains an explicit developer action because it requires the 3.1 sample and Capstone.
@@ -57,6 +59,17 @@ if ($ZZZSampleRoot) {
 
 & ctest --test-dir $build -C Release --output-on-failure
 if ($LASTEXITCODE) { throw 'CTest failed' }
+
+if ($NteLoginHost) {
+    $hostExe = Join-Path $dist 'nte-login-host\Nte.LoginHost.exe'
+    Assert-File $hostExe 'NTE independent login host'
+    $hostTest = Start-Process -FilePath $hostExe -ArgumentList '--verify-integration' -WindowStyle Hidden -Wait -PassThru
+    if ($hostTest.ExitCode) { throw 'NTE SDK offline integration checks failed' }
+    $resourceTest = Start-Process -FilePath $hostExe -ArgumentList '--verify-resources' -WindowStyle Hidden -Wait -PassThru
+    if ($resourceTest.ExitCode) { throw 'NTE login host resource checks failed' }
+    & (Join-Path $build 'Release\NteRelayTests.exe') --managed $hostExe
+    if ($LASTEXITCODE) { throw 'NTE managed-host process relay checks failed' }
+} else { Write-Output 'SKIP: optional NTE SDK host checks (no -NteLoginHost supplied).' }
 
 if ($GiSample) {
     $GiSample = [IO.Path]::GetFullPath($GiSample)

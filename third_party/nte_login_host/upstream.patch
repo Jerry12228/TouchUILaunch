@@ -1,0 +1,634 @@
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/App.axaml.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/App.axaml.cs
+@@ -136,7 +136,2 @@
+-            if (NeedsServerActivation(options) &&
+-                !await ShowRegionSwitchAsync(new(options.GameRoot, options.Region, options.Language), true))
+-            {
+-                exitCode = 1;
+-                return;
+-            }
+-
++            if (NeedsServerActivation(options))
++                throw new InvalidOperationException("Activate the selected installation before using TouchUILaunch.");
+@@ -144,6 +138,0 @@
+-            officialLaunch = NteLaunchPreferences.Read(NteLaunchPreferences.GetPath(options.Region)).OfficialLauncher;
+-            if (officialLaunch)
+-            {
+-                if (!await OfficialGameHost.RunAsync(options)) exitCode = 1;
+-                return;
+-            }
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/GameLoginHost.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/GameLoginHost.cs
+@@ -41 +41 @@
+-        using Mutex instance = new(false, @"Local\Collapse.NTE.LoginHost." + NteRegionDefinition.CnAppId, out bool created);
++        using Mutex instance = new(false, @"Local\TouchUILaunch.NTE.LoginHost." + NteRegionDefinition.CnAppId, out bool created);
+@@ -47 +47 @@
+-        string pipeName = "Collapse.NTE.Login." + Guid.NewGuid().ToString("N");
++        string pipeName = "TouchUILaunch.NTE.Login." + Guid.NewGuid().ToString("N");
+@@ -67 +67 @@
+-        string logRoot = Path.Combine(Path.GetTempPath(), "Collapse.NTE.LoginHost", Guid.NewGuid().ToString("N"));
++        string logRoot = Path.Combine(Path.GetTempPath(), "TouchUILaunch.NTE.LoginHost", Guid.NewGuid().ToString("N"));
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Hi3Helper.Plugin.NTE.LoginHost.csproj
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Hi3Helper.Plugin.NTE.LoginHost.csproj
+@@ -8 +8,2 @@
+-    <PublishAot>true</PublishAot>
++    <PublishAot>false</PublishAot>
++    <SelfContained>true</SelfContained>
+@@ -22,0 +24 @@
++    <LangVersion>14</LangVersion>
+@@ -25,0 +28 @@
++    <Compile Include="../../../../games/nte/login_host/*.cs" Link="Integration/%(Filename)%(Extension)"/>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/LoginWindow.Accounts.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/LoginWindow.Accounts.cs
+@@ -18 +18 @@
+-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Collapse", "NTE", "Accounts");
++        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TouchUILaunch", "NTE", "Accounts");
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/LoginWindow.Notice.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/LoginWindow.Notice.cs
+@@ -66 +66 @@
+-        officialLauncher.IsVisible = true;
++        officialLauncher.IsVisible = false; // Independent host; official relay is selected in the native CLI.
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/packages.lock.json
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/packages.lock.json
+@@ -50,6 +49,0 @@
+-      "Microsoft.DotNet.ILCompiler": {
+-        "type": "Direct",
+-        "requested": "[10.0.15, )",
+-        "resolved": "10.0.15",
+-        "contentHash": "MjeBT/P5YgUuXfwSbI3ms+F5DkQ2+ilynoHE2jA/Kto//MaE/wtP5EveCAL8abpxFGw9tlHNTAV1j60Wh1oLqg=="
+-      },
+@@ -58,3 +52,3 @@
+-        "requested": "[10.0.15, )",
+-        "resolved": "10.0.15",
+-        "contentHash": "u0WnRcZgBZYHlVFpbe/3Adpmb9rmNJ8/fmEwqc/xjB7fFppq+gfaLJd3Sdaw+J02zV0eP/T9dneQ3Dv5jWw6bw=="
++        "requested": "[10.0.11, )",
++        "resolved": "10.0.11",
++        "contentHash": "IBf7lbovvjGWVWXZX5cJ/cO0WXbId0Zq4BuSeT94mGZuOAP66oMeH9PTBZ9Jpp3Jb6jtK0qm/NyUbPRo1gC/wQ=="
+@@ -148,9 +141,0 @@
+-      "Microsoft.DotNet.ILCompiler": {
+-        "type": "Direct",
+-        "requested": "[10.0.15, )",
+-        "resolved": "10.0.15",
+-        "contentHash": "MjeBT/P5YgUuXfwSbI3ms+F5DkQ2+ilynoHE2jA/Kto//MaE/wtP5EveCAL8abpxFGw9tlHNTAV1j60Wh1oLqg==",
+-        "dependencies": {
+-          "runtime.win-x64.Microsoft.DotNet.ILCompiler": "10.0.15"
+-        }
+-      },
+@@ -180,5 +164,0 @@
+-      "runtime.win-x64.Microsoft.DotNet.ILCompiler": {
+-        "type": "Transitive",
+-        "resolved": "10.0.15",
+-        "contentHash": "WEtOJ41ItA7fJ+pqQFYgCmZxiX5d6AByfLWbifqEjyjkfFXmD9/T9V7xTwrvh5OxkJkBhnZsygcdU0Al9MNcVw=="
+-      },
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Program.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Program.cs
+@@ -11,0 +12,4 @@
++        if (args is ["--verify-integration"]) return IntegrationVerification.Run();
++        if (args is ["--verify-installation", var root, var region]) return IntegrationVerification.VerifyInstallation(root, region);
++        if (args is ["--verify-owned-child", var executable, var folder, var report])
++            return IntegrationVerification.OwnedChild(executable, folder, report);
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Accounts/AccountDisplayStore.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Accounts/AccountDisplayStore.cs
+@@ -142 +142 @@
+-        .HashData(Encoding.ASCII.GetBytes("Collapse.NTE.Display.v1|" + id.ToString("N"))).AsSpan(0, 16));
++        .HashData(Encoding.ASCII.GetBytes("TouchUILaunch.NTE.Display.v1|" + id.ToString("N"))).AsSpan(0, 16));
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Accounts/HelloKeyPolicy.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Accounts/HelloKeyPolicy.cs
+@@ -9,2 +9,2 @@
+-    internal static string Name(string userSid, Guid account) => $"{userSid}//Collapse.NTE/LoginHost/{account:N}";
+-    internal const string LegacyPrefix = "Collapse.NTE.LoginHost.Account.v1.";
++    internal static string Name(string userSid, Guid account) => $"{userSid}//TouchUILaunch.NTE/LoginHost/{account:N}";
++    internal const string LegacyPrefix = "TouchUILaunch.NTE.LoginHost.Account.v1.";
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Accounts/LocalAccountStore.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Accounts/LocalAccountStore.cs
+@@ -508 +508 @@
+-        $"Collapse.NTE|{format}|{protection}|{account.Id:N}|{account.Label}|{account.SavedUtc:O}|{account.ExpiresUtc:O}" +
++        $"TouchUILaunch.NTE|{format}|{protection}|{account.Id:N}|{account.Label}|{account.SavedUtc:O}|{account.ExpiresUtc:O}" +
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Accounts/WindowsAccountKeyProtector.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Accounts/WindowsAccountKeyProtector.cs
+@@ -21 +21 @@
+-        byte[] entropy = Encoding.UTF8.GetBytes("Collapse.NTE.Account.Key.v2|" + account.ToString("N"));
++        byte[] entropy = Encoding.UTF8.GetBytes("TouchUILaunch.NTE.Account.Key.v2|" + account.ToString("N"));
+@@ -26 +26 @@
+-            bool success = protect ? CryptProtectData(ref source, "Collapse NTE saved account key", ref extra, 0, 0, 1, out result)
++            bool success = protect ? CryptProtectData(ref source, "TouchUILaunch NTE saved account key", ref extra, 0, 0, 1, out result)
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Global/GlobalAccountStore.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Global/GlobalAccountStore.cs
+@@ -12 +12 @@
+-        "Collapse", "NTE", "Accounts", "Global");
++        "TouchUILaunch", "NTE", "Accounts", "Global");
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Global/GlobalBrowserLogin.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Global/GlobalBrowserLogin.cs
+@@ -33 +33 @@
+-        pipe = BrowserCallbackPipe.Create("Collapse.NTE.Global.Web." + Target);
++        pipe = BrowserCallbackPipe.Create("TouchUILaunch.NTE.Global.Web." + Target);
+@@ -79 +79 @@
+-            string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Collapse", "NTE", "Diagnostics");
++            string directory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "TouchUILaunch", "NTE", "Diagnostics");
+@@ -105 +105 @@
+-            using NamedPipeClientStream client = new(".", "Collapse.NTE.Global.Web." + uri.Host, PipeDirection.Out, PipeOptions.Asynchronous);
++            using NamedPipeClientStream client = new(".", "TouchUILaunch.NTE.Global.Web." + uri.Host, PipeDirection.Out, PipeOptions.Asynchronous);
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Global/GlobalGameLoginHost.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Global/GlobalGameLoginHost.cs
+@@ -12 +12 @@
+-    private readonly NteOverseasRegion region = NteOverseasRegion.From(options.Region);
++    private readonly NteOverseasRegion region = NteOverseasRegion.ForInstallation(options.Region, options.GameRoot);
+@@ -27 +27 @@
+-        using Mutex instance = new(false, @"Local\Collapse.NTE.LoginHost." + region.AppId, out bool created);
++        using Mutex instance = new(false, @"Local\TouchUILaunch.NTE.LoginHost." + region.AppId, out bool created);
+@@ -48,0 +49 @@
++        NteHostStartupDiagnostics.Phase("compatibility-accepted");
+@@ -69 +70 @@
+-        string pipeName = "Collapse.NTE." + region.Name + ".Login." + Guid.NewGuid().ToString("N");
++        string pipeName = "TouchUILaunch.NTE." + region.Name + ".Login." + Guid.NewGuid().ToString("N");
+@@ -86,0 +88 @@
++        NteHostStartupDiagnostics.Phase("owned-game-created");
+@@ -162,0 +165 @@
++                            NteHostStartupDiagnostics.Phase("sdk-environment-acknowledged");
+@@ -168,0 +172 @@
++                            NteHostStartupDiagnostics.Phase("sdk-registration-validated");
+@@ -183,0 +188 @@
++                            NteHostStartupDiagnostics.Phase("sdk-device-context-delivered");
+@@ -193,0 +199,5 @@
++            catch (InvalidDataException)
++            {
++                NteHostStartupDiagnostics.Phase("sdk-registration-rejected");
++                throw;
++            }
+@@ -213,0 +224 @@
++                NteHostStartupDiagnostics.Phase("login-requested");
+@@ -226,0 +238 @@
++                        NteHostStartupDiagnostics.Phase("authenticated-identity-delivered");
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.de.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.de.resx
+@@ -91 +91 @@
+-    <value>Dateien für die globale Anmeldung fehlen. Prüfe und repariere die Spieldateien in Collapse.</value>
++    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+@@ -442 +442 @@
+-    <value>Die Anmeldekomponente läuft unabhängig. Das Schließen von Collapse beendet weder Anmeldung noch Spiel. Nach Spielende räumt sie auf und beendet sich.</value>
++    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+@@ -490 +490 @@
+-    <value>Dieser Anmeldedienst wird vom NTE-Plugin bereitgestellt und ist keine Funktion von Collapse selbst. Damit Collapse das Spiel direkt ohne den offiziellen Launcher starten kann, implementiert das Plugin eine eigene Anmeldeoberfläche sowie die Kommunikation mit dem Spiel-SDK und verbindet sich zur Authentifizierung mit den offiziellen Diensten des Herausgebers. Das Plugin läuft lokal, ist vom Herausgeber weder anerkannt noch autorisiert und verwendet keinen vom Entwickler betriebenen Kontoserver.</value>
++    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+@@ -508 +508 @@
+-    <value>Account credentials use a separate AES-GCM key for each account. Windows DPAPI CurrentUser protects that key by default; optional Windows Hello uses a Windows-managed non-exportable key. Display data, identity-matching key, device ID and last selection use DPAPI. Mainland files: %LocalAppData%\Collapse\NTE\Accounts\; Global files: its Global\ subfolder. Account files are &lt;record ID&gt;.json and .display, plus subject-key.bin, last-login.bin and Global\device.bin. Encryption does not protect against malware or another program running as your Windows user.</value>
++    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+@@ -523 +523 @@
+-    <value>Account records remain until you remove them; server-side token expiry or revocation may require login again. Remove accounts from Manage accounts. After exiting the game and Collapse, deleting %LocalAppData%\Collapse\NTE\ removes this component's account/device/acknowledgement files; Windows manages Hello keys, which are removed through account removal. Settings are readable JSON under %LocalAppData%\CollapseLauncher\Plugins\NTE\: login.json, Global\login.json, NteCN\launch.json and NteGlobal\launch.json. Acknowledgement revision/time is in %LocalAppData%\Collapse\NTE\login-notice.json. Public media caches and update/integrity data may remain in the plugin and game directories. The login-card background capture stays in memory. Deletion is not secure erasure and does not remove browser/vendor/cloud backups.</value>
++    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+@@ -529 +529 @@
+-    <value>Choose “Use official launcher”, or enable official background launch in Collapse → Game settings → Launch settings. Install the official launcher inside this game installation directory (NTELauncher for Mainland China, NTEGlobal for Global). Confirmation saves the setting and closes the current game; the next launch uses the official background/direct launch path. Official login, verification or update windows may still appear when required. This choice does not mark this notice as acknowledged or delete saved accounts.</value>
++    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+@@ -532 +532 @@
+-    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's Collapse game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
++    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
+@@ -575 +575 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in Collapse. Both regions now use this installation directory.</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in TouchUILaunch. Both regions now use this installation directory.</value></data>
+@@ -591 +591 @@
+-    <value>Taiwan: Konten und eine dauerhaft gespeicherte zufällige Geräte-ID liegen getrennt unter %LocalAppData%\Collapse\NTE\Accounts\Taiwan\. Die Telefonanzeige speichert nur Landesvorwahl und letzte vier Ziffern; vollständige Nummer, Passwort und Bestätigungscode werden nicht im Kontospeicher abgelegt. Taiwan übermittelt dem Spiel-SDK auch die unten für Global genannten Geräteinformationen. Lesbare Einstellungen: %LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json und NteTaiwan\launch.json. Rotierende Browser-Rückrufdiagnosen unter %LocalAppData%\Collapse\NTE\Diagnostics\ enthalten nur Zeit, Region, Phase und Byteanzahl, keine Rückruf-URLs, Token oder Kontodaten. Für den offiziellen Launcher muss NTETW\NTETWGame.exe im gewählten Spielordner vorhanden sein.</value>
++    <value>Taiwan: Konten und eine dauerhaft gespeicherte zufällige Geräte-ID liegen getrennt unter %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\. Die Telefonanzeige speichert nur Landesvorwahl und letzte vier Ziffern; vollständige Nummer, Passwort und Bestätigungscode werden nicht im Kontospeicher abgelegt. Taiwan übermittelt dem Spiel-SDK auch die unten für Global genannten Geräteinformationen. Lesbare Einstellungen: %LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json und NteTaiwan\launch.json. Rotierende Browser-Rückrufdiagnosen unter %LocalAppData%\TouchUILaunch\NTE\Diagnostics\ enthalten nur Zeit, Region, Phase und Byteanzahl, keine Rückruf-URLs, Token oder Kontodaten. Für den offiziellen Launcher muss NTETW\NTETWGame.exe im gewählten Spielordner vorhanden sein.</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.es.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.es.resx
+@@ -91 +91 @@
+-    <value>Faltan archivos del inicio de sesión global. Comprueba y repara los archivos del juego en Collapse.</value>
++    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+@@ -442 +442 @@
+-    <value>El componente funciona de forma independiente. Cerrar Collapse no termina el acceso ni el juego. Se limpia y cierra al salir del juego.</value>
++    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+@@ -490 +490 @@
+-    <value>Este servicio de inicio de sesión lo proporciona el complemento de NTE y no forma parte de Collapse. Para que Collapse pueda iniciar el juego directamente sin abrir el lanzador oficial, este complemento implementa su propia interfaz de acceso y la comunicación con el SDK del juego, y se conecta a los servicios oficiales del editor para la autenticación. El complemento se ejecuta de forma local, no está avalado ni autorizado por el editor y no utiliza ningún servidor de cuentas operado por su desarrollador.</value>
++    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+@@ -508 +508 @@
+-    <value>Account credentials use a separate AES-GCM key for each account. Windows DPAPI CurrentUser protects that key by default; optional Windows Hello uses a Windows-managed non-exportable key. Display data, identity-matching key, device ID and last selection use DPAPI. Mainland files: %LocalAppData%\Collapse\NTE\Accounts\; Global files: its Global\ subfolder. Account files are &lt;record ID&gt;.json and .display, plus subject-key.bin, last-login.bin and Global\device.bin. Encryption does not protect against malware or another program running as your Windows user.</value>
++    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+@@ -523 +523 @@
+-    <value>Account records remain until you remove them; server-side token expiry or revocation may require login again. Remove accounts from Manage accounts. After exiting the game and Collapse, deleting %LocalAppData%\Collapse\NTE\ removes this component's account/device/acknowledgement files; Windows manages Hello keys, which are removed through account removal. Settings are readable JSON under %LocalAppData%\CollapseLauncher\Plugins\NTE\: login.json, Global\login.json, NteCN\launch.json and NteGlobal\launch.json. Acknowledgement revision/time is in %LocalAppData%\Collapse\NTE\login-notice.json. Public media caches and update/integrity data may remain in the plugin and game directories. The login-card background capture stays in memory. Deletion is not secure erasure and does not remove browser/vendor/cloud backups.</value>
++    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+@@ -529 +529 @@
+-    <value>Choose “Use official launcher”, or enable official background launch in Collapse → Game settings → Launch settings. Install the official launcher inside this game installation directory (NTELauncher for Mainland China, NTEGlobal for Global). Confirmation saves the setting and closes the current game; the next launch uses the official background/direct launch path. Official login, verification or update windows may still appear when required. This choice does not mark this notice as acknowledged or delete saved accounts.</value>
++    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+@@ -532 +532 @@
+-    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's Collapse game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
++    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
+@@ -575 +575 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in Collapse. Both regions now use this installation directory.</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in TouchUILaunch. Both regions now use this installation directory.</value></data>
+@@ -591 +591 @@
+-    <value>Taiwán: las cuentas y un ID de dispositivo aleatorio persistente se guardan por separado en %LocalAppData%\Collapse\NTE\Accounts\Taiwan\. La información visible del teléfono solo conserva el prefijo y los últimos cuatro dígitos; el número completo, la contraseña y el código de verificación no se guardan en el almacén de cuentas. Taiwán también proporciona al SDK del juego la información del dispositivo indicada abajo para Global. Ajustes legibles: %LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json y NteTaiwan\launch.json. Los diagnósticos rotativos de las devoluciones del navegador en %LocalAppData%\Collapse\NTE\Diagnostics\ solo registran hora, región, etapa y bytes, sin URL de devolución, tokens ni datos de cuenta. La opción del lanzador oficial requiere NTETW\NTETWGame.exe en la instalación del juego seleccionada.</value>
++    <value>Taiwán: las cuentas y un ID de dispositivo aleatorio persistente se guardan por separado en %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\. La información visible del teléfono solo conserva el prefijo y los últimos cuatro dígitos; el número completo, la contraseña y el código de verificación no se guardan en el almacén de cuentas. Taiwán también proporciona al SDK del juego la información del dispositivo indicada abajo para Global. Ajustes legibles: %LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json y NteTaiwan\launch.json. Los diagnósticos rotativos de las devoluciones del navegador en %LocalAppData%\TouchUILaunch\NTE\Diagnostics\ solo registran hora, región, etapa y bytes, sin URL de devolución, tokens ni datos de cuenta. La opción del lanzador oficial requiere NTETW\NTETWGame.exe en la instalación del juego seleccionada.</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.fr.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.fr.resx
+@@ -91 +91 @@
+-    <value>Des fichiers de connexion globale sont manquants. Vérifiez et réparez les fichiers du jeu dans Collapse.</value>
++    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+@@ -442 +442 @@
+-    <value>Le composant fonctionne de façon indépendante. Fermer Collapse n’arrête ni la connexion ni le jeu. Il se nettoie et se ferme après le jeu.</value>
++    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+@@ -490 +490 @@
+-    <value>Ce service de connexion est fourni par le module NTE et ne fait pas partie de Collapse lui-même. Pour permettre à Collapse de lancer directement le jeu sans démarrer le lanceur officiel, ce module implémente sa propre interface de connexion et la communication avec le SDK du jeu, puis se connecte aux services officiels de l’éditeur pour l’authentification. Le module s’exécute localement, n’est ni approuvé ni autorisé par l’éditeur et n’utilise aucun serveur de comptes exploité par son développeur.</value>
++    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+@@ -508 +508 @@
+-    <value>Account credentials use a separate AES-GCM key for each account. Windows DPAPI CurrentUser protects that key by default; optional Windows Hello uses a Windows-managed non-exportable key. Display data, identity-matching key, device ID and last selection use DPAPI. Mainland files: %LocalAppData%\Collapse\NTE\Accounts\; Global files: its Global\ subfolder. Account files are &lt;record ID&gt;.json and .display, plus subject-key.bin, last-login.bin and Global\device.bin. Encryption does not protect against malware or another program running as your Windows user.</value>
++    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+@@ -523 +523 @@
+-    <value>Account records remain until you remove them; server-side token expiry or revocation may require login again. Remove accounts from Manage accounts. After exiting the game and Collapse, deleting %LocalAppData%\Collapse\NTE\ removes this component's account/device/acknowledgement files; Windows manages Hello keys, which are removed through account removal. Settings are readable JSON under %LocalAppData%\CollapseLauncher\Plugins\NTE\: login.json, Global\login.json, NteCN\launch.json and NteGlobal\launch.json. Acknowledgement revision/time is in %LocalAppData%\Collapse\NTE\login-notice.json. Public media caches and update/integrity data may remain in the plugin and game directories. The login-card background capture stays in memory. Deletion is not secure erasure and does not remove browser/vendor/cloud backups.</value>
++    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+@@ -529 +529 @@
+-    <value>Choose “Use official launcher”, or enable official background launch in Collapse → Game settings → Launch settings. Install the official launcher inside this game installation directory (NTELauncher for Mainland China, NTEGlobal for Global). Confirmation saves the setting and closes the current game; the next launch uses the official background/direct launch path. Official login, verification or update windows may still appear when required. This choice does not mark this notice as acknowledged or delete saved accounts.</value>
++    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+@@ -532 +532 @@
+-    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's Collapse game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
++    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
+@@ -575 +575 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in Collapse. Both regions now use this installation directory.</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in TouchUILaunch. Both regions now use this installation directory.</value></data>
+@@ -591 +591 @@
+-    <value>Taïwan : les comptes et un identifiant d'appareil aléatoire persistant sont stockés séparément dans %LocalAppData%\Collapse\NTE\Accounts\Taiwan\. L'affichage du téléphone conserve uniquement l'indicatif et les quatre derniers chiffres ; le numéro complet, le mot de passe et le code de vérification ne sont pas enregistrés dans le coffre des comptes. Taïwan transmet aussi au SDK du jeu les informations d'appareil indiquées ci-dessous pour Global. Paramètres lisibles : %LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json et NteTaiwan\launch.json. Les diagnostics tournants des rappels du navigateur dans %LocalAppData%\Collapse\NTE\Diagnostics\ contiennent uniquement l'heure, la région, l'étape et le nombre d'octets, sans URL de rappel, jeton ni données de compte. L'option du lanceur officiel nécessite NTETW\NTETWGame.exe dans l'installation du jeu sélectionnée.</value>
++    <value>Taïwan : les comptes et un identifiant d'appareil aléatoire persistant sont stockés séparément dans %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\. L'affichage du téléphone conserve uniquement l'indicatif et les quatre derniers chiffres ; le numéro complet, le mot de passe et le code de vérification ne sont pas enregistrés dans le coffre des comptes. Taïwan transmet aussi au SDK du jeu les informations d'appareil indiquées ci-dessous pour Global. Paramètres lisibles : %LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json et NteTaiwan\launch.json. Les diagnostics tournants des rappels du navigateur dans %LocalAppData%\TouchUILaunch\NTE\Diagnostics\ contiennent uniquement l'heure, la région, l'étape et le nombre d'octets, sans URL de rappel, jeton ni données de compte. L'option du lanceur officiel nécessite NTETW\NTETWGame.exe dans l'installation du jeu sélectionnée.</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.ja.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.ja.resx
+@@ -91 +91 @@
+-    <value>グローバル版のログインファイルが不足しています。Collapse でゲームファイルを確認し、修復してください。</value>
++    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+@@ -442 +442 @@
+-    <value>ログイン機能は独立して動作します。Collapse を閉じてもログインやゲームは終了しません。ゲーム終了後に機能も終了します。</value>
++    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+@@ -490 +490 @@
+-    <value>このログインサービスは異環プラグインが提供するもので、Collapse 本体の機能ではありません。公式ランチャーを起動せずに Collapse からゲームを直接起動できるよう、このプラグインは独自のログイン画面とゲーム SDK との通信を実装し、ゲーム公式サービスに接続して認証を行います。プラグインはローカルで動作し、ゲーム運営による承認や許諾を受けていません。開発者独自のアカウントサーバーは使用しません。</value>
++    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+@@ -508 +508 @@
+-    <value>Account credentials use a separate AES-GCM key for each account. Windows DPAPI CurrentUser protects that key by default; optional Windows Hello uses a Windows-managed non-exportable key. Display data, identity-matching key, device ID and last selection use DPAPI. Mainland files: %LocalAppData%\Collapse\NTE\Accounts\; Global files: its Global\ subfolder. Account files are &lt;record ID&gt;.json and .display, plus subject-key.bin, last-login.bin and Global\device.bin. Encryption does not protect against malware or another program running as your Windows user.</value>
++    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+@@ -523 +523 @@
+-    <value>Account records remain until you remove them; server-side token expiry or revocation may require login again. Remove accounts from Manage accounts. After exiting the game and Collapse, deleting %LocalAppData%\Collapse\NTE\ removes this component's account/device/acknowledgement files; Windows manages Hello keys, which are removed through account removal. Settings are readable JSON under %LocalAppData%\CollapseLauncher\Plugins\NTE\: login.json, Global\login.json, NteCN\launch.json and NteGlobal\launch.json. Acknowledgement revision/time is in %LocalAppData%\Collapse\NTE\login-notice.json. Public media caches and update/integrity data may remain in the plugin and game directories. The login-card background capture stays in memory. Deletion is not secure erasure and does not remove browser/vendor/cloud backups.</value>
++    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+@@ -529 +529 @@
+-    <value>Choose “Use official launcher”, or enable official background launch in Collapse → Game settings → Launch settings. Install the official launcher inside this game installation directory (NTELauncher for Mainland China, NTEGlobal for Global). Confirmation saves the setting and closes the current game; the next launch uses the official background/direct launch path. Official login, verification or update windows may still appear when required. This choice does not mark this notice as acknowledged or delete saved accounts.</value>
++    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+@@ -532 +532 @@
+-    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's Collapse game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
++    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
+@@ -575 +575 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in Collapse. Both regions now use this installation directory.</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in TouchUILaunch. Both regions now use this installation directory.</value></data>
+@@ -591 +591 @@
+-    <value>台湾版：アカウントと継続して保持するランダムな端末 ID は %LocalAppData%\Collapse\NTE\Accounts\Taiwan\ に個別に保存されます。電話番号の表示情報には国番号と末尾4桁のみを保存し、完全な電話番号、パスワード、確認コードはアカウント庫に保存しません。台湾版も、下記の国際版と同じ端末情報をゲーム SDK に渡します。可読設定：%LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json および NteTaiwan\launch.json。%LocalAppData%\Collapse\NTE\Diagnostics\ のブラウザーコールバック診断は時刻、地域、段階、バイト数のみをローテーション記録し、コールバック URL、トークン、アカウント情報は記録しません。公式ランチャーを使用するには、選択したゲームのインストール先に NTETW\NTETWGame.exe が必要です。</value>
++    <value>台湾版：アカウントと継続して保持するランダムな端末 ID は %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\ に個別に保存されます。電話番号の表示情報には国番号と末尾4桁のみを保存し、完全な電話番号、パスワード、確認コードはアカウント庫に保存しません。台湾版も、下記の国際版と同じ端末情報をゲーム SDK に渡します。可読設定：%LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json および NteTaiwan\launch.json。%LocalAppData%\TouchUILaunch\NTE\Diagnostics\ のブラウザーコールバック診断は時刻、地域、段階、バイト数のみをローテーション記録し、コールバック URL、トークン、アカウント情報は記録しません。公式ランチャーを使用するには、選択したゲームのインストール先に NTETW\NTETWGame.exe が必要です。</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.ko.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.ko.resx
+@@ -91 +91 @@
+-    <value>글로벌 로그인 파일이 부족합니다. Collapse에서 게임 파일을 확인하고 복구하세요.</value>
++    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+@@ -442 +442 @@
+-    <value>로그인 구성 요소는 독립적으로 실행됩니다. Collapse를 닫아도 로그인과 게임은 유지되며 게임 종료 후 구성 요소가 정리됩니다.</value>
++    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+@@ -490 +490 @@
+-    <value>이 로그인 서비스는 NTE 플러그인이 제공하며 Collapse 자체 기능이 아닙니다. 공식 런처를 실행하지 않고 Collapse에서 게임을 직접 실행할 수 있도록, 이 플러그인은 자체 로그인 화면과 게임 SDK 통신을 구현하고 게임 공식 서비스에 연결하여 인증합니다. 플러그인은 로컬에서 실행되며 게임 운영사의 승인이나 허가를 받지 않았습니다. 개발자가 운영하는 별도의 계정 서버를 사용하지 않습니다.</value>
++    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+@@ -508 +508 @@
+-    <value>Account credentials use a separate AES-GCM key for each account. Windows DPAPI CurrentUser protects that key by default; optional Windows Hello uses a Windows-managed non-exportable key. Display data, identity-matching key, device ID and last selection use DPAPI. Mainland files: %LocalAppData%\Collapse\NTE\Accounts\; Global files: its Global\ subfolder. Account files are &lt;record ID&gt;.json and .display, plus subject-key.bin, last-login.bin and Global\device.bin. Encryption does not protect against malware or another program running as your Windows user.</value>
++    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+@@ -523 +523 @@
+-    <value>Account records remain until you remove them; server-side token expiry or revocation may require login again. Remove accounts from Manage accounts. After exiting the game and Collapse, deleting %LocalAppData%\Collapse\NTE\ removes this component's account/device/acknowledgement files; Windows manages Hello keys, which are removed through account removal. Settings are readable JSON under %LocalAppData%\CollapseLauncher\Plugins\NTE\: login.json, Global\login.json, NteCN\launch.json and NteGlobal\launch.json. Acknowledgement revision/time is in %LocalAppData%\Collapse\NTE\login-notice.json. Public media caches and update/integrity data may remain in the plugin and game directories. The login-card background capture stays in memory. Deletion is not secure erasure and does not remove browser/vendor/cloud backups.</value>
++    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+@@ -529 +529 @@
+-    <value>Choose “Use official launcher”, or enable official background launch in Collapse → Game settings → Launch settings. Install the official launcher inside this game installation directory (NTELauncher for Mainland China, NTEGlobal for Global). Confirmation saves the setting and closes the current game; the next launch uses the official background/direct launch path. Official login, verification or update windows may still appear when required. This choice does not mark this notice as acknowledged or delete saved accounts.</value>
++    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+@@ -532 +532 @@
+-    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's Collapse game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
++    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
+@@ -575 +575 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in Collapse. Both regions now use this installation directory.</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in TouchUILaunch. Both regions now use this installation directory.</value></data>
+@@ -591 +591 @@
+-    <value>대만 버전: 계정과 계속 유지되는 임의 장치 ID는 %LocalAppData%\Collapse\NTE\Accounts\Taiwan\ 에 별도로 저장됩니다. 전화번호 표시 정보에는 국가 코드와 마지막 네 자리만 저장하며 전체 번호, 비밀번호, 인증 코드는 계정 저장소에 저장하지 않습니다. 대만 버전도 아래 국제 버전에 명시된 장치 정보를 게임 SDK에 제공합니다. 읽을 수 있는 설정: %LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json 및 NteTaiwan\launch.json. %LocalAppData%\Collapse\NTE\Diagnostics\ 의 브라우저 콜백 진단은 시간, 지역, 단계, 바이트 수만 순환 기록하며 콜백 URL, 토큰, 계정 정보는 기록하지 않습니다. 공식 런처 옵션을 사용하려면 선택한 게임 설치 폴더에 NTETW\NTETWGame.exe 가 필요합니다.</value>
++    <value>대만 버전: 계정과 계속 유지되는 임의 장치 ID는 %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\ 에 별도로 저장됩니다. 전화번호 표시 정보에는 국가 코드와 마지막 네 자리만 저장하며 전체 번호, 비밀번호, 인증 코드는 계정 저장소에 저장하지 않습니다. 대만 버전도 아래 국제 버전에 명시된 장치 정보를 게임 SDK에 제공합니다. 읽을 수 있는 설정: %LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json 및 NteTaiwan\launch.json. %LocalAppData%\TouchUILaunch\NTE\Diagnostics\ 의 브라우저 콜백 진단은 시간, 지역, 단계, 바이트 수만 순환 기록하며 콜백 URL, 토큰, 계정 정보는 기록하지 않습니다. 공식 런처 옵션을 사용하려면 선택한 게임 설치 폴더에 NTETW\NTETWGame.exe 가 필요합니다.</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.resx
+@@ -127 +127 @@
+-    <value>The sign-in component runs independently. Closing Collapse does not end your sign-in or game. The component cleans up and exits after the game closes.</value>
++    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+@@ -357 +357 @@
+-    <value>Global sign-in files are incomplete. Check and repair the game files in Collapse.</value>
++    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+@@ -492 +492 @@
+-    <value>This login service is provided by the NTE plugin, not by Collapse itself. To let Collapse launch the game directly without starting the official launcher, this plugin implements its own login interface and communication with the game SDK, and connects to the publisher’s services for authentication. The plugin runs locally, is not endorsed or authorized by the game publisher, and does not use a developer-operated account server.</value>
++    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+@@ -510 +510 @@
+-    <value>Account credentials use a separate AES-GCM key for each account. Windows DPAPI CurrentUser protects that key by default; optional Windows Hello uses a Windows-managed non-exportable key. Display data, identity-matching key, device ID and last selection use DPAPI. Mainland files: %LocalAppData%\Collapse\NTE\Accounts\; Global files: its Global\ subfolder. Account files are &lt;record ID&gt;.json and .display, plus subject-key.bin, last-login.bin and Global\device.bin. Encryption does not protect against malware or another program running as your Windows user.</value>
++    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+@@ -525 +525 @@
+-    <value>Account records remain until you remove them; server-side token expiry or revocation may require login again. Remove accounts from Manage accounts. After exiting the game and Collapse, deleting %LocalAppData%\Collapse\NTE\ removes this component's account/device/acknowledgement files; Windows manages Hello keys, which are removed through account removal. Settings are readable JSON under %LocalAppData%\CollapseLauncher\Plugins\NTE\: login.json, Global\login.json, NteCN\launch.json and NteGlobal\launch.json. Acknowledgement revision/time is in %LocalAppData%\Collapse\NTE\login-notice.json. Public media caches and update/integrity data may remain in the plugin and game directories. The login-card background capture stays in memory. Deletion is not secure erasure and does not remove browser/vendor/cloud backups.</value>
++    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+@@ -531 +531 @@
+-    <value>Choose “Use official launcher”, or enable official background launch in Collapse → Game settings → Launch settings. Install the official launcher inside this game installation directory (NTELauncher for Mainland China, NTEGlobal for Global). Confirmation saves the setting and closes the current game; the next launch uses the official background/direct launch path. Official login, verification or update windows may still appear when required. This choice does not mark this notice as acknowledged or delete saved accounts.</value>
++    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+@@ -534 +534 @@
+-    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's Collapse game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
++    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
+@@ -577 +577 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in Collapse. Both regions now use this installation directory.</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in TouchUILaunch. Both regions now use this installation directory.</value></data>
+@@ -593 +593 @@
+-    <value>Taiwan: accounts and a persistent random device ID are stored separately in %LocalAppData%\Collapse\NTE\Accounts\Taiwan\. Phone display data contains only the calling code and last four digits; the full number, password and verification code are not saved in the account store. Taiwan also provides the device information listed for Global below to the game SDK. Readable settings: %LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json and NteTaiwan\launch.json. Rotating browser callback diagnostics in %LocalAppData%\Collapse\NTE\Diagnostics\ contain only time, region, stage and byte count, without callback URLs, tokens or account data. The official launcher option requires NTETW\NTETWGame.exe in the selected game installation.</value>
++    <value>Taiwan: accounts and a persistent random device ID are stored separately in %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\. Phone display data contains only the calling code and last four digits; the full number, password and verification code are not saved in the account store. Taiwan also provides the device information listed for Global below to the game SDK. Readable settings: %LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json and NteTaiwan\launch.json. Rotating browser callback diagnostics in %LocalAppData%\TouchUILaunch\NTE\Diagnostics\ contain only time, region, stage and byte count, without callback URLs, tokens or account data. The official launcher option requires NTETW\NTETWGame.exe in the selected game installation.</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.ru.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.ru.resx
+@@ -91 +91 @@
+-    <value>Отсутствуют файлы глобального входа. Проверьте и восстановите файлы игры в Collapse.</value>
++    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+@@ -442 +442 @@
+-    <value>Компонент входа работает независимо. Закрытие Collapse не завершает вход или игру. После закрытия игры компонент очищает ресурсы и завершается.</value>
++    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+@@ -490 +490 @@
+-    <value>Этот сервис входа предоставляется плагином NTE и не является функцией самого Collapse. Чтобы Collapse мог запускать игру напрямую без официального лаунчера, плагин реализует собственный интерфейс входа и обмен данными с игровым SDK, а для аутентификации подключается к официальным сервисам издателя. Плагин работает локально, не одобрен и не авторизован издателем игры и не использует отдельный сервер аккаунтов разработчика.</value>
++    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+@@ -508 +508 @@
+-    <value>Account credentials use a separate AES-GCM key for each account. Windows DPAPI CurrentUser protects that key by default; optional Windows Hello uses a Windows-managed non-exportable key. Display data, identity-matching key, device ID and last selection use DPAPI. Mainland files: %LocalAppData%\Collapse\NTE\Accounts\; Global files: its Global\ subfolder. Account files are &lt;record ID&gt;.json and .display, plus subject-key.bin, last-login.bin and Global\device.bin. Encryption does not protect against malware or another program running as your Windows user.</value>
++    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+@@ -523 +523 @@
+-    <value>Account records remain until you remove them; server-side token expiry or revocation may require login again. Remove accounts from Manage accounts. After exiting the game and Collapse, deleting %LocalAppData%\Collapse\NTE\ removes this component's account/device/acknowledgement files; Windows manages Hello keys, which are removed through account removal. Settings are readable JSON under %LocalAppData%\CollapseLauncher\Plugins\NTE\: login.json, Global\login.json, NteCN\launch.json and NteGlobal\launch.json. Acknowledgement revision/time is in %LocalAppData%\Collapse\NTE\login-notice.json. Public media caches and update/integrity data may remain in the plugin and game directories. The login-card background capture stays in memory. Deletion is not secure erasure and does not remove browser/vendor/cloud backups.</value>
++    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+@@ -529 +529 @@
+-    <value>Choose “Use official launcher”, or enable official background launch in Collapse → Game settings → Launch settings. Install the official launcher inside this game installation directory (NTELauncher for Mainland China, NTEGlobal for Global). Confirmation saves the setting and closes the current game; the next launch uses the official background/direct launch path. Official login, verification or update windows may still appear when required. This choice does not mark this notice as acknowledged or delete saved accounts.</value>
++    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+@@ -532 +532 @@
+-    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's Collapse game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
++    <value>The official launcher must be installed inside the game installation directory: NTELauncher for Mainland China, NTEGlobal for Global. Confirming switches this region's TouchUILaunch game setting to official background launch and closes the current game process. The next launch uses the official launcher, which may show required login/update windows. Saved accounts will remain. Continue?</value>
+@@ -575 +575 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in Collapse. Both regions now use this installation directory.</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>Select the target region in TouchUILaunch. Both regions now use this installation directory.</value></data>
+@@ -591 +591 @@
+-    <value>Тайвань: учётные записи и постоянный случайный идентификатор устройства хранятся отдельно в %LocalAppData%\Collapse\NTE\Accounts\Taiwan\. Для отображения телефона сохраняются только код страны и последние четыре цифры; полный номер, пароль и проверочный код не записываются в хранилище учётных записей. Тайвань также передаёт SDK игры сведения об устройстве, перечисленные ниже для Global. Читаемые настройки: %LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json и NteTaiwan\launch.json. Ротационные журналы обратного вызова браузера в %LocalAppData%\Collapse\NTE\Diagnostics\ содержат только время, регион, этап и число байтов, без URL обратного вызова, токенов и данных учётной записи. Для официального лаунчера нужен NTETW\NTETWGame.exe в выбранной папке игры.</value>
++    <value>Тайвань: учётные записи и постоянный случайный идентификатор устройства хранятся отдельно в %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\. Для отображения телефона сохраняются только код страны и последние четыре цифры; полный номер, пароль и проверочный код не записываются в хранилище учётных записей. Тайвань также передаёт SDK игры сведения об устройстве, перечисленные ниже для Global. Читаемые настройки: %LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json и NteTaiwan\launch.json. Ротационные журналы обратного вызова браузера в %LocalAppData%\TouchUILaunch\NTE\Diagnostics\ содержат только время, регион, этап и число байтов, без URL обратного вызова, токенов и данных учётной записи. Для официального лаунчера нужен NTETW\NTETWGame.exe в выбранной папке игры.</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.zh-CN.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.zh-CN.resx
+@@ -127 +127 @@
+-    <value>登录组件独立运行。关闭 Collapse 不结束本次登录和游戏；退出游戏后组件清理并退出。</value>
++    <value>登录组件独立运行。TouchUILaunch 启动协调结束后，登录组件与游戏仍继续运行；退出游戏后组件清理并退出。</value>
+@@ -357 +357 @@
+-    <value>国际服登录组件不完整，请在 Collapse 中检查并修复游戏文件。</value>
++    <value>国际服登录文件不完整，请使用官方启动器检查并修复对应安装目录。</value>
+@@ -492 +492 @@
+-    <value>本登录服务由异环插件提供，并非 Collapse 本体功能。为使 Collapse 无需启动官方启动器即可直接启动游戏，本插件自行实现登录界面及与游戏 SDK 的通信，并连接游戏官方服务完成认证。本插件在本机运行，未经游戏官方认可或授权，不使用开发者自建的账号服务器。</value>
++    <value>这是 TouchUILaunch 随包的独立 NTE 登录组件，改编自 MIT 许可的 Hi3Helper.Plugin.NTE。它在本机提供登录窗口、与游戏 SDK 通信，并连接游戏官方服务完成认证。登录不经过开发者自建的账户服务器。</value>
+@@ -510 +510 @@
+-    <value>每个账号使用独立 AES-GCM 密钥加密凭据，默认由 Windows DPAPI CurrentUser 保护密钥；可选 Windows Hello 使用 Windows 管理的不可导出密钥。显示资料、身份匹配密钥、设备 ID 和上次选择另用 DPAPI 保护。国服目录：%LocalAppData%\Collapse\NTE\Accounts\；国际版位于该目录的 Global\ 子目录。文件包括 &lt;记录ID&gt;.json、.display、subject-key.bin、last-login.bin 和 Global\device.bin。加密无法防范以当前 Windows 用户权限运行的恶意程序。</value>
++    <value>账户凭据由每个账户独立的 AES-GCM 密钥加密，密钥默认使用当前 Windows 用户的 DPAPI 保护。账户、设备 ID、设置和知悉记录保存在 %LocalAppData%\TouchUILaunch\NTE\，不读取其他启动器保存的账户。诊断不记录账户、密码、令牌或 SDK 数据帧。</value>
+@@ -525 +525 @@
+-    <value>账号记录保留至你手动移除；官方令牌过期或撤销后仍需重新认证。可在“管理账号”中移除账号。退出游戏和 Collapse 后，删除 %LocalAppData%\Collapse\NTE\ 可清除本组件的账号、设备与知悉记录；Hello 密钥由 Windows 管理，通过移除账号清理。可读 JSON 设置位于 %LocalAppData%\CollapseLauncher\Plugins\NTE\ 下：login.json、Global\login.json、NteCN\launch.json、NteGlobal\launch.json。知悉版本与时间位于 %LocalAppData%\Collapse\NTE\login-notice.json。公开媒体缓存及更新／完整性数据可能保留在插件和游戏目录；登录卡片背景截图仅在内存中使用。删除不等于安全擦除，也不会清理浏览器、官方服务或云端备份。</value>
++    <value>账户记录保留至你在“管理账号”中移除；令牌过期或撤销后需重新认证。退出游戏和登录组件后，可删除 %LocalAppData%\TouchUILaunch\NTE\ 清除本组件的账户、设备、设置和知悉记录。Windows Hello 密钥通过移除账户清理。删除不会清理浏览器或官方服务的数据。</value>
+@@ -531 +531 @@
+-    <value>点击“使用官方启动器”，或前往 Collapse → 游戏设置 → 启动设置，启用官方启动器后台静默启动。官方启动器必须位于当前游戏安装目录内：国服为 NTELauncher，国际版为 NTEGlobal。确认后会保存该区服设置并关闭当前游戏，下次启动改用官方后台／直接启动流程；需要登录、验证或更新时，官方仍可能显示必要窗口。选择官方启动器不会标记为已知悉，也不会删除已保存账号。</value>
++    <value>如需使用官方登录流程，请先正常退出游戏，再运行 TouchUILaunch 时省略 --nte-direct。默认模式会打开对应安装目录的官方启动器，随后点击开始游戏；已保存账户不会因此删除。</value>
+@@ -534 +534 @@
+-    <value>官方启动器必须位于当前游戏安装目录内：国服 NTELauncher，国际版 NTEGlobal。点击“确定”后，将修改该区服在 Collapse 中的游戏设置，启用官方启动器后台静默启动，并关闭当前游戏进程；下次启动使用官方启动器。官方登录、验证或更新所需窗口仍可能出现。已保存账号会保留。是否继续？</value>
++    <value>官方启动器必须位于当前游戏安装目录内：国服 NTELauncher，国际版 NTEGlobal。点击“确定”后，将修改该区服在 TouchUILaunch 中的游戏设置，启用官方启动器后台静默启动，并关闭当前游戏进程；下次启动使用官方启动器。官方登录、验证或更新所需窗口仍可能出现。已保存账号会保留。是否继续？</value>
+@@ -577 +577 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>请在 Collapse 中选择目标地区。两服现在共用这个安装目录。</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>请在 TouchUILaunch 中选择目标地区。两服现在共用这个安装目录。</value></data>
+@@ -593 +593 @@
+-    <value>台服：账号和持续保留的随机设备 ID 独立保存在 %LocalAppData%\Collapse\NTE\Accounts\Taiwan\。手机号显示资料只保留区号和末四位，完整手机号、密码与验证码不写入账号库。台服也向游戏 SDK 提供下文列出的国际版设备信息。可读设置：%LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json 和 NteTaiwan\launch.json。%LocalAppData%\Collapse\NTE\Diagnostics\ 中的浏览器回调诊断轮换记录时间、地区、阶段与字节数，不记录回调网址、令牌或账号。使用官方启动器需在当前游戏安装目录内提供 NTETW\NTETWGame.exe。</value>
++    <value>台服：账号和持续保留的随机设备 ID 独立保存在 %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\。手机号显示资料只保留区号和末四位，完整手机号、密码与验证码不写入账号库。台服也向游戏 SDK 提供下文列出的国际版设备信息。可读设置：%LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json 和 NteTaiwan\launch.json。%LocalAppData%\TouchUILaunch\NTE\Diagnostics\ 中的浏览器回调诊断轮换记录时间、地区、阶段与字节数，不记录回调网址、令牌或账号。使用官方启动器需在当前游戏安装目录内提供 NTETW\NTETWGame.exe。</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.zh-TW.resx
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Localization/Strings.zh-TW.resx
+@@ -91 +91 @@
+-    <value>國際服登入元件不完整，請在 Collapse 中檢查並修復遊戲檔案。</value>
++    <value>Global sign-in files are incomplete. Repair this installation with the official launcher.</value>
+@@ -442 +442 @@
+-    <value>登入元件獨立執行，關閉 Collapse 不會結束登入或遊戲；遊戲關閉後元件會自行清理並結束。</value>
++    <value>The independent sign-in host and game continue after the TouchUILaunch coordinator exits. The host exits when the game closes.</value>
+@@ -490 +490 @@
+-    <value>本登入服務由異環外掛提供，並非 Collapse 本體功能。為讓 Collapse 不必啟動官方啟動器即可直接啟動遊戲，本外掛自行實作登入介面及與遊戲 SDK 的通訊，並連線至遊戲官方服務完成認證。本外掛在本機執行，未經遊戲官方認可或授權，不使用開發者自建的帳號伺服器。</value>
++    <value>This independent NTE sign-in component is bundled with TouchUILaunch and adapted from MIT-licensed Hi3Helper.Plugin.NTE. It runs locally, provides sign-in and game SDK communication, and authenticates with the game publisher services. It does not use a developer-operated account server.</value>
+@@ -508 +508 @@
+-    <value>各帳號使用獨立 AES-GCM 金鑰加密憑證，預設以 Windows DPAPI CurrentUser 保護金鑰；選用的 Windows Hello 使用 Windows 管理的不可匯出金鑰。顯示資料、身分比對金鑰、裝置 ID 與上次選擇另以 DPAPI 保護。中國大陸版目錄：%LocalAppData%\Collapse\NTE\Accounts\；國際版位於其 Global\ 子目錄。檔案包含 &lt;記錄ID&gt;.json、.display、subject-key.bin、last-login.bin 與 Global\device.bin。加密無法防範以目前 Windows 使用者權限執行的惡意程式。</value>
++    <value>Each account uses a separate AES-GCM key, protected by Windows DPAPI CurrentUser by default. Accounts, device records, settings and notice acknowledgement are isolated under %LocalAppData%\TouchUILaunch\NTE\. Other launcher account stores are not read. Diagnostics omit accounts, passwords, tokens and SDK frames.</value>
+@@ -523 +523 @@
+-    <value>帳號記錄保留至你手動移除；官方權杖到期或撤銷後仍須重新認證。可透過「管理帳號」移除。退出遊戲與 Collapse 後，刪除 %LocalAppData%\Collapse\NTE\ 可清除本元件的帳號、裝置與知悉記錄；Hello 金鑰由 Windows 管理，透過移除帳號清理。可讀 JSON 設定位於 %LocalAppData%\CollapseLauncher\Plugins\NTE\ 下：login.json、Global\login.json、NteCN\launch.json、NteGlobal\launch.json。知悉版本與時間位於 %LocalAppData%\Collapse\NTE\login-notice.json。公開媒體快取及更新／完整性資料可能保留在外掛與遊戲目錄；登入卡片背景截圖僅在記憶體中使用。刪除不等於安全抹除，也不會清理瀏覽器、官方服務或雲端備份。</value>
++    <value>Remove saved accounts in Manage accounts. Server-side expiry or revocation may require sign-in again. After exiting the game and host, deleting %LocalAppData%\TouchUILaunch\NTE\ clears this component accounts, device records, settings and notice acknowledgement. Remove accounts to clean up Windows Hello keys. Browser and publisher data are separate.</value>
+@@ -529 +529 @@
+-    <value>點擊「使用官方啟動器」，或至 Collapse → 遊戲設定 → 啟動設定，啟用官方啟動器背景靜默啟動。官方啟動器必須位於目前遊戲安裝目錄內：中國大陸版 NTELauncher，國際版 NTEGlobal。確認後儲存該區服設定並關閉目前遊戲；下次使用官方背景／直接啟動流程，需要登入、驗證或更新時仍可能顯示必要視窗。選擇官方啟動器不會標記為已知悉，也不會刪除已儲存帳號。</value>
++    <value>To use official sign-in, exit the game and run TouchUILaunch without --nte-direct. The default relay opens the official launcher from this installation; click Start there. Saved accounts are retained.</value>
+@@ -532 +532 @@
+-    <value>官方啟動器必須位於目前遊戲安裝目錄內：中國大陸版 NTELauncher，國際版 NTEGlobal。點擊「確定」後將修改該區服在 Collapse 的遊戲設定，啟用官方背景靜默啟動，並關閉目前遊戲進程；下次使用官方啟動器。官方登入、驗證或更新視窗仍可能出現。已儲存帳號會保留。是否繼續？</value>
++    <value>官方啟動器必須位於目前遊戲安裝目錄內：中國大陸版 NTELauncher，國際版 NTEGlobal。點擊「確定」後將修改該區服在 TouchUILaunch 的遊戲設定，啟用官方背景靜默啟動，並關閉目前遊戲進程；下次使用官方啟動器。官方登入、驗證或更新視窗仍可能出現。已儲存帳號會保留。是否繼續？</value>
+@@ -575 +575 @@
+-  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>請在 Collapse 中選擇目標地區。兩服現在共用這個安裝資料夾。</value></data>
++  <data name="ServerSwitchCompletedHint" xml:space="preserve"><value>請在 TouchUILaunch 中選擇目標地區。兩服現在共用這個安裝資料夾。</value></data>
+@@ -591 +591 @@
+-    <value>台服：帳號和持續保留的隨機裝置 ID 獨立儲存在 %LocalAppData%\Collapse\NTE\Accounts\Taiwan\。手機號碼顯示資料只保留國碼和末四碼，完整號碼、密碼與驗證碼不寫入帳號庫。台服也向遊戲 SDK 提供下文列出的國際版裝置資訊。可讀設定：%LocalAppData%\CollapseLauncher\Plugins\NTE\Taiwan\login.json 和 NteTaiwan\launch.json。%LocalAppData%\Collapse\NTE\Diagnostics\ 中的瀏覽器回呼診斷輪替記錄時間、地區、階段與位元組數，不記錄回呼網址、權杖或帳號。使用官方啟動器需在目前遊戲安裝目錄內提供 NTETW\NTETWGame.exe。</value>
++    <value>台服：帳號和持續保留的隨機裝置 ID 獨立儲存在 %LocalAppData%\TouchUILaunch\NTE\Accounts\Taiwan\。手機號碼顯示資料只保留國碼和末四碼，完整號碼、密碼與驗證碼不寫入帳號庫。台服也向遊戲 SDK 提供下文列出的國際版裝置資訊。可讀設定：%LocalAppData%\TouchUILaunch\NTE\Taiwan\login.json 和 NteTaiwan\launch.json。%LocalAppData%\TouchUILaunch\NTE\Diagnostics\ 中的瀏覽器回呼診斷輪替記錄時間、地區、階段與位元組數，不記錄回呼網址、權杖或帳號。使用官方啟動器需在目前遊戲安裝目錄內提供 NTETW\NTETWGame.exe。</value>
+--- a/src/Hi3Helper.Plugin.NTE.LoginHost/Services/NativeRegionSwitchClient.cs
++++ b/src/Hi3Helper.Plugin.NTE.LoginHost/Services/NativeRegionSwitchClient.cs
+@@ -2,4 +1,0 @@
+-using System.IO;
+-using System.Runtime.InteropServices;
+-using System.Text.Json;
+-
+@@ -7 +3 @@
+-
++// Installed game files are never changed by the touch UI launcher.
+@@ -10,92 +6,4 @@
+-    // NativeAOT libraries are retained for the host process lifetime. This also
+-    // keeps the verified-file cache between preview and activation.
+-    private static readonly Lazy<nint> Module = new(() =>
+-    {
+-        string hostDirectory = AppContext.BaseDirectory;
+-        string plugin = Path.GetFullPath(Path.Combine(hostDirectory, "..", "NTE.dll"));
+-        if (!File.Exists(plugin))
+-            throw new FileNotFoundException("Start server switching from the installed NTE plugin.", plugin);
+-        return NativeLibrary.Load(plugin);
+-    });
+-
+-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+-    private unsafe delegate int GetExport(char* name, void** value);
+-
+-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+-    private unsafe delegate int SwitchExport(char* root, int rootLength, char* target, int targetLength, char* report,
+-        int reportLength, nint callback);
+-
+-    [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+-    private unsafe delegate int ProgressCallback(int phase, long processed, long total, int files, int count,
+-        char* path, int pathLength);
+-
+-    public Task<NteSwitchSummary> PlanAsync(NteRegionSwitchOptions options, IProgress<NteSwitchProgress> progress,
+-        CancellationToken token)
+-        => Task.Run(() => Invoke("PlanNteRegionSwitch", options, progress, token), token);
+-
+-    public Task<NteSwitchSummary> SwitchAsync(NteRegionSwitchOptions options, IProgress<NteSwitchProgress> progress,
+-        CancellationToken token)
+-        => Task.Run(() => Invoke("SwitchNteRegion", options, progress, token), token);
+-
+-    private static unsafe NteSwitchSummary Invoke(string export, NteRegionSwitchOptions options,
+-        IProgress<NteSwitchProgress> progress, CancellationToken token)
+-    {
+-        string directory = Path.Combine(Path.GetTempPath(), "Collapse.NTE.RegionSwitch");
+-        Directory.CreateDirectory(directory);
+-        string report = Path.Combine(directory, Guid.NewGuid().ToString("N") + ".json");
+-        nint module = Module.Value;
+-        ProgressCallback callback = (phase, done, total, files, count, path, length) =>
+-        {
+-            try
+-            {
+-                progress.Report(new(phase, done, total, files, count, length > 0 ? new(path, 0, length) : ""));
+-            }
+-            catch (Exception)
+-            {
+-                return 1;
+-            }
+-
+-            return token.IsCancellationRequested ? 1 : 0;
+-        };
+-        try
+-        {
+-            GetExport get =
+-                Marshal.GetDelegateForFunctionPointer<GetExport>(NativeLibrary.GetExport(module, "TryGetApiExport"));
+-            void* pointer = null;
+-            fixed (char* name = export)
+-                if (get(name, &pointer) != 0 || pointer == null)
+-                    throw new MissingMethodException("The NTE plugin does not provide server switching.");
+-            SwitchExport run = Marshal.GetDelegateForFunctionPointer<SwitchExport>((nint)pointer);
+-            string target = options.TargetAppId;
+-            int result;
+-            fixed (char* root = options.GameRoot, appId = target, output = report)
+-                result = run(root, options.GameRoot.Length, appId, target.Length, output, report.Length,
+-                    Marshal.GetFunctionPointerForDelegate(callback));
+-            GC.KeepAlive(callback);
+-            if (!File.Exists(report))
+-            {
+-                Marshal.ThrowExceptionForHR(result);
+-                throw new IOException("The region switch produced no result.");
+-            }
+-
+-            using JsonDocument document = JsonDocument.Parse(File.ReadAllBytes(report));
+-            JsonElement value = document.RootElement;
+-            string? error = value.TryGetProperty("Error", out var failure) && failure.ValueKind == JsonValueKind.String
+-                ? failure.GetString()
+-                : null;
+-            if (result == unchecked((int)0x800704C7)) throw new OperationCanceledException(token);
+-            if (result != 0 || error != null) throw new IOException(error ?? "The region switch failed.");
+-            string Text(string key) => value.GetProperty(key).GetString() ?? "";
+-            return new(Text("SourceAppId"), Text("TargetAppId"), Text("TargetVersion"),
+-                value.GetProperty("ReusedFiles").GetInt32(),
+-                value.GetProperty("CachedFiles").GetInt32(), value.GetProperty("DownloadFiles").GetInt32(),
+-                value.GetProperty("DownloadBytes").GetInt64(),
+-                value.GetProperty("Completed").GetBoolean(),
+-                value.TryGetProperty("RecoveryRequired", out var recovery) && recovery.GetBoolean());
+-        }
+-        finally
+-        {
+-            GC.KeepAlive(callback);
+-            if (File.Exists(report)) File.Delete(report);
+-        }
+-    }
++    public Task<NteSwitchSummary> PlanAsync(NteRegionSwitchOptions options, IProgress<NteSwitchProgress> progress, CancellationToken token)
++        => Task.FromException<NteSwitchSummary>(new NotSupportedException("Region file switching is not part of TouchUILaunch."));
++    public Task<NteSwitchSummary> SwitchAsync(NteRegionSwitchOptions options, IProgress<NteSwitchProgress> progress, CancellationToken token)
++        => PlanAsync(options, progress, token);
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/NteCnSdkCompatibility.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/NteCnSdkCompatibility.cs
+@@ -34,2 +34,2 @@
+-        string pointer = Path.Combine(Path.GetDirectoryName(executable)!, "GameLauncher.config");
+-        foreach (string file in new[] { executable, launcher, pointer })
++        string bridge = Path.Combine(gameRoot, NteRegionDefinition.CN.LauncherDirectory, "WPGameClientSDK_64.dll");
++        foreach (string file in new[] { executable, launcher, bridge })
+@@ -37,4 +36,0 @@
+-        if (new FileInfo(pointer).Length > 32768) throw new NteCnLaunchException("CnFilesMissing");
+-        string bridge = Path.GetFullPath(File.ReadAllText(pointer).Trim());
+-        if (!Path.GetFileName(bridge).Equals("WPGameClientSDK_64.dll", StringComparison.OrdinalIgnoreCase) || !File.Exists(bridge))
+-            throw new NteCnLaunchException("CnFilesMissing");
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/NteHostStartupDiagnostics.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/NteHostStartupDiagnostics.cs
+@@ -9 +9 @@
+-        "Collapse", "NTE", "Diagnostics", "last-startup.json");
++        "TouchUILaunch", "NTE", "Diagnostics", "last-startup.json");
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/NteLaunchPreferences.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/NteLaunchPreferences.cs
+@@ -13 +13 @@
+-        "CollapseLauncher", "Plugins", "NTE", region switch
++        "TouchUILaunch", "NTE", region switch
+@@ -21 +21 @@
+-        "CollapseLauncher", "Plugins", "NTE", global ? "NteGlobal" : "NteCN", "launch.json");
++        "TouchUILaunch", "NTE", global ? "NteGlobal" : "NteCN", "launch.json");
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/NteLoginNotice.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/NteLoginNotice.cs
+@@ -12 +12 @@
+-        "Collapse", "NTE", "login-notice.json");
++        "TouchUILaunch", "NTE", "login-notice.json");
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/NteLoginPreferences.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/NteLoginPreferences.cs
+@@ -10 +10 @@
+-        "CollapseLauncher", "Plugins", "NTE", "login.json");
++        "TouchUILaunch", "NTE", "login.json");
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/NteSdkProtocol.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/NteSdkProtocol.cs
+@@ -16,0 +17 @@
++    internal static NteSdkProtocol Overseas209 { get; } = new("global", Version209);
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/ProbeAnonymousInit.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/ProbeAnonymousInit.cs
+@@ -30 +30 @@
+-            request.Headers.UserAgent.ParseAdd("Collapse-NTE-SdkProbe/0.4.2");
++            request.Headers.UserAgent.ParseAdd("TouchUILaunch-NTE-SdkProbe/0.4.2");
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/ProbeEnvironment.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/ProbeEnvironment.cs
+@@ -11,2 +11,2 @@
+-    private readonly string mapName = "Local\\Collapse.NTE.SdkProbe.Map." + Guid.NewGuid().ToString("N");
+-    private readonly string mutexName = "Local\\Collapse.NTE.SdkProbe.Mutex." + Guid.NewGuid().ToString("N");
++    private readonly string mapName = "Local\\TouchUILaunch.NTE.SdkProbe.Map." + Guid.NewGuid().ToString("N");
++    private readonly string mutexName = "Local\\TouchUILaunch.NTE.SdkProbe.Mutex." + Guid.NewGuid().ToString("N");
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/ProbeSessionStore.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/ProbeSessionStore.cs
+@@ -11 +11 @@
+-    private static readonly byte[] Entropy = "Collapse.NTE.IndependentLogin.v1"u8.ToArray();
++    private static readonly byte[] Entropy = "TouchUILaunch.NTE.IndependentLogin.v1"u8.ToArray();
+@@ -82 +82 @@
+-                ? CryptProtectData(ref source, "Collapse NTE local test session", ref entropy, 0, 0, 1, out destination)
++                ? CryptProtectData(ref source, "TouchUILaunch NTE local test session", ref entropy, 0, 0, 1, out destination)
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/ProbeWindow.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/ProbeWindow.cs
+@@ -16 +16 @@
+-    public string Title { get; } = "Collapse NTE SDK Probe " + Guid.NewGuid().ToString("N");
++    public string Title { get; } = "TouchUILaunch NTE SDK Probe " + Guid.NewGuid().ToString("N");
+@@ -48 +48 @@
+-        string className = "Collapse.NTE.SdkProbe." + Guid.NewGuid().ToString("N");
++        string className = "TouchUILaunch.NTE.SdkProbe." + Guid.NewGuid().ToString("N");
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/Global/NteGlobalApplicationConfiguration.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/Global/NteGlobalApplicationConfiguration.cs
+@@ -31 +31 @@
+-        NteOverseasRegion region = NteOverseasRegion.From(hostRegion);
++        NteOverseasRegion region = NteOverseasRegion.ForInstallation(hostRegion, root);
+--- a/src/Hi3Helper.Plugin.NTE.SdkShared/Global/NteOverseasRegion.cs
++++ b/src/Hi3Helper.Plugin.NTE.SdkShared/Global/NteOverseasRegion.cs
+@@ -14,0 +15,30 @@
++    internal static NteOverseasRegion Global209 { get; } = new(NteRegionDefinition.Global, "com.hottagames.nte",
++        "https://mapi.pwsdk.com", "global-sg", "pwsdk.com", "https://i.pwsdk.com", "Global", new(
++        "71F809AA59EDD26881B71C89002FEA57C62B31A9D8295ABC4E17BF40D3CF2F6C",
++        "1D6EFB3600C46839015363F3CE3B31EB9BEB92668A54DA2A76480BB63FB00DDE", NteSdkProtocol.Overseas209,
++        0xFAD728, "4.1.0", "20260917", "4.186.0"));
++
++    internal static NteOverseasRegion ForInstallation(NteHostRegion region, string root)
++    {
++        var baseRegion = From(region);
++        string platform = System.IO.Path.Combine(root, baseRegion.LauncherDirectory);
++        string imageHash = Hash(System.IO.Path.Combine(platform, baseRegion.Installation.LauncherExecutable));
++        string bridgeHash = Hash(System.IO.Path.Combine(platform, "WPGameClientSDK_64.dll"));
++        return Resolve(region, imageHash, bridgeHash);
++    }
++
++    internal static NteOverseasRegion Resolve(NteHostRegion region, string imageHash, string bridgeHash)
++    {
++        foreach (var candidate in new[] { Global, Global209, Taiwan })
++            if (candidate.HostRegion == region && candidate.ImageSha256.Equals(imageHash, StringComparison.OrdinalIgnoreCase) &&
++                candidate.BridgeSha256.Equals(bridgeHash, StringComparison.OrdinalIgnoreCase)) return candidate;
++        throw new NteGlobalLaunchException("GlobalSdkUnsupported");
++    }
++
++    private static string Hash(string path)
++    {
++        if (!System.IO.File.Exists(path)) throw new NteGlobalLaunchException("GlobalFilesMissing");
++        using var stream = System.IO.File.OpenRead(path);
++        return Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(stream));
++    }
++

@@ -1,0 +1,5 @@
+# Preserve upstream byte hashes and portable adaptation patches across checkouts.
+third_party/minhook/** text eol=lf
+third_party/nte_login_host/** text eol=lf
+third_party/nte_login_host/**/*.png -text
+third_party/nte_login_host/**/*.ico -text

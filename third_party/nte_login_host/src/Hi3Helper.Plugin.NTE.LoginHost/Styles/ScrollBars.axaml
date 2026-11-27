@@ -1,0 +1,132 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ControlTheme x:Key="LoginScrollPageTheme" TargetType="RepeatButton">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Border Background="Transparent" />
+            </ControlTemplate>
+        </Setter>
+    </ControlTheme>
+
+    <ControlTheme x:Key="LoginScrollThumbTheme" TargetType="Thumb">
+        <Setter Property="Background" Value="{DynamicResource TextBrush}" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <!-- Keep a generous drag target around the narrow painted pill. -->
+                <Grid Background="Transparent">
+                    <Border Name="Grip" Background="{TemplateBinding Background}" CornerRadius="999" Opacity="0.3">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Width" Duration="0:0:0.14" />
+                                <DoubleTransition Property="Height" Duration="0:0:0.14" />
+                                <DoubleTransition Property="Opacity" Duration="0:0:0.14" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:pointerover /template/ Border#Grip">
+            <Setter Property="Opacity" Value="0.65" />
+        </Style>
+        <Style Selector="^:pressed /template/ Border#Grip">
+            <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="Opacity" Value="1" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="LoginVerticalScrollThumbTheme" TargetType="Thumb"
+                  BasedOn="{StaticResource LoginScrollThumbTheme}">
+        <Setter Property="MinHeight" Value="28" />
+        <Style Selector="^ /template/ Border#Grip">
+            <Setter Property="Width" Value="3" />
+            <Setter Property="Margin" Value="0,2" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#Grip">
+            <Setter Property="Width" Value="5" />
+        </Style>
+        <Style Selector="^:pressed /template/ Border#Grip">
+            <Setter Property="Width" Value="6" />
+        </Style>
+    </ControlTheme>
+    <ControlTheme x:Key="LoginHorizontalScrollThumbTheme" TargetType="Thumb"
+                  BasedOn="{StaticResource LoginScrollThumbTheme}">
+        <Setter Property="MinWidth" Value="28" />
+        <Style Selector="^ /template/ Border#Grip">
+            <Setter Property="Height" Value="3" />
+            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#Grip">
+            <Setter Property="Height" Value="5" />
+        </Style>
+        <Style Selector="^:pressed /template/ Border#Grip">
+            <Setter Property="Height" Value="6" />
+        </Style>
+    </ControlTheme>
+
+    <ControlTheme x:Key="LoginScrollBarTheme" TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Template">
+            <ControlTemplate>
+                <Grid Background="{TemplateBinding Background}">
+                    <Border Name="Rail" Background="{DynamicResource TextBrush}" CornerRadius="999" Opacity="0"
+                            IsHitTestVisible="False">
+                        <Border.Transitions>
+                            <Transitions>
+                                <DoubleTransition Property="Opacity" Duration="0:0:0.14" />
+                            </Transitions>
+                        </Border.Transitions>
+                    </Border>
+                    <Track Name="PART_Track" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}"
+                           Value="{TemplateBinding Value, Mode=TwoWay}" ViewportSize="{TemplateBinding ViewportSize}"
+                           Orientation="{TemplateBinding Orientation}"
+                           DeferThumbDrag="{TemplateBinding ScrollViewer.IsDeferredScrollingEnabled}">
+                        <Track.DecreaseButton>
+                            <RepeatButton Name="PART_PageUpButton" Theme="{StaticResource LoginScrollPageTheme}" />
+                        </Track.DecreaseButton>
+                        <Track.IncreaseButton>
+                            <RepeatButton Name="PART_PageDownButton" Theme="{StaticResource LoginScrollPageTheme}" />
+                        </Track.IncreaseButton>
+                        <Thumb Name="PART_Thumb" />
+                    </Track>
+                </Grid>
+            </ControlTemplate>
+        </Setter>
+        <Style Selector="^:vertical">
+            <Setter Property="Width" Value="12" />
+            <Setter Property="Margin" Value="2,3,0,3" />
+        </Style>
+        <Style Selector="^:vertical /template/ Track#PART_Track">
+            <Setter Property="IsDirectionReversed" Value="True" />
+        </Style>
+        <Style Selector="^:vertical /template/ Thumb#PART_Thumb">
+            <Setter Property="Theme" Value="{StaticResource LoginVerticalScrollThumbTheme}" />
+        </Style>
+        <Style Selector="^:vertical /template/ Border#Rail">
+            <Setter Property="Width" Value="8" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="^:horizontal">
+            <Setter Property="Height" Value="12" />
+            <Setter Property="Margin" Value="3,2,3,0" />
+        </Style>
+        <Style Selector="^:horizontal /template/ Thumb#PART_Thumb">
+            <Setter Property="Theme" Value="{StaticResource LoginHorizontalScrollThumbTheme}" />
+        </Style>
+        <Style Selector="^:horizontal /template/ Border#Rail">
+            <Setter Property="Height" Value="8" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style Selector="^:pointerover /template/ Border#Rail">
+            <Setter Property="Opacity" Value="0.06" />
+        </Style>
+        <Style Selector="^:disabled">
+            <Setter Property="Opacity" Value="0.25" />
+        </Style>
+    </ControlTheme>
+</ResourceDictionary>
