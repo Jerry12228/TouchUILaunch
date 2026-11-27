@@ -15,6 +15,7 @@ INCLUDE_ROOTS = (
     NATIVE_ROOT / 'common' / 'binary' / 'include',
     NATIVE_ROOT / 'common' / 'process' / 'include',
     NATIVE_ROOT / 'launcher' / 'include',
+    NATIVE_ROOT / 'payload' / 'include',
     NATIVE_ROOT / 'games' / 'gi' / 'include',
     NATIVE_ROOT / 'games' / 'sr' / 'include',
     NATIVE_ROOT / 'games' / 'ww' / 'include',

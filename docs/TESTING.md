@@ -46,7 +46,7 @@ The verification script performs these steps:
 7. Check source boundaries and packaged imports/fingerprint strings, writing
    `memory-boundary.json` in the selected dist directory.
 
-There are twelve default CTest registrations in
+There are thirteen default CTest registrations in
 [CMakeLists.txt](../CMakeLists.txt):
 
 | CTest name | Executable | Main coverage |
@@ -63,6 +63,7 @@ There are twelve default CTest registrations in
 | `NTE` | `NteTests` | Synthetic UE registrations, owner and bool ABI validation, pending/ambiguous metadata, chained unwind, actual atomic and saved-register detour execution with concurrent callers, ownership CAS, partial install and protection/cache failures; real payload worker failure handshake in the owned test process |
 | `NTERelay` | `NteRelayTests` | Real project DLL in owned fixture processes: two-level launcher propagation, mapping before main, requested suspension, normal resume, excluded children, original create failure, rejected DLL cleanup, inactive controller and transferred game handle; direct Game-role loading before main, forwarding the international entry map/profile flags before extras, inherited Unicode environment/SDK-path delivery, SDK discovery, and production direct-coordinator failure/cleanup |
 | `LoaderDiagnostics` | `LoaderTests` | Direct loading before main with suspension preserved; full 64-bit module result, same-thread remote errors 126/193/1114, Unicode paths, rejected DLL initialization, and retained loader allocation after timeout, all in an owned test child |
+| `PayloadDispatch` | `PayloadDispatchTests` | Load the actual unified DLL in owned ZZZ/NTE/mixed/partial fixtures; verify exclusive worker startup and activation rejection, including quiet ZZZ activation |
 
 `LoaderDiagnostics` deliberately writes a non-PE `invalid image.dll` and expects
 Windows error 193. Its test processes set `SEM_FAILCRITICALERRORS` before child
@@ -369,7 +370,9 @@ local package feed. The published x64 host includes its runtime; keep the entire
 `nte-login-host/` folder. Source/provenance are in `third_party/nte_login_host/`.
 Run `scripts/test.ps1 -NteLoginHost` to add offline SDK/resource checks and an
 actual owned .NET Process.Start relay fixture to the native suite. These checks
-need no game/account/network. Use `--verify-installation <root> Global` on the
+need no game/account/network. Its short-lived console leaf uses CreateNoWindow
+with redirected output, and checks that the relay preserves the no-console
+flag, avoiding Windows Terminal handoff races. Use `--verify-installation <root> Global` on the
 host for read-only installed SDK/config checks. This does not test authentication.
 The public `--nte-region CN|Global` selects the independent SDK host region;
 CN and Global have separate login protocols. See NTE_INTERNALS.md for live

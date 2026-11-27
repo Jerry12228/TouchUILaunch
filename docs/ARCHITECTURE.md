@@ -1,11 +1,10 @@
 # Architecture
 
-TouchUILaunch is a Windows x64 C++20 launcher with per-game mobile UI paths and
-a separate DLL for ZZZ and NTE. The base package has three program artifacts:
-`TouchUILaunch.exe`, `TouchUILaunch.dll`, and `TouchUILaunch.NTE.dll`. Their shared filename stem does not
-mean every game loads the DLL. Optional NTE direct login adds a self-contained
-.NET/Avalonia SDK host under `nte-login-host/`; the native process relay injects
-only into its newly created, exact-path game child.
+TouchUILaunch is a Windows x64 C++20 launcher with per-game mobile UI paths.
+The base package has two program artifacts: `TouchUILaunch.exe` and the shared
+`TouchUILaunch.dll` used by ZZZ and NTE. Optional NTE direct login adds a
+self-contained .NET/Avalonia SDK host under `nte-login-host/`; its native relay
+loads the shared DLL only in newly created, configured processes.
 
 Read [Game support](GAME_SUPPORT.md) for CLI details,
 [ZZZ internals](ZZZ_INTERNALS.md) for resolver and bridge mechanics, and
@@ -15,6 +14,7 @@ Read [Game support](GAME_SUPPORT.md) for CLI details,
 
 | Component | Owns | Useful entry points |
 | --- | --- | --- |
+| Shared payload entry | One DllMain/dispatcher; select exactly one coordinated game worker | [payload.cpp](../payload/src/payload.cpp), [payload_entry.hpp](../payload/include/payload_entry.hpp) |
 | Launcher | CLI parsing, static game registry, diagnostics, elevation coordination, launch serialization, ZZZ injection | [launcher.cpp](../launcher/src/launcher.cpp), [game.hpp](../launcher/include/game.hpp), [launcher_log.hpp](../launcher/include/launcher_log.hpp) |
 | Retained legacy GI / SR resolver | Shared legacy signature resolver and stubs, still needed by SR and legacy fixtures | [gi_mobile.hpp](../games/gi/include/gi_mobile.hpp), [mobile_resolver.hpp](../games/gi/include/mobile_resolver.hpp), [gi_stubs.asm](../games/gi/src/gi_stubs.asm) |
 | SR adapter | SR entry adapter and repeated UI-state worker | [sr_mobile.hpp](../games/sr/include/sr_mobile.hpp), [sr_stubs.asm](../games/sr/src/sr_stubs.asm) |
@@ -74,8 +74,8 @@ editing a guide or adding a small fix.
 | `TouchUIGI`, `TouchUISR`, `TouchUIWW` | Interface targets connecting game adapters to their dependencies |
 | `TouchUIZZZDiscovery` | Header discovery implementation and HDE64 |
 | `TouchUILaunch` | Launcher EXE; also compiles the explicit ZZZ file diagnostic through included headers |
-| `TouchUILaunchPayload` | Production DLL, output name `TouchUILaunch`; ZZZ discovery and `user32` |
-| `TouchUINTE`, `TouchUILaunchNTEPayload` | NTE discovery/callback module and separate `TouchUILaunch.NTE.dll` |
+| `TouchUILaunchPayload` | Shared production DLL: one dispatcher, ZZZ bridge, NTE worker/relay, MinHook and owned loader helpers |
+| `TouchUINTE` | Header interface for NTE discovery/callback fixtures |
 | `TouchUIZZZBridgeTestHarness` | Separate object build of the payload with `TOUCHUI_BRIDGE_TESTING=1` |
 
 Test executables and CTest registrations are described in [Testing](TESTING.md).

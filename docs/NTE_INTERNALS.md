@@ -1,7 +1,7 @@
 # NTE mobile UI and independent login
 
 NTE support enables the client's existing mobile UI and Touch navigation.
-The official relay and independent SDK host both load a separate payload before
+The official relay and independent SDK host both load the shared payload before
 the newly created game's main thread runs. CN independent login/world/basic
 touch and Global official-relay HUD/basic operation have user acceptance from
 2026-11-27. Global independent-host login was also confirmed. Detailed evidence
@@ -37,8 +37,16 @@ Unreal version adapter. Unsupported or ambiguous evidence fails.
 
 ## Installation and lifetime
 
+The shared [payload entry](../payload/src/payload.cpp) checks existing per-PID
+activation objects on a worker thread. NTE requires its Ready/Failed pair;
+ZZZ requires its logging configuration object (which exists even with logging
+disabled). Mixed or partial activation is rejected before starting a game
+worker. NTE retains its own session/path/role validation. The shared module
+starts only one worker and retains CRT/TLS thread notifications used by ZZZ.
+The independent SDK login host remains a separate process/directory.
+
 The launcher creates a new official launcher suspended and loads the adjacent
-`TouchUILaunch.NTE.dll` directly with a `LoadLibraryW` remote thread. It resolves
+`TouchUILaunch.dll` directly with a `LoadLibraryW` remote thread. It resolves
 the actual API host image in the owned child, including before the initial
 loader list exists, and verifies the loaded module's full path. The remote
 thread's truncated exit code is diagnostic only. If only ntdll is initially

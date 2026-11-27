@@ -1,6 +1,7 @@
 #include "nte_callbacks.hpp"
 #include "nte_launch.hpp"
 #include "nte_relay.hpp"
+#include "payload_entry.hpp"
 #include <fstream>
 
 namespace {
@@ -71,12 +72,7 @@ DWORD WINAPI initialize(void*) {
     }
 }
 }
-BOOL WINAPI DllMain(HINSTANCE instance,DWORD reason,LPVOID) {
-    if(reason==DLL_PROCESS_ATTACH) {
-        self=instance;DisableThreadLibraryCalls(instance);
-        HANDLE worker=CreateThread(nullptr,0,initialize,nullptr,0,nullptr);
-        if(!worker)return FALSE;
-        CloseHandle(worker);
-    }
-    return TRUE;
+DWORD touchui::nte::run_payload(HMODULE module) {
+    self=module;
+    return initialize(nullptr);
 }

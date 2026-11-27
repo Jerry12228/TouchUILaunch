@@ -1,9 +1,10 @@
 #pragma once
 #include "win_util.hpp"
+#include "payload_entry.hpp"
 #include <string_view>
 
 namespace touchui::nte {
-inline constexpr auto payload_filename=L"TouchUILaunch.NTE.dll";
+inline constexpr auto payload_filename=payload::filename;
 // International launcher command observed in its successful 1.5.5 run.
 // Updater_P performs the normal startup flow; Global selects Saved_Global.
 inline constexpr std::wstring_view direct_defaults=

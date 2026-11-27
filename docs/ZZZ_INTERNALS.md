@@ -12,8 +12,10 @@ The main sources are [payload.cpp](../games/zzz/src/payload.cpp),
 
 ## Initialization and readiness
 
-`DllMain` starts a worker and returns; it does not synchronously resolve or
-install input hooks. The worker retains the launcher's logging event and
+The shared `TouchUILaunch.dll` entry starts a dispatcher and returns without
+resolving or installing input hooks under the loader lock. An existing ZZZ
+logging configuration object selects only the ZZZ worker; conflicting NTE
+activation is rejected. The selected worker retains the launcher's logging event and
 publishes the startup event before checking process identity and initializing
 the bridge.
 

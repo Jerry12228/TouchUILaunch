@@ -118,7 +118,7 @@ int wmain(int argc,wchar_t** argv) {
                 if(fs::is_regular_file(root/relative)){game=root/relative;break;}
             }
         }
-        fs::path payload=own_dir/L"TouchUILaunch.dll";
+        fs::path payload=own_dir/touchui::payload::filename;
         std::wstring action,extra_arguments;bool explicit_game{},explicit_action{},explicit_extra{},explicit_nte_launcher{};
         fs::path nte_launcher;bool nte_direct{},nte_official{};std::wstring nte_region;
         std::optional<touchui::nte::LoginHostPlan> nte_host;
@@ -150,7 +150,6 @@ int wmain(int argc,wchar_t** argv) {
         if(nte_direct&&nte_official)throw std::runtime_error("--nte-direct cannot be combined with --nte-official");
         const bool nte_use_official=nte_official||explicit_nte_launcher;
         if(!nte_region.empty()&&(*selected!=game::Kind::NTE||nte_use_official))throw std::runtime_error("--nte-region requires independent --NTE login");
-        if(*selected==game::Kind::NTE)payload=own_dir/touchui::nte::payload_filename;
         if(log_enabled)std::cout<<"Selected game: "<<launcher_log::utf8(game::flag(*selected))<<"; executable: "<<launcher_log::utf8(game.wstring())<<std::endl;
         if(action==L"probe"||action==L"probe-auto") {
             diagnostics.stage("ZZZ: read-only file probe");

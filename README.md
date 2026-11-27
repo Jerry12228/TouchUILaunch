@@ -14,7 +14,17 @@ This project enables touch UI support for several PC games.
 
 ## Usage
 
-1. Download the latest build from [Releases](https://github.com/Jerry12228/TouchUILaunch/releases), or build from source. Keep the packaged launcher and DLLs in the same directory; NTE direct login also requires the complete `nte-login-host/` folder.
+1. Download a package from [Releases](https://github.com/Jerry12228/TouchUILaunch/releases), choosing the edition that matches how you want to launch NTE. The two release packages use these names; replace `<version>` with the release version number without its leading `v`:
+
+   | Package | Release archive name | Contents and when to choose it |
+   | --- | --- | --- |
+   | **Standard** | `TouchUILaunch-v<version>-win-x64-standard.zip` | Includes `TouchUILaunch.exe`, the shared `TouchUILaunch.dll`, and license notices. Choose this for Genshin Impact, Honkai: Star Rail, ZZZ, Wuthering Waves, or NTE through the official launcher using `--nte-official`. Does not include `nte-login-host/`. |
+   | **NTE Login** | `TouchUILaunch-v<version>-win-x64-nte-login.zip` | Includes everything in Standard plus the complete `nte-login-host/` directory, its runtime/dependencies, and their license notices. Choose this for independent CN/Global NTE login without starting an official launcher process. It also supports every Standard use case. |
+
+   **Selection:** if you want NTE's default independent login, choose **NTE Login**. If you only need the other games, or prefer NTE's official launcher, choose **Standard**. Standard users must select the official NTE route with `--nte-official` or an explicit `--nte-launcher` path; omitting the login host does not automatically switch launch modes. Both packages still require an installed game; NTE independent login also uses SDK/configuration files from that installation.
+
+   Extract the complete package. Keep `TouchUILaunch.exe` and `TouchUILaunch.dll` together, and retain `nte-login-host/` when using NTE Login. For source builds, see [Build](#build).
+
 2. Run one of the commands below from that directory, replacing the sample path with the path to your game's executable.
 
 ### Parameters
@@ -92,7 +102,10 @@ From the repository root, run:
 .\scripts\build.ps1
 ```
 
-This script packages one launcher executable and two game-specific DLLs.
+This script packages one launcher executable and one shared payload DLL.
+ZZZ and NTE both use `TouchUILaunch.dll`; NTE direct login still needs the
+separate `nte-login-host/` directory. The installer removes the obsolete
+`TouchUILaunch.NTE.dll` when updating an existing package.
 For NTE direct login, build and verify the optional self-contained host:
 
 ```powershell

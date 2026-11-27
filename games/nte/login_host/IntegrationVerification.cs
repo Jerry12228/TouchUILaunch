@@ -83,7 +83,10 @@ internal static class IntegrationVerification
         ProcessStartInfo start = new(executable)
         {
             UseShellExecute = false, WorkingDirectory = folder,
-            RedirectStandardOutput = true, RedirectStandardError = true
+            RedirectStandardOutput = true, RedirectStandardError = true,
+            // This leaf is a short-lived console fixture. Avoid a default
+            // terminal handoff while retaining the redirected test streams.
+            CreateNoWindow = true
         };
         foreach (string arg in new[] { "--fixture", "normal", folder, report }) start.ArgumentList.Add(arg);
         start.Environment["TouchUILaunch.ManagedFixture"] = "Unicode 中文";

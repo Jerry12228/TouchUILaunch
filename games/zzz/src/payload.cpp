@@ -3,6 +3,7 @@
 #include "touch_state.hpp"
 #include "button_layout_patch.hpp"
 #include "win_util.hpp"
+#include "payload_entry.hpp"
 #include <atomic>
 #include <cstdio>
 #include <cstdarg>
@@ -363,15 +364,9 @@ DWORD WINAPI worker_entry(void*) {
     return 0;
 }
 }
-BOOL WINAPI DllMain(HINSTANCE module,DWORD reason,LPVOID) {
-    if(reason==DLL_PROCESS_ATTACH) {
-        self_module=module;
-        HANDLE thread=CreateThread(nullptr,0,worker_entry,nullptr,0,nullptr);
-        if(thread)CloseHandle(thread);
-        else return FALSE;
-    }
-    // Hooks and window callback stay resident until process exit. Do not FreeLibrary.
-    return TRUE;
+DWORD touchui::zzz::run_payload(HMODULE module) {
+    self_module=module;
+    return worker_entry(nullptr);
 }
 
 #if defined(TOUCHUI_BRIDGE_TESTING)

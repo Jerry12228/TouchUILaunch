@@ -14,7 +14,17 @@
 
 ## 用法
 
-1. 在 [Releases](https://github.com/Jerry12228/TouchUILaunch/releases) 下载最新构建，或从源码构建。将包中的启动器和 DLL 放在同一目录下；异环直接登录还需要完整的 `nte-login-host/` 目录。
+1. 在 [Releases](https://github.com/Jerry12228/TouchUILaunch/releases) 下载适合自己启动方式的发布包。两个包采用以下固定命名，其中 `<version>` 替换为不含前缀 `v` 的发布版本号：
+
+   | 发布包 | 压缩包文件名 | 内容与适用场景 |
+   | --- | --- | --- |
+   | **标准包（Standard）** | `TouchUILaunch-v<version>-win-x64-standard.zip` | 包含 `TouchUILaunch.exe`、共用的 `TouchUILaunch.dll` 和许可证。适合原神、星穹铁道、绝区零、鸣潮，以及通过 `--nte-official` 使用官方启动器启动异环的用户。不包含 `nte-login-host/`。 |
+   | **异环独立登录包（NTE Login）** | `TouchUILaunch-v<version>-win-x64-nte-login.zip` | 包含标准包的全部内容，另附完整的 `nte-login-host/` 目录、运行时／依赖及其许可证。适合希望不启动官方启动器进程，直接登录国服／国际服异环的用户；也支持标准包的全部使用场景。 |
+
+   **如何选择：**希望使用异环默认的独立登录方式，选择**异环独立登录包**；只玩其他游戏，或愿意通过异环官方启动器启动，选择**标准包**。标准包启动异环时必须选择官方中转方式（携带 `--nte-official`，或指定 `--nte-launcher` 路径），缺少登录宿主不会自动切换启动方式。两个包都需要已安装的游戏；异环独立登录仍会使用游戏安装目录内的 SDK 和配置文件。
+
+   请完整解压，将 `TouchUILaunch.exe` 和 `TouchUILaunch.dll` 保持在同一目录下；使用独立登录包时保留完整的 `nte-login-host/` 目录。从源码构建请参阅[构建](#构建)。
+
 2. 在该目录运行以下命令，将示例路径替换为你的游戏可执行文件路径
 
 ### 参数
@@ -89,7 +99,9 @@
 .\scripts\build.ps1
 ```
 
-此脚本将打包一个启动器 EXE 和两个游戏专用 DLL。
+此脚本将打包一个启动器 EXE 和一个共用载荷 DLL。
+绝区零和异环均使用 `TouchUILaunch.dll`；异环直接登录仍需单独的 `nte-login-host/` 目录。
+更新现有分发目录时，安装步骤会移除旧的 `TouchUILaunch.NTE.dll`。
 如需异环直接登录，请构建并验证可选的独立宿主：
 
 ```powershell

@@ -18,8 +18,10 @@ int fixture(int argc,wchar_t** argv) {
         const bool loaded=GetModuleHandleW(payload_filename)!=nullptr;
         check(loaded==(name==L"HTGame.exe"&&mode!=L"inactive"),"leaf payload identity");
         wchar_t value[64]{};
-        if(GetEnvironmentVariableW(L"TouchUILaunch.ManagedFixture",value,64))
+        if(GetEnvironmentVariableW(L"TouchUILaunch.ManagedFixture",value,64)) {
             check(std::wstring_view(value)==L"Unicode 中文","managed Process.Start preserves child Unicode environment");
+            check(GetConsoleWindow()==nullptr,"managed fixture preserves CREATE_NO_WINDOW through the relay");
+        }
         if(mode==L"direct-failure") {
             std::ofstream(report)<<GetCurrentProcessId()<<"\n";
             WNDCLASSW klass{};klass.hInstance=GetModuleHandleW(nullptr);klass.lpfnWndProc=DefWindowProcW;klass.lpszClassName=L"UnrealWindow";

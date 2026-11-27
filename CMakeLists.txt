@@ -24,6 +24,7 @@ add_library(TouchUIHeaders INTERFACE)
 target_include_directories(TouchUIHeaders INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}/launcher/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/payload/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/common/windows/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/common/binary/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/common/process/include"
@@ -63,15 +64,13 @@ target_link_libraries(TouchUISR INTERFACE TouchUIProcess)
 add_library(TouchUIWW INTERFACE)
 target_link_libraries(TouchUIWW INTERFACE TouchUIHeaders)
 
-add_library(TouchUILaunchPayload SHARED games/zzz/src/payload.cpp)
+add_library(TouchUILaunchPayload SHARED payload/src/payload.cpp
+  games/zzz/src/payload.cpp games/nte/src/payload.cpp games/nte/src/relay.cpp)
 set_target_properties(TouchUILaunchPayload PROPERTIES OUTPUT_NAME TouchUILaunch)
-target_link_libraries(TouchUILaunchPayload PRIVATE TouchUIZZZDiscovery user32)
+target_link_libraries(TouchUILaunchPayload PRIVATE TouchUIZZZDiscovery MinHook RemoteLoaderStubs user32 psapi)
 
 add_library(TouchUINTE INTERFACE)
 target_link_libraries(TouchUINTE INTERFACE TouchUIHeaders Hde64)
-add_library(TouchUILaunchNTEPayload SHARED games/nte/src/payload.cpp games/nte/src/relay.cpp)
-set_target_properties(TouchUILaunchNTEPayload PROPERTIES OUTPUT_NAME TouchUILaunch.NTE)
-target_link_libraries(TouchUILaunchNTEPayload PRIVATE TouchUINTE MinHook RemoteLoaderStubs user32 psapi)
 
 add_executable(TouchUILaunch launcher/src/launcher.cpp)
 target_link_libraries(TouchUILaunch PRIVATE TouchUIGI TouchUISR TouchUIWW user32 bcrypt shell32 advapi32 ole32)
@@ -113,10 +112,13 @@ target_link_libraries(ButtonLayoutTests PRIVATE TouchUIZZZDiscovery)
 
 add_executable(NteTests games/nte/tests/nte_tests.cpp)
 target_link_libraries(NteTests PRIVATE TouchUINTE MinHook)
-add_dependencies(NteTests TouchUILaunchNTEPayload)
+add_dependencies(NteTests TouchUILaunchPayload)
 add_executable(NteRelayTests games/nte/tests/relay_tests.cpp)
 target_link_libraries(NteRelayTests PRIVATE TouchUIHeaders RemoteLoaderStubs user32 psapi)
-add_dependencies(NteRelayTests TouchUILaunchNTEPayload LoaderRejectFixture LoaderSuccessFixture)
+add_dependencies(NteRelayTests TouchUILaunchPayload LoaderRejectFixture LoaderSuccessFixture)
+add_executable(PayloadDispatchTests payload/tests/payload_tests.cpp)
+target_link_libraries(PayloadDispatchTests PRIVATE TouchUIHeaders user32)
+add_dependencies(PayloadDispatchTests TouchUILaunchPayload)
 
 foreach(fixture IN ITEMS Success Reject Slow)
   add_library(Loader${fixture}Fixture SHARED common/process/tests/loader_test_dll.cpp)
@@ -146,6 +148,8 @@ add_test(NAME NTERelay COMMAND NteRelayTests)
 set_tests_properties(NTERelay PROPERTIES TIMEOUT 120)
 add_test(NAME LoaderDiagnostics COMMAND LoaderTests)
 set_tests_properties(LoaderDiagnostics PROPERTIES TIMEOUT 60)
+add_test(NAME PayloadDispatch COMMAND PayloadDispatchTests)
+set_tests_properties(PayloadDispatch PROPERTIES TIMEOUT 60)
 
 if(TOUCHUI_ENABLE_EXTERNAL_SAMPLES)
   if(TOUCHUI_SR_SAMPLE)
@@ -160,7 +164,17 @@ if(TOUCHUI_ENABLE_EXTERNAL_SAMPLES)
   endforeach()
 endif()
 
-install(TARGETS TouchUILaunch TouchUILaunchPayload TouchUILaunchNTEPayload RUNTIME DESTINATION . LIBRARY DESTINATION .)
+install(TARGETS TouchUILaunch TouchUILaunchPayload RUNTIME DESTINATION . LIBRARY DESTINATION .)
+# Remove only this project's obsolete generated payload when upgrading a package.
+install(CODE [[
+  set(legacy_payload "${CMAKE_INSTALL_PREFIX}/TouchUILaunch.NTE.dll")
+  if(EXISTS "${legacy_payload}")
+    file(REMOVE "${legacy_payload}")
+    if(EXISTS "${legacy_payload}")
+      message(FATAL_ERROR "Cannot remove obsolete NTE payload; close processes using this package and retry")
+    endif()
+  endif()
+]])
 install(FILES README.md DESTINATION .)
 install(FILES LICENSE DESTINATION .)
 install(FILES docs/THIRD-PARTY-NOTICES.txt DESTINATION .)

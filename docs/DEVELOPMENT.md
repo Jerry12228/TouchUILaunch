@@ -100,7 +100,6 @@ The CMake install rules package:
 dist/
   TouchUILaunch.exe
   TouchUILaunch.dll
-  TouchUILaunch.NTE.dll
   README.md
   LICENSE
   THIRD-PARTY-NOTICES.txt
@@ -111,13 +110,13 @@ dist/
 
 `test.ps1` additionally writes `dist/memory-boundary.json`. Test executables,
 test oracles, this handbook, and the Chinese README are not installed by the
-current rules. The installer does not clear an existing destination; old files
-may remain there. Inspect the actual install manifest and destination before
+current rules. The installer removes the obsolete `TouchUILaunch.NTE.dll` from
+an existing destination, but does not otherwise clear old files. Inspect the actual install manifest and destination before
 describing package contents or distributing a build.
 
-Keep `TouchUILaunch.dll` beside the EXE for ZZZ launch/probe and
-`TouchUILaunch.NTE.dll` for NTE launch. GI/SR/WW do not load either game DLL.
-The standard package and verification suite expect all three program artifacts.
+Keep the shared `TouchUILaunch.dll` beside the EXE for ZZZ launch/probe and NTE
+launch. GI/SR/WW do not load this DLL. The standard package and verification
+suite expect one launcher EXE and one payload DLL.
 See [Game support](GAME_SUPPORT.md).
 
 [.gitignore](../.gitignore) excludes `build/`, `dist/`, Python bytecode, and

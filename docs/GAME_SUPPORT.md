@@ -13,7 +13,7 @@ or future client build. Validation scope is defined in [Testing](TESTING.md).
 | `--SR` | `StarRail.exe` | Required | Suspended startup and periodic UI-state writer |
 | `--ZZZ` | `ZenlessZoneZero.exe` | Optional | Normal startup, injected DLL, memory discovery, Windows touch bridge |
 | `--WW` | `Client-Win64-Shipping.exe` | Required | Normal startup with Android cloud UI arguments |
-| `--NTE` | `HTGame.exe` | Required | Official relay or independent CN/Global SDK login host; early separate DLL load, UE mobile predicates and Touch navigation requests |
+| `--NTE` | `HTGame.exe` | Required | Official relay or independent CN/Global SDK login host; early shared DLL load, UE mobile predicates and Touch navigation requests |
 
 Choose exactly one game; duplicate selectors, even for the same game, are
 rejected. The file must exist and its filename must match the selected family.
@@ -173,7 +173,7 @@ establish runtime compatibility.
 ## NTE launch and independent login
 
 `--NTE --nte-official --game <HTGame.exe>` starts a new owned official launcher and loads the
-adjacent `TouchUILaunch.NTE.dll` as a process-creation bridge before resuming it.
+adjacent `TouchUILaunch.dll` as a process-creation bridge before resuming it.
 Exit existing official launchers first, then click Start in the newly opened
 launcher within five minutes. The bridge propagates through known official
 launcher children and loads the game DLL before its main thread resumes.

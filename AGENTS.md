@@ -16,6 +16,7 @@ a stale description.
 ## Project boundaries
 
 - `launcher/` owns CLI selection, logging, elevation, and launch coordination.
+- `payload/` owns the shared DLL entry and exclusive ZZZ/NTE worker dispatch.
 - `games/{gi,sr,ww,zzz,nte}/` owns game behavior; ZZZ includes discovery and the DLL
   touch bridge. Keep game signatures out of the launcher.
 - `common/` contains Windows, binary, process, and test helpers. Keep new shared

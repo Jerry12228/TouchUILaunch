@@ -33,7 +33,9 @@ if (-not (Test-Path -LiteralPath $build -PathType Container)) {
 Assert-File (Join-Path $build 'Release\TouchUILaunch.exe') 'Built launcher'
 Assert-File (Join-Path $dist 'TouchUILaunch.exe') 'Packaged launcher'
 Assert-File (Join-Path $dist 'TouchUILaunch.dll') 'Packaged payload DLL'
-Assert-File (Join-Path $dist 'TouchUILaunch.NTE.dll') 'Packaged NTE payload DLL'
+if (Test-Path -LiteralPath (Join-Path $dist 'TouchUILaunch.NTE.dll')) {
+    throw 'Legacy separate NTE payload remains in package; rebuild with scripts\build.ps1.'
+}
 
 # The check deliberately does not regenerate source.  Updating generated rules
 # remains an explicit developer action because it requires the 3.1 sample and Capstone.

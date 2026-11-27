@@ -42,6 +42,7 @@ whether `--log` was supplied, and which process emitted the message.
 | `python` missing or wrong interpreter | Supply `-Python` to `test.ps1`/`full.ps1`; scan-rule generation additionally needs Capstone in that interpreter |
 | No tests or incorrect subset | Inspect CTest enumeration in the actual configured tree, not just test executable filenames |
 | `LoaderDiagnostics` times out with a Windows “Bad Image” dialog for `invalid image.dll` | This is the deliberately invalid test fixture. Rebuild the fixed `LoaderTests`: its owned process tree suppresses loader hard-error dialogs and checks error 193 directly. Keep the invalid-image case enabled; increasing the timeout does not fix the dialog wait. |
+| Windows Terminal shows `0x800700e8` for `nte relay fixture ...\HTGame.exe ... managed.txt` | That path is the short-lived managed relay fixture. Rebuild the login host: this fixture now uses CreateNoWindow with redirected streams and verifies that it has no console, so the terminal does not race its exit. |
 
 Commands and sources: [Development](DEVELOPMENT.md),
 [CMake configuration](../CMakeLists.txt), [presets](../CMakePresets.json), and
