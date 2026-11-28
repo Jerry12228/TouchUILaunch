@@ -11,7 +11,7 @@ This project enables touch UI support for several PC games.
 - Zenless Zone Zero
 - Wuthering Waves
 - Neverness to Everness (NTE)
-- Arknights: Endfield (experimental touch UI and native UI pointer handling)
+- Arknights: Endfield
 
 ## Usage
 
@@ -40,7 +40,7 @@ The parameters are divided into four categories: **game selection, game path, ga
    - Neverness to Everness: `--NTE`
    - Arknights: Endfield: `--EF`
 
-2. **Game path (required except for ZZZ):**
+2. **Game path (required):**
 
    Use `--game` to specify the path to the game executable, for example:
 
@@ -58,7 +58,11 @@ The parameters are divided into four categories: **game selection, game path, ga
    | `--nte-official` | No | Use the official launcher to start the game. Run this launcher first, then start the game from the official launcher while this launcher is waiting. | None |
    | `--nte-launcher <path-to-exe>` | No | Specify the official launcher path when it cannot be found automatically in official relay mode | String |
 
-   Endfield: `--ef-launcher <Games.exe>` optionally selects the installed signed GRYPHLINK launcher when automatic discovery does not find it.
+   Endfield:
+
+   | Option | Required | Description | Value |
+   | --- | --- | --- | --- |
+   | `--ef-launcher <path-to-Games.exe>` | No | Specify the Endfield launcher path | String |
 
 4. **Other options:**
 
@@ -85,26 +89,12 @@ Examples:
 1. Exit the selected game before launching; for NTE, also exit the official launcher.
 2. Logs are stored in the `logs/` directory beside the launcher. For NTE, `--log` also records a bounded input diagnostic trace for touch/drag troubleshooting.
 3. If only one NTE region is installed, the client can be detected automatically; `--nte-region` is not required.
-4. Official NTE mode cannot be combined with `--nte-region` or `--nte-direct`.
-5. NTE touch corrections run by default without extra options or environment variables. CN testing with Moonlight + Sunshine native touch confirmed improvements to combat, map dragging, settings clicks and sliders.
+4. Official NTE mode cannot be combined with `--nte-region`.
+5. Endfield launch depends on the official launcher. It is detected automatically when possible; if it cannot be found, specify it with `--ef-launcher <Games.exe>`.
 
 ### Endfield setup and current status
 
-Use a build whose `--help` lists `--EF` and `--ef-launcher`. Check the downloaded
-release's notes; if it predates Endfield support, [build this source](#build).
-Endfield uses the shared EXE/DLL pair in either package edition and does not
-require `nte-login-host/`.
-
-1. Install/update the game through the official GRYPHLINK launcher, then exit
-   Endfield normally. TouchUILaunch starts a new game session.
-2. Keep `TouchUILaunch.exe` and `TouchUILaunch.dll` from the same build together.
-   Run the following command and accept Windows administrator approval:
-
-   ```powershell
-   .\TouchUILaunch.exe --EF --game 'C:\Games\Endfield\Endfield.exe' --log
-   ```
-
-3. The installed GRYPHLINK `Games.exe` is detected under
+1. The installed GRYPHLINK `Games.exe` is detected under
    `%ProgramFiles%\GRYPHLINK`, preferring the newest valid numeric version.
    For another installation location, supply its actual path:
 
@@ -115,37 +105,16 @@ require `nte-login-host/`.
    Replace both example paths. The selected launcher must be a trusted, signed
    x64 GRYPHLINK `Games.exe`. TouchUILaunch creates its own official parent;
    no manual click on the official launcher's Play button is required.
-4. Wait for `Endfield touch UI state confirmed`, then **keep TouchUILaunch
+2. Wait for `Endfield touch UI state confirmed`, then **keep TouchUILaunch
    running until the game exits**. Initialization can wait up to 120 seconds
    for GameAssembly and a further 120 seconds for UI state. The continuing
    launcher process after confirmation is expected.
 
-Endfield uses the game's native touch backend. A touch screen or streaming
-client must deliver touch to Windows/the game; mouse events are not converted
-to fingers. The built-in Touch UI is selected automatically, and independent
-mouse/finger UI records are requested without an extra switch. `--log` only
-adds diagnostics.
-
-| Behavior | Current evidence |
-| --- | --- |
-| Touch UI, movement, camera and controlled-member switching | User confirmed working in the startup/UI build |
-| Menu controls, story choices and dialogue advance | Intermittent missed clicks with hover feedback were reported; the new pointer policy still needs real-game retesting |
-| Physical versus streamed touch, multitouch, keyboard mixing and broad scene/menu coverage | Not separately accepted |
-
-Layout confirmation does not confirm that the pointer policy was applied or
-that every control works. With `--log`, collect `logs/launcher-<pid>.log`
-(both PIDs after elevation) and `logs/ef-<game-pid>.log` when reporting a problem.
-The pointer policy has its own readiness/application messages. A new DLL takes
-effect on the next normal launch; there is no runtime reload command.
-See [troubleshooting](docs/TROUBLESHOOTING.md#ef-startup-and-intermittent-ui-clicks)
-and [implementation, evidence and retest cases](docs/EF_INTERNALS.md).
-
-### NTE known issues (0.3.1)
+### NTE known issues
 
 - The first touch swipe each time the phone/ESC menu opens still fails. Release and swipe again to page; closing and reopening the menu resets the issue.
 - While dragging the settings list, it still scrolls farther than the finger moves.
 
-These issues remain in this patch. Physical touch and Global streamed touch were not separately accepted; see [NTE limitations and verification scope](docs/NTE_INTERNALS.md#known-touch-limitations).
 
 ## TODO
 
