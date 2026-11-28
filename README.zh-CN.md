@@ -90,7 +90,7 @@
 
 ### 终末地启动与验证状态
 
-3. 默认在 `%ProgramFiles%\GRYPHLINK` 下查找已安装的 `Games.exe`，优先选择有效的最新
+1. 默认在 `%ProgramFiles%\GRYPHLINK` 下查找已安装的 `Games.exe`，优先选择有效的最新
    数字版本目录。安装在其他位置时，指定实际路径：
 
    ```powershell
@@ -99,9 +99,12 @@
 
    两处示例路径均需替换。指定文件必须是受信任且签名有效的 x64 GRYPHLINK `Games.exe`。
    TouchUILaunch 会自行创建官方父进程，无须再手动点击官方启动器中的“开始游戏”。
-4. 出现 `Endfield touch UI state confirmed` 后，**保持 TouchUILaunch 运行直到游戏退出**。
+2. 出现 `Endfield touch UI state confirmed` 后，**保持 TouchUILaunch 运行直到游戏退出**。
    初始化最多等待 GameAssembly 120 秒，再等待 UI 状态 120 秒。确认成功后启动器继续
    运行属于正常行为。
+
+曾反馈菜单／剧情点击偶发仅显示悬浮样式。本版加入针对该现象的独立 UI 指针策略，
+改善效果仍待实机复测，详见[终末地验证](docs/EF_INTERNALS.md#manual-retest)。
 
 ### 异环已知问题
 

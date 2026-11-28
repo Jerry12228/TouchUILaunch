@@ -110,6 +110,10 @@ Examples:
    for GameAssembly and a further 120 seconds for UI state. The continuing
    launcher process after confirmation is expected.
 
+Menu/story taps were reported to intermittently show only hover feedback. This
+release includes an independent UI pointer policy targeting that symptom;
+real-game improvement still needs retesting. See [EF validation](docs/EF_INTERNALS.md#manual-retest).
+
 ### NTE known issues
 
 - The first touch swipe each time the phone/ESC menu opens still fails. Release and swipe again to page; closing and reopening the menu resets the issue.
