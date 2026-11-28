@@ -1,6 +1,10 @@
 #pragma once
 #include "nte_discovery.hpp"
 #include "MinHook.h"
+#include <sstream>
+extern "C" {
+#include "third_party/minhook/src/buffer.h"
+}
 
 namespace touchui::nte {
 using Exec=void(*)(void*,void*,void*);
@@ -8,7 +12,58 @@ using Navigation=void(*)(void*,uint8_t);
 inline constexpr uint8_t touch_input=2;
 inline constexpr uint32_t return_true=0x90c301b0; // mov al,1; ret; nop
 inline bool native_mobile()noexcept {return true;}
+// One worker owns this pinned MinHook v1.3.4 pool before the game main thread
+// resumes. Holding a single unused slot keeps a normal nearby page available
+// for later hook preparation; no game address or instruction is patched here.
+class EarlyHookBuffer {
+    void* slot_{};
+public:
+    EarlyHookBuffer()=default;
+    EarlyHookBuffer(const EarlyHookBuffer&)=delete;EarlyHookBuffer& operator=(const EarlyHookBuffer&)=delete;
+    ~EarlyHookBuffer(){release();}
+    bool reserve(void* origin) {
+        if(slot_)return true;
+        const auto status=MH_Initialize();
+        if(status!=MH_OK&&status!=MH_ERROR_ALREADY_INITIALIZED)return false;
+        slot_=AllocateBuffer(origin);return slot_!=nullptr;
+    }
+    void release(){if(slot_){FreeBuffer(slot_);slot_=nullptr;}}
+    void* slot()const{return slot_;}
+};
 struct Callbacks {std::array<uintptr_t,3> exec{};uintptr_t navigation{};};
+inline std::string detour_preparation_failure(MH_STATUS status,void* target,DWORD last_error) {
+    // MinHook can fail either its nearby executable buffer or private heap.
+    // Observe the address space without allocating, changing protections or
+    // treating a captured last-error value as a proven allocation cause.
+    const auto origin=reinterpret_cast<uintptr_t>(target);
+    constexpr uintptr_t range=0x40000000;
+    const auto low=origin>range?origin-range:uintptr_t{};
+    const auto high=origin<=UINTPTR_MAX-range?origin+range:UINTPTR_MAX;
+    size_t free_regions{},largest{},aligned_regions{};SYSTEM_INFO system{};GetSystemInfo(&system);
+    for(auto cursor=low;cursor<high;) {
+        MEMORY_BASIC_INFORMATION region{};
+        if(VirtualQuery(reinterpret_cast<void*>(cursor),&region,sizeof(region))!=sizeof(region))break;
+        const auto begin=reinterpret_cast<uintptr_t>(region.BaseAddress);
+        if(region.RegionSize>UINTPTR_MAX-begin)break;
+        const auto next=begin+region.RegionSize;
+        if(next<=cursor)break;
+        if(region.State==MEM_FREE) {
+            ++free_regions;largest=std::max(largest,static_cast<size_t>(std::min(next,high)-cursor));
+            const auto granularity=static_cast<uintptr_t>(system.dwAllocationGranularity);
+            const auto aligned=(cursor+granularity-1)&~(granularity-1);
+            if(aligned>=cursor&&aligned<std::min(next,high)&&std::min(next,high)-aligned>=0x1000)++aligned_regions;
+        }
+        cursor=next;
+    }
+    MEMORYSTATUSEX memory{sizeof(memory)};
+    const bool have_memory=GlobalMemoryStatusEx(&memory)!=FALSE;
+    std::ostringstream result;
+    result<<"cannot prepare native predicate detour: "<<MH_StatusToString(status)
+        <<"; target=0x"<<std::hex<<origin<<std::dec<<"; last_win32="<<last_error
+        <<"; near_free_regions="<<free_regions<<"; near_largest_bytes="<<largest<<"; near_aligned_regions="<<aligned_regions;
+    if(have_memory)result<<"; available_commit_MiB="<<(memory.ullAvailPageFile>>20);
+    return result.str();
+}
 struct HookOperations {
     std::function<bool(void*,size_t,DWORD,DWORD*)> protect=[](void* at,size_t size,DWORD mode,DWORD* previous) {
         return VirtualProtect(at,size,mode,previous)!=FALSE;
@@ -17,6 +72,9 @@ struct HookOperations {
         return FlushInstructionCache(GetCurrentProcess(),at,size)!=FALSE;
     };
     std::function<MH_STATUS(void*)> enable_detour=[](void* at){return MH_EnableHook(at);};
+    std::function<MH_STATUS(void*,void*)> create_detour=[](void* at,void* callback) {
+        return MH_CreateHook(at,callback,nullptr);
+    };
 };
 // Process-lifetime hooks. In particular, never restore the four-byte entry
 // after publication: a concurrent caller can be at the replacement RET (+2).
@@ -82,8 +140,10 @@ public:
                 require(VirtualQuery(at,&native_page,sizeof(native_page))==sizeof(native_page),"cannot query native bool page");
                 const auto initialized=MH_Initialize();
                 require(initialized==MH_OK||initialized==MH_ERROR_ALREADY_INITIALIZED,"cannot initialize native predicate detour");
-                const auto created=MH_CreateHook(at,reinterpret_cast<void*>(&native_mobile),nullptr);
-                require(created==MH_OK,std::string("cannot prepare native predicate detour: ")+MH_StatusToString(created));
+                SetLastError(ERROR_SUCCESS);
+                const auto created=operations_.create_detour(at,reinterpret_cast<void*>(&native_mobile));
+                const auto last_error=GetLastError();
+                if(created!=MH_OK)throw std::runtime_error(detour_preparation_failure(created,at,last_error));
                 detour_prepared=true;
             }
             for(auto& p:pointers_)exchange(p,false);

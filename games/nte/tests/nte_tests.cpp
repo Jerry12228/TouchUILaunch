@@ -79,6 +79,38 @@ void discovery_tests() {
 void saved_register_hook_tests() {
     using Predicate=bool(*)();
     {
+        Fixture f(true);EarlyHookBuffer reservation;
+        check(reservation.reserve(reinterpret_cast<void*>(f.base)),"reserve ordinary MinHook buffer before later setup");
+        void* original{};auto* target=reinterpret_cast<void*>(f.base+Fixture::predicate);
+        check(MH_CreateHook(target,reinterpret_cast<void*>(&native_mobile),&original)==MH_OK,"create hook using reserved pool");
+        MEMORY_BASIC_INFORMATION reserved{},trampoline{};
+        VirtualQuery(reservation.slot(),&reserved,sizeof(reserved));VirtualQuery(original,&trampoline,sizeof(trampoline));
+        check(reserved.AllocationBase==trampoline.AllocationBase,"later native hook reuses the held nearby page");
+        reservation.release();
+        check(MH_EnableHook(target)==MH_OK&&reinterpret_cast<Predicate>(target)()&&!reinterpret_cast<Predicate>(original)(),
+            "releasing dummy slot preserves both active hook and original trampoline");
+        check(MH_RemoveHook(target)==MH_OK,"quiescent reserved-pool hook cleanup");
+    }
+    {
+        Fixture f(true);auto module=f.snapshot();const auto plan=discover(module);HookOperations operations;
+        bool creation_called{},enable_called{};
+        operations.create_detour=[&](void* at,void* callback) {
+            creation_called=at==reinterpret_cast<void*>(f.base+Fixture::predicate)&&callback==reinterpret_cast<void*>(&native_mobile);
+            SetLastError(ERROR_NOT_ENOUGH_MEMORY);return MH_ERROR_MEMORY_ALLOC;
+        };
+        operations.enable_detour=[&](void*){enable_called=true;return MH_OK;};
+        Hooks hooks(operations);std::string failure;
+        try {hooks.install(module,plan,prepare_callbacks(f.base,plan));}
+        catch(const std::exception& error){failure=error.what();}
+        check(creation_called&&!enable_called&&failure.find("MH_ERROR_MEMORY_ALLOC")!=std::string::npos,
+            "failed detour creation is reported without enabling a hook");
+        check(failure.find("target=0x")!=std::string::npos&&failure.find("last_win32=8")!=std::string::npos&&
+            failure.find("near_free_regions=")!=std::string::npos,"allocation failure retains bounded address-space diagnostics");
+        check(!hooks.code_published&&f.live<uint32_t>(Fixture::predicate)==plan.predicate_original&&
+            f.live<uintptr_t>(0xa0d8)==f.base+0x1800&&f.live<uintptr_t>(Fixture::vtable+0x3a0)==f.base+Fixture::nav_original,
+            "allocation failure publishes neither native code nor callback slots");
+    }
+    {
         Fixture f(true);auto module=f.snapshot();const auto plan=discover(module);Hooks hooks;
         const auto predicate=reinterpret_cast<Predicate>(f.base+Fixture::predicate);
         check(!predicate(),"saved-register bool initially false");

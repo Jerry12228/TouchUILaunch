@@ -111,5 +111,6 @@ public:
 };
 struct Activation {bool configured{},bridge{};std::unique_ptr<Session> session;};
 // Defined only in the payload. The launcher uses the protocol/Startup classes.
-Activation activate(HMODULE self);
+using GamePreparation=void(*)(void*);
+Activation activate(HMODULE self,GamePreparation prepare_game=nullptr,void* preparation_context=nullptr);
 }

@@ -76,7 +76,7 @@ void install(HMODULE self,std::unique_ptr<Session> context) {
     record("CreateProcessW relay ready; only new children with configured paths qualify");
 }
 }
-Activation activate(HMODULE self) {
+Activation activate(HMODULE self,GamePreparation prepare_game,void* preparation_context) {
     const auto pid=GetCurrentProcessId();
     Handle probe(OpenFileMappingW(FILE_MAP_READ,FALSE,event_name(pid,L"Config").c_str()));
     if(!probe.value)return {}; // Legacy owned fixture startup events remain supported.
@@ -93,6 +93,7 @@ Activation activate(HMODULE self) {
         loader::require(role&&*role==config->role,"NTE relay process path/role mismatch");
         const auto bridge=*role==Role::Bridge;
         if(bridge)install(self,std::move(context));
+        else if(prepare_game)prepare_game(preparation_context);
         loader::require(SetEvent(ready)!=FALSE,"Cannot signal NTE relay startup");
         return {true,bridge,std::move(context)};
     } catch(const std::exception& error) {

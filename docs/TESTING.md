@@ -34,6 +34,12 @@ For a previously built and installed tree:
 ./scripts/test.ps1
 ```
 
+Exit supported games and NTE login/official hosts before the complete suite.
+The CLI checks use owned fixture executable names and assert validation-stage
+errors. A real game already running can correctly trigger the earlier
+already-running guard instead, invalidating those test preconditions. The suite
+does not terminate that game to make the checks pass.
+
 The verification script performs these steps:
 
 1. Check the build directory, built launcher, and packaged EXE/DLL exist.
@@ -46,7 +52,7 @@ The verification script performs these steps:
 7. Check source boundaries and packaged imports/fingerprint strings, writing
    `memory-boundary.json` in the selected dist directory.
 
-There are thirteen default CTest registrations in
+There are fourteen default CTest registrations in
 [CMakeLists.txt](../CMakeLists.txt):
 
 | CTest name | Executable | Main coverage |
@@ -60,7 +66,8 @@ There are thirteen default CTest registrations in
 | `LauncherElevation` | `LauncherElevationTests` | Argument quoting, relaunch guard, cancellation/error propagation, owned argument round-trip child |
 | `LauncherLog` | `LauncherLogTests` | Opt-in logs, default silence, Unicode paths, captured streams, restoration, error-dialog policy |
 | `MemoryReader` | `MemoryReaderTests` | Raw offsets versus RVAs, cross-page reads, BSS slots, owned snapshots, module retention, invalid headers/protection rejection |
-| `NTE` | `NteTests` | Synthetic UE registrations, owner and bool ABI validation, pending/ambiguous metadata, chained unwind, actual atomic and saved-register detour execution with concurrent callers, ownership CAS, partial install and protection/cache failures; real payload worker failure handshake in the owned test process |
+| `NTE` | `NteTests` | Synthetic UE registrations, owner and bool ABI validation, pending/ambiguous metadata, chained unwind, actual atomic and saved-register detours with concurrent callers, early buffer reuse and trampoline lifetime, ownership CAS, allocation/protection/cache failures; real payload worker failure handshake in the owned test process |
+| `NTEInput` | `NteInputTests` | Named Slate/CVar discovery with a synthetic field offset; valid LOCK prefix traversal while ordinary matching remains strict; malformed/ambiguous/stale state rejection; read-only observation helper and filtering that preserves fallback; readonly storage rejection; owned-window thread handshake and startup-window replacement; pager/list semantic discovery and original reply forwarding without diagnostics; scoped capture-query isolation, missing-start notification, geometry/offset metrics and later-owner preservation |
 | `NTERelay` | `NteRelayTests` | Real project DLL in owned fixture processes: two-level launcher propagation, mapping before main, requested suspension, normal resume, excluded children, original create failure, rejected DLL cleanup, inactive controller and transferred game handle; direct Game-role loading before main, forwarding the international entry map/profile flags before extras, inherited Unicode environment/SDK-path delivery, SDK discovery, and production direct-coordinator failure/cleanup |
 | `LoaderDiagnostics` | `LoaderTests` | Direct loading before main with suspension preserved; full 64-bit module result, same-thread remote errors 126/193/1114, Unicode paths, rejected DLL initialization, and retained loader allocation after timeout, all in an owned test child |
 | `PayloadDispatch` | `PayloadDispatchTests` | Load the actual unified DLL in owned ZZZ/NTE/mixed/partial fixtures; verify exclusive worker startup and activation rejection, including quiet ZZZ activation |

@@ -43,6 +43,7 @@ whether `--log` was supplied, and which process emitted the message.
 | No tests or incorrect subset | Inspect CTest enumeration in the actual configured tree, not just test executable filenames |
 | `LoaderDiagnostics` times out with a Windows “Bad Image” dialog for `invalid image.dll` | This is the deliberately invalid test fixture. Rebuild the fixed `LoaderTests`: its owned process tree suppresses loader hard-error dialogs and checks error 193 directly. Keep the invalid-image case enabled; increasing the timeout does not fix the dialog wait. |
 | Windows Terminal shows `0x800700e8` for `nte relay fixture ...\HTGame.exe ... managed.txt` | That path is the short-lived managed relay fixture. Rebuild the login host: this fixture now uses CreateNoWindow with redirected streams and verifies that it has no console, so the terminal does not race its exit. |
+| NTE reports `MH_ERROR_MEMORY_ALLOC` preparing its native predicate | DLL loading already succeeded. Capture the extended payload diagnostic: nearby executable-buffer/private-heap preparation failed. A later successful run does not establish a fix; do not attribute the failure to account login or assume a touch configuration argument caused it. |
 
 Commands and sources: [Development](DEVELOPMENT.md),
 [CMake configuration](../CMakeLists.txt), [presets](../CMakePresets.json), and

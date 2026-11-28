@@ -20,7 +20,7 @@ Read [Game support](GAME_SUPPORT.md) for CLI details,
 | SR adapter | SR entry adapter and repeated UI-state worker | [sr_mobile.hpp](../games/sr/include/sr_mobile.hpp), [sr_stubs.asm](../games/sr/src/sr_stubs.asm) |
 | WW | Android cloud UI launch arguments | [ww_launch.hpp](../games/ww/include/ww_launch.hpp) |
 | ZZZ | Memory discovery, optional file probe, injected input/UI bridge, fixtures and generators | [profile_resolver.hpp](../games/zzz/include/profile_resolver.hpp), [payload.cpp](../games/zzz/src/payload.cpp) |
-| NTE | Owned official/independent SDK-host relay, regional login sessions, UE registration discovery, mobile predicates and navigation callbacks | [nte_discovery.hpp](../games/nte/include/nte_discovery.hpp), [payload.cpp](../games/nte/src/payload.cpp), [NTE internals](NTE_INTERNALS.md) |
+| NTE | Owned official/independent SDK-host relay, regional login, UE discovery, mobile predicates/navigation and native touch/paging corrections | [nte_discovery.hpp](../games/nte/include/nte_discovery.hpp), [nte_input.hpp](../games/nte/include/nte_input.hpp), [nte_pager.hpp](../games/nte/include/nte_pager.hpp), [payload.cpp](../games/nte/src/payload.cpp), [NTE internals](NTE_INTERNALS.md) |
 | Windows helpers | RAII handles, module/address helpers, event names, elevation and argument quoting | [win_util.hpp](../common/windows/include/win_util.hpp), [elevation.hpp](../common/windows/include/elevation.hpp) |
 | Binary helpers | PE section/RVA access, masked patterns, bounded x64 decoding | [pe_image.hpp](../common/binary/include/pe_image.hpp), [x64_reader.hpp](../common/binary/include/x64_reader.hpp), [pattern.hpp](../common/binary/include/pattern.hpp) |
 | Process helpers | Remote memory operations, loader bootstrap, GI/SR installation and contexts | [mobile_runtime.hpp](../common/process/include/mobile_runtime.hpp), [load_library.asm](../common/process/src/load_library.asm) |
@@ -68,7 +68,7 @@ editing a guide or adding a small fix.
 | --- | --- |
 | `TouchUIHeaders` | Interface include surface for project headers |
 | `Hde64` | Bundled static x64 decoder |
-| `MinHook` | Pinned v1.3.4 static hooks for the NTE launcher relay and saved-register predicate; separate decoder symbols |
+| `MinHook` | Pinned v1.3.4 static hooks for the NTE launcher relay, saved-register predicate and scoped paging capture query; separate decoder symbols |
 | `RemoteLoaderStubs`, `GIMobileStubs`, `SRMobileStubs` | Separate static MASM blocks |
 | `TouchUIProcess` | Header implementation plus decoder, stubs, `user32`, and `psapi` |
 | `TouchUIGI`, `TouchUISR`, `TouchUIWW` | Interface targets connecting game adapters to their dependencies |

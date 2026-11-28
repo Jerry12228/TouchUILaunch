@@ -64,7 +64,7 @@ struct Ins {
         return static_cast<uintptr_t>(target);
     }
 };
-inline Ins decode(const Image& image,uintptr_t at) {
+inline Ins decode(const Image& image,uintptr_t at,bool allow_lock=false) {
     image.code(at);
     const auto* section=image.section(at,1);
     const auto available=std::min<size_t>(15,image.backed_size(*section)-(at-section->rva));
@@ -74,7 +74,10 @@ inline Ins decode(const Image& image,uintptr_t at) {
     auto data=image.view(at,available);std::copy(data.begin(),data.end(),padded.begin());
     Ins result;result.at=at;hde64_disasm(padded.data(),&result.h);
     require(result.h.len && result.h.len<=available && !(result.h.flags&F_ERROR),"unsupported or truncated x64 instruction");
-    require(!result.h.p_67 && !result.h.p_lock,"unsupported address/lock prefix in discovery evidence");
+    // Some constructor prefixes contain valid interlocked reference counting.
+    // Matching helpers retain their strict default; bounded prefix traversal
+    // can opt in after HDE has validated the instruction and lock usage.
+    require(!result.h.p_67 && (!result.h.p_lock||allow_lock),"unsupported address/lock prefix in discovery evidence");
     require(!result.h.p_seg || (result.nop() && result.h.p_seg==0x2e),"unsupported segment prefix in discovery evidence");
     return result;
 }

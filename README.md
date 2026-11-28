@@ -78,9 +78,17 @@ Examples:
 ### Notes
 
 1. Exit the selected game before launching; for NTE, also exit the official launcher.
-2. Logs are stored in the `logs/` directory beside the launcher.
+2. Logs are stored in the `logs/` directory beside the launcher. For NTE, `--log` also records a bounded input diagnostic trace for touch/drag troubleshooting.
 3. If only one NTE region is installed, the client can be detected automatically; `--nte-region` is not required.
 4. Official NTE mode cannot be combined with `--nte-region` or `--nte-direct`.
+5. NTE touch corrections run by default without extra options or environment variables. CN testing with Moonlight + Sunshine native touch confirmed improvements to combat, map dragging, settings clicks and sliders.
+
+### NTE known issues (0.3.1)
+
+- The first touch swipe each time the phone/ESC menu opens still fails. Release and swipe again to page; closing and reopening the menu resets the issue.
+- While dragging the settings list, it still scrolls farther than the finger moves.
+
+These issues remain in this patch. Physical touch and Global streamed touch were not separately accepted; see [NTE limitations and verification scope](docs/NTE_INTERNALS.md#known-touch-limitations).
 
 ## TODO
 

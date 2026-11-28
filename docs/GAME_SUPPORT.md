@@ -211,6 +211,14 @@ world entry and basic touch, Global official-relay HUD/basic controls, and Globa
 independent login. Exact evidence levels and remaining manual cases are listed
 in [NTE internals](NTE_INTERNALS.md#accepted-live-scenarios--2026-11-27).
 
+NTE touch corrections also run without `--log`: duplicate-mouse filtering
+preserves native touch fallback, and phone paging retains native drag/capture
+handling. Logging adds bounded input diagnostics. CN native touch over Moonlight
+and Sunshine confirmed combat/map/settings click and slider improvements.
+The first swipe after opening the phone still fails, and settings-list dragging
+still scrolls too far. See [known touch limitations](NTE_INTERNALS.md#known-touch-limitations)
+for the exact acceptance scope; these defects remain in 0.3.1.
+
 ## Adding or changing game support
 
 1. Define the requested launch behavior and executable identity. Update

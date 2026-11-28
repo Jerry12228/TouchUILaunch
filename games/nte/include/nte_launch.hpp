@@ -17,16 +17,17 @@ inline std::wstring direct_arguments(std::wstring_view extra) {
 inline std::wstring event_name(DWORD pid,std::wstring_view state) {
     return L"Local\\TouchUILaunch.NTE."+std::wstring(state)+L"."+std::to_wstring(pid);
 }
-inline bool window_ready(DWORD pid) {
-    struct Search {DWORD pid;bool found{};} search{pid};
+inline HWND game_window(DWORD pid) {
+    struct Search {DWORD pid;HWND found{};} search{pid};
     EnumWindows([](HWND window,LPARAM parameter)->BOOL {
         auto& result=*reinterpret_cast<Search*>(parameter);DWORD owner{};
         GetWindowThreadProcessId(window,&owner);
         if(owner!=result.pid||!IsWindowVisible(window))return TRUE;
         wchar_t name[128]{};
-        if(GetClassNameW(window,name,128)&&std::wstring_view(name)==L"UnrealWindow")result.found=true;
+        if(GetClassNameW(window,name,128)&&std::wstring_view(name)==L"UnrealWindow")result.found=window;
         return !result.found;
     },reinterpret_cast<LPARAM>(&search));
     return search.found;
 }
+inline bool window_ready(DWORD pid) {return game_window(pid)!=nullptr;}
 }

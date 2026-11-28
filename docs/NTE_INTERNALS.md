@@ -121,6 +121,115 @@ cleanup until UI Ready. The DLL remains pinned
 in launcher processes; after coordination ends its hook forwards calls without
 propagating to further children.
 
+## Native touch and mouse fallback
+
+NTE 0.3.1 enables its touch corrections during ordinary startup, with or without
+`--log`. No experimental environment variables or extra game arguments are
+required. The UI Ready result includes validated input configuration and phone
+paging installation. Failure of required discovery/installation uses the
+coordinator's existing owned-child cleanup. Optional recording does not select
+another touch implementation.
+
+[input configuration](../games/nte/include/nte_input.hpp) uses the same immutable
+main-module capture as UI discovery. It locates the UTF-16 configuration names,
+validates the Slate constructor default, GetBool arguments and primary vtable,
+and follows the unique constructor factory to singleton storage. The named
+registration of `Slate.PreventDuplicateMouseEventsForTouchForWindows7` supplies
+its writable CVar storage. Constructor prefix traversal accepts HDE-validated
+LOCK bookkeeping; ordinary signature matching retains its strict prefix rules.
+No client-version addresses or hashes are used.
+
+A transient WH_CALLWNDPROC handshake performs configuration on the owned Unreal
+window thread. It validates live singleton identity, boolean values and writable
+storage before enabling duplicate-mouse filtering by compare/exchange. It never
+writes `bTouchFallbackToMouse`; the tested value remains `1`. A previous combined
+experiment that disabled fallback broke movement, skills and camera. The
+command-line ini override did not change the live flag and is not a workaround.
+The pinned handshake context survives a possible timeout.
+
+[phone paging](../games/nte/include/nte_pager.hpp) follows the unique
+`SHTPageScrollBox` construction helper to its derived vtable. Allocation size,
+mouse-enter gating, touch-start fallback and inherited movement checks validate
+the member/event offsets and eight explicit input-slot ABI assumptions. The
+callbacks retain original arguments and FReply buffers, and compare/exchange
+only verified previous slot values. Partial rollback preserves later writers.
+
+The inherited pre-drag path checks capture across pointers, while established
+drags query the actual event user/pointer. A pinned MinHook callback changes only
+that verified pre-drag query during this pager's native touch movement, before
+its drag flag is set. It requires both the exact native return site and a
+thread-local widget scope. Other widgets/callers, mouse movement and established
+drags use the original query. Native Slate still creates/releases capture and
+constructs the reply; no replacement touch or mouse events are generated.
+
+After native drag capture is requested, a missing pager start notification is
+completed through the original weak-owner/delegate chain. The derived pressed
+member changes only from zero to one. Below-threshold gestures and already
+initialized presses are untouched. This matches the last tested configuration,
+but it did **not** eliminate the first-swipe defect listed below.
+
+### Known touch limitations
+
+The 2026-11-28 CN live sessions used Moonlight + Sunshine with native touch.
+The user confirmed combat, map dragging, settings clicks/dropdowns and settings
+sliders working. Phone paging works after releasing and retrying, with these
+remaining defects explicitly accepted for the 0.3.1 patch release:
+
+- Each time the phone/ESC menu is opened, its first touch swipe fails in the recorded CN streaming sessions. Release
+  the finger and swipe again; closing and reopening the menu resets the issue.
+- The settings list scrolls farther than the finger moves while dragging. This
+  concerns movement while still touching, not just release inertia. No speed
+  adjustment is included in this release.
+
+The user also confirmed both left- and right-button mouse dragging page the
+phone; the wheel does not. The final initialization retest (game PID 5952,
+login host PID 32872) left the same defects in place. Earlier capture-guard
+records (game PID 111372) showed all 74 observed touch moves entering/continuing
+native drag with handled replies. The filter-only session (PID 75356) separately
+confirmed fallback `1` and duplicate filtering `0 -> 1` on the window thread.
+These are CN streaming observations. Physical touch was unavailable; Global
+input/pager/list discovery agrees with the supplied capture, but Global streamed
+touch was not separately accepted. They are not a full multitouch or scene-
+transition guarantee. The release promotion removes the log/environment gates;
+its packaging pass uses fixtures and preserved samples, not another live session.
+
+### Optional input diagnostics
+
+With `--log`, [input tracing](../games/nte/include/nte_input_trace.hpp) installs
+passive WH_GETMESSAGE and WH_CALLWNDPROC observers on the owned window thread.
+`logs/nte-input-<pid>.csv` distinguishes queued/dispatch observations of the same
+message and records touch/pointer phases, positions, extra-info, HWND and
+focus/capture events. The game retains HTOUCHINPUT ownership. The observer never
+closes those handles, edits/drops messages or creates replacement input.
+
+A separate writer stops after 4096 records, 15 minutes or an explicit stop and
+reports drops/termination. A destroyed startup window is rebound only to a
+visible UnrealWindow in this process; HWND/thread identities are recorded. An
+earlier header-only CSV provided no input evidence and must not be interpreted
+as absence of Windows touch. No keyboard text or account frames are recorded;
+no global Windows input hook or window-procedure replacement is installed.
+
+Pager `S` records use `B`/`A` for before/after, the vtable byte slot as message,
+pointer index as ID, and flag bytes for enabled/active/state/touch (state bits:
+pressed, dragging, reply-handled). X/Y retain native delta float bits; the window
+column contains the callback thread ID. The optional `SHTScrollBox` observer is
+derived from its named/shared-base construction, inherited handlers and scalar
+scroll getter. Its single move-slot wrapper forwards once and adds `L` input
+phases and `G` geometry-scale/scroll-offset float bits. It does not alter speed.
+
+### Native detour allocation
+
+Before game main resumes, the owned game worker reserves one unused slot in the
+pinned MinHook nearby-buffer pool. It retains that page through later hook
+preparation and releases only its dummy slot after initialization; active
+trampolines keep their allocations. This uses standard allocation and does not
+change process protections, allocator reach or vendor source.
+
+Predicate preparation failures include the target, captured Win32 last-error,
+nearby free/aligned regions and available commit. The last-error value is
+observational, not proof of cause. An early reserved slot accompanied successful
+CN runs, but does not prove every intermittent `MH_ERROR_MEMORY_ALLOC` is fixed.
+
 ## Independent SDK login host
 
 `--NTE --nte-region CN|Global --game <installed HTGame.exe>`
@@ -274,6 +383,10 @@ The user completes account authentication in the host/provider UI. Record:
   skill presses, release/cancel behavior, and simultaneous contacts.
 - Keyboard/mouse/gamepad interaction, focus loss, resize, reconnect, scene
   transitions, and any streamed-touch source separately from physical touch.
+- Menu gestures: map pan through release and a second drag; horizontal phone
+  page swipes; settings-list drag speed; dropdown tap to open, tap again to
+  close, and option selection without holding; sliders following the finger
+  and retaining their value on release. Check ordinary mouse input separately.
 - Failure cleanup closes only the newly created launcher/game tree. A game already running
   must be rejected without injection or termination.
 
