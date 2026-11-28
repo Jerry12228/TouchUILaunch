@@ -2,7 +2,7 @@
 
 TouchUILaunch is a Windows x64 C++20 launcher with per-game mobile UI paths.
 The base package has two program artifacts: `TouchUILaunch.exe` and the shared
-`TouchUILaunch.dll` used by ZZZ and NTE. Optional NTE direct login adds a
+`TouchUILaunch.dll` used by ZZZ, NTE and EF. Optional NTE direct login adds a
 self-contained .NET/Avalonia SDK host under `nte-login-host/`; its native relay
 loads the shared DLL only in newly created, configured processes.
 
@@ -21,6 +21,7 @@ Read [Game support](GAME_SUPPORT.md) for CLI details,
 | WW | Android cloud UI launch arguments | [ww_launch.hpp](../games/ww/include/ww_launch.hpp) |
 | ZZZ | Memory discovery, optional file probe, injected input/UI bridge, fixtures and generators | [profile_resolver.hpp](../games/zzz/include/profile_resolver.hpp), [payload.cpp](../games/zzz/src/payload.cpp) |
 | NTE | Owned official/independent SDK-host relay, regional login, UE discovery, mobile predicates/navigation and native touch/paging corrections | [nte_discovery.hpp](../games/nte/include/nte_discovery.hpp), [nte_input.hpp](../games/nte/include/nte_input.hpp), [nte_pager.hpp](../games/nte/include/nte_pager.hpp), [payload.cpp](../games/nte/src/payload.cpp), [NTE internals](NTE_INTERNALS.md) |
+| EF | Verified owned official parent, early DLL load, IL2CPP contracts, window-thread input switch and independent UI pointers | [ef_parent.hpp](../games/ef/include/ef_parent.hpp), [ef_runtime.hpp](../games/ef/include/ef_runtime.hpp), [ef_pointer.hpp](../games/ef/include/ef_pointer.hpp), [EF internals](EF_INTERNALS.md) |
 | Windows helpers | RAII handles, module/address helpers, event names, elevation and argument quoting | [win_util.hpp](../common/windows/include/win_util.hpp), [elevation.hpp](../common/windows/include/elevation.hpp) |
 | Binary helpers | PE section/RVA access, masked patterns, bounded x64 decoding | [pe_image.hpp](../common/binary/include/pe_image.hpp), [x64_reader.hpp](../common/binary/include/x64_reader.hpp), [pattern.hpp](../common/binary/include/pattern.hpp) |
 | Process helpers | Remote memory operations, loader bootstrap, GI/SR installation and contexts | [mobile_runtime.hpp](../common/process/include/mobile_runtime.hpp), [load_library.asm](../common/process/src/load_library.asm) |
@@ -68,13 +69,13 @@ editing a guide or adding a small fix.
 | --- | --- |
 | `TouchUIHeaders` | Interface include surface for project headers |
 | `Hde64` | Bundled static x64 decoder |
-| `MinHook` | Pinned v1.3.4 static hooks for the NTE launcher relay, saved-register predicate and scoped paging capture query; separate decoder symbols |
+| `MinHook` | Pinned v1.3.4 static hooks for NTE paths and EF input-switch/UI-pointer guards; separate decoder symbols |
 | `RemoteLoaderStubs`, `GIMobileStubs`, `SRMobileStubs` | Separate static MASM blocks |
 | `TouchUIProcess` | Header implementation plus decoder, stubs, `user32`, and `psapi` |
 | `TouchUIGI`, `TouchUISR`, `TouchUIWW` | Interface targets connecting game adapters to their dependencies |
 | `TouchUIZZZDiscovery` | Header discovery implementation and HDE64 |
 | `TouchUILaunch` | Launcher EXE; also compiles the explicit ZZZ file diagnostic through included headers |
-| `TouchUILaunchPayload` | Shared production DLL: one dispatcher, ZZZ bridge, NTE worker/relay, MinHook and owned loader helpers |
+| `TouchUILaunchPayload` | Shared production DLL: one dispatcher, ZZZ bridge, NTE worker/relay, EF layout worker, MinHook and owned loader helpers |
 | `TouchUINTE` | Header interface for NTE discovery/callback fixtures |
 | `TouchUIZZZBridgeTestHarness` | Separate object build of the payload with `TOUCHUI_BRIDGE_TESTING=1` |
 
@@ -90,7 +91,7 @@ The common path in [wmain](../launcher/src/launcher.cpp) is:
 
 1. Detect `--log` early, open optional diagnostics, and parse/validate selection
    and paths. Help returns directly. A ZZZ probe uses a separate read-only path.
-2. Reject an already-running process of the selected game family. For ZZZ/NTE,
+2. Reject an already-running process of the selected game family. For ZZZ/NTE/EF,
    check that the adjacent payload exists.
 3. If necessary, relaunch the launcher with Windows elevation. The original
    launcher waits and returns the elevated child's exit code; it does not
@@ -107,6 +108,7 @@ The common path in [wmain](../launcher/src/launcher.cpp) is:
 | WW | Normal process with cloud UI arguments | Immediately after process creation |
 | ZZZ | Normal process; wait for GameAssembly, inject adjacent DLL, observe startup event | After the payload worker publishes its startup event |
 | NTE | Bundled regional SDK/login host by default; --nte-official selects the suspended official launcher relay; bridge early-loads the newly created game DLL, then waits for UnrealWindow and installs UI hooks | After successful UI installation; failure/cancellation cleans the newly created launcher/game job |
+| EF | Verified owned GRYPHLINK parent and suspended game; map DLL before main, resume and resolve metadata on attached window thread | Release game ownership after Touch readback, then keep official parent/controller alive until game exit; initialization failure/timeout cleans only owned processes |
 
 `game::Child` closes its process/thread handles on destruction. Until
 `release()`, its destructor also terminates the process it created and waits
@@ -177,3 +179,15 @@ NTE waits for installation rather than a worker-start event, but visible HUD,
 input mappings, and touch delivery still require manual acceptance. Its
 [process-lifetime callbacks](NTE_INTERNALS.md#installation-and-lifetime) remain
 pinned and use the game's original navigation setter on its calling thread.
+
+EF also waits for state confirmation. Its loader worker does not attach itself
+to IL2CPP or invoke managed code. A USER32 timer dispatches on the Unity window
+thread, verifies the thread is already attached, resolves its metadata contract
+and invokes the game's setter. The input-switch detour starts as pass-through
+and enforces Touch only after successful readback. See [EF internals](EF_INTERNALS.md)
+for initialization gates and manual acceptance limits.
+
+EF pointer hooks apply Unity's AllPointersAsIs setting before routing/Process
+through metadata-resolved instance-field APIs. They retain no instance across
+frames. This capability degrades independently when unavailable. Official
+parent verification links WinTrust/version APIs into the EXE, not the payload.

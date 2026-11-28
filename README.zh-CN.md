@@ -11,6 +11,7 @@
 - 绝区零
 - 鸣潮
 - 异环
+- 明日方舟：终末地（实验性触控 UI 布局）
 
 ## 用法
 
@@ -18,7 +19,7 @@
 
    | 发布包 | 压缩包文件名 | 内容与适用场景 |
    | --- | --- | --- |
-   | **标准包（Standard）** | `TouchUILaunch-v<version>-win-x64-standard.zip` | 包含 `TouchUILaunch.exe`、共用的 `TouchUILaunch.dll` 和许可证。适合原神、星穹铁道、绝区零、鸣潮，以及通过 `--nte-official` 使用官方启动器启动异环的用户。不包含 `nte-login-host/`。 |
+   | **标准包（Standard）** | `TouchUILaunch-v<version>-win-x64-standard.zip` | 包含 `TouchUILaunch.exe`、共用的 `TouchUILaunch.dll` 和许可证。适合原神、星穹铁道、绝区零、鸣潮、终末地，以及通过 `--nte-official` 使用官方启动器启动异环的用户。不包含 `nte-login-host/`。 |
    | **异环独立登录包（NTE Login）** | `TouchUILaunch-v<version>-win-x64-nte-login.zip` | 包含标准包的全部内容，另附完整的 `nte-login-host/` 目录、运行时／依赖及其许可证。适合希望不启动官方启动器进程，直接登录国服／国际服异环的用户；也支持标准包的全部使用场景。 |
 
    **如何选择：**希望使用异环默认的独立登录方式，选择**异环独立登录包**；只玩其他游戏，或愿意通过异环官方启动器启动，选择**标准包**。标准包启动异环时必须选择官方中转方式（携带 `--nte-official`，或指定 `--nte-launcher` 路径），缺少登录宿主不会自动切换启动方式。两个包都需要已安装的游戏；异环独立登录仍会使用游戏安装目录内的 SDK 和配置文件。
@@ -36,6 +37,7 @@
 - 绝区零：`--ZZZ`
 - 鸣潮：`--WW`
 - 异环：`--NTE`
+- 明日方舟：终末地：`--EF`
 
 2. **游戏路径(必要)：**
 使用`--game`指定游戏可执行文件路径，例如：
@@ -52,6 +54,8 @@
 | `--nte-official` | 可选 | 携带此参数将需要官方启动器启动，具体操为运行本启动器，启动器开始等待游戏启动时使用官方启动器启动游戏 | 无 |
 | `--nte-launcher <exe路径>` | 可选 | 指定官方启动器路径，用于使用官方启动器模式且本启动器找不到官方启动器时 | 字符串 |
 
+终末地可携带 `--ef-launcher <Games.exe>` 指定已安装且签名有效的 GRYPHLINK 启动器；默认自动查找。
+
 4. 其他参数
 
 | 参数名 | 必要性 | 功能 | 值 |
@@ -67,6 +71,7 @@
 .\TouchUILaunch.exe --SR --game "path_to_root\StarRail.exe"
 .\TouchUILaunch.exe --ZZZ --game "path_to_root\ZenlessZoneZero.exe"
 .\TouchUILaunch.exe --WW --game "path_to_root\Client\Binaries\Win64\Client-Win64-Shipping.exe"
+.\TouchUILaunch.exe --EF --game "path_to_root\Endfield.exe" --log
 .\TouchUILaunch.exe --NTE --nte-region CN --game "path_to_cn_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
 .\TouchUILaunch.exe --NTE --nte-official --game "path_to_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
 .\TouchUILaunch.exe --GI --game "path_to_root\GenshinImpact.exe" --extra '-screen-width 1920 -screen-height 1080'
@@ -78,6 +83,7 @@
 3. 异环只有一个已安装区域时可自动识别客户端，无须`--nte-region`指定。
 4. 异环官方方式不能与 `--nte-region` 同时使用。
 5. 异环触控修正默认启用，无须额外参数或环境变量。国服 Moonlight + Sunshine 原生触摸已确认战斗、地图拖动、设置点击和滑块操作改善。
+6. 终末地通过已安装且签名有效的 GRYPHLINK 父进程与启动阶段 DLL 加载启动，请保持 TouchUILaunch 运行至游戏退出。自定义启动器安装位置可指定 `--ef-launcher "启动器路径\Games.exe"`。原生触控采用独立 UI 指针记录，不转换鼠标输入。UI、移动、视角及主控队员切换已由用户实测确认；菜单／剧情偶发点击问题仍需使用指针策略修复版复测，详见[终末地实现与验证](docs/EF_INTERNALS.md)。
 
 ### 异环已知问题（0.3.1）
 
@@ -108,7 +114,7 @@
 ```
 
 此脚本将打包一个启动器 EXE 和一个共用载荷 DLL。
-绝区零和异环均使用 `TouchUILaunch.dll`；异环直接登录仍需单独的 `nte-login-host/` 目录。
+绝区零、异环和终末地均使用 `TouchUILaunch.dll`；异环直接登录仍需单独的 `nte-login-host/` 目录。
 更新现有分发目录时，安装步骤会移除旧的 `TouchUILaunch.NTE.dll`。
 如需异环直接登录，请构建并验证可选的独立宿主：
 

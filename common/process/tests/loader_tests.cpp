@@ -45,6 +45,13 @@ void run() {
     std::cout<<"Checking missing image rejection (expected Windows error 126)\n"<<std::flush;
     const auto missing=load(child.info.hProcess,fixture/L"missing library.dll");
     check(!missing.success()&&missing.phase==2&&missing.error==ERROR_MOD_NOT_FOUND,"missing image captures remote error 126");
+    bool direct_error{};
+    try {load_direct(child.info.hProcess,fixture/L"missing direct library.dll");}
+    catch(const std::runtime_error& error) {
+        const std::string message=error.what();
+        direct_error=message.find("thread exit=0x0")!=std::string::npos&&message.find("child exit=0x103")!=std::string::npos;
+    }
+    check(direct_error,"direct loader failure distinguishes its thread result from the still-active child");
     const auto unicode=fixture/L"拒绝初始化 with spaces.dll";
     std::filesystem::copy_file(directory/L"LoaderRejectFixture.dll",unicode);
     std::cout<<"Checking DllMain rejection (expected Windows error 1114)\n"<<std::flush;

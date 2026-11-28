@@ -19,6 +19,7 @@ For file-only ZZZ investigation, use its documented `--probe` command instead.
 | ZZZ payload | `logs/touch-<game-pid>.log` beside the DLL | Resolver stages, fields, window/hooks, UI changes, recurring status, later failures |
 | NTE launcher relay | `logs/nte-relay-<launcher-pid>.log` beside the DLL | New child identities, role selection, verified module/startup handshake and failures |
 | NTE payload | `logs/nte-<game-pid>.log` beside the DLL | Module discovery, reflection readiness and installation result; absent if loading never reached the worker |
+| EF payload | `logs/ef-<game-pid>.log` beside the DLL | Attached window-thread/metadata/provider readiness, switch rejection/exception and confirmed Touch state; see [EF diagnostics](EF_INTERNALS.md#diagnostics-and-manual-acceptance) |
 | Boundary verifier | `memory-boundary.json` under the selected dist directory | Static source/import/fingerprint check scope and source digests |
 | CTest | Output on failure; build tree's `Testing/Temporary/LastTest.log` after execution | Individual fixture/sample failure; enumeration alone produces no pass result |
 
@@ -101,6 +102,24 @@ If a newly created game exits after setup fails, consult
 terminates the still-owned child. After successful release, launcher exit
 should not terminate it. This distinction is covered by
 [process tests](../common/process/mobile_tests.cpp).
+
+## EF startup and intermittent UI clicks
+
+`phase=0` with loader thread status `0xDEADC0DE` in the original late-load
+route means its entry marker was never reached. It does not identify an
+IL2CPP signature failure. The current EF route maps the DLL before main.
+
+The installed client's "start through the official launcher" dialog requires
+the verified GRYPHLINK parent startup contract. Use the current launcher and
+`--ef-launcher <installed Games.exe>` for a custom launcher location. Keep
+TouchUILaunch running after Ready; it retains the owned official parent until
+game exit. Existing official launchers are not injected or terminated.
+
+For intermittent menu/story clicks that show hover feedback, the candidate
+fix uses independent Unity UI pointers. Check for `UI pointer routing` ready
+and application/readback messages. Missing metadata or field failure leaves
+this capability unavailable/pass-through while layout selection continues.
+Real-game improvement still needs retesting; see [EF evidence](EF_INTERNALS.md).
 
 ## NTE payload loading failures
 

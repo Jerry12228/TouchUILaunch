@@ -52,7 +52,7 @@ The verification script performs these steps:
 7. Check source boundaries and packaged imports/fingerprint strings, writing
    `memory-boundary.json` in the selected dist directory.
 
-There are fourteen default CTest registrations in
+There are sixteen default CTest registrations in
 [CMakeLists.txt](../CMakeLists.txt):
 
 | CTest name | Executable | Main coverage |
@@ -70,7 +70,9 @@ There are fourteen default CTest registrations in
 | `NTEInput` | `NteInputTests` | Named Slate/CVar discovery with a synthetic field offset; valid LOCK prefix traversal while ordinary matching remains strict; malformed/ambiguous/stale state rejection; read-only observation helper and filtering that preserves fallback; readonly storage rejection; owned-window thread handshake and startup-window replacement; pager/list semantic discovery and original reply forwarding without diagnostics; scoped capture-query isolation, missing-start notification, geometry/offset metrics and later-owner preservation |
 | `NTERelay` | `NteRelayTests` | Real project DLL in owned fixture processes: two-level launcher propagation, mapping before main, requested suspension, normal resume, excluded children, original create failure, rejected DLL cleanup, inactive controller and transferred game handle; direct Game-role loading before main, forwarding the international entry map/profile flags before extras, inherited Unicode environment/SDK-path delivery, SDK discovery, and production direct-coordinator failure/cleanup |
 | `LoaderDiagnostics` | `LoaderTests` | Direct loading before main with suspension preserved; full 64-bit module result, same-thread remote errors 126/193/1114, Unicode paths, rejected DLL initialization, and retained loader allocation after timeout, all in an owned test child |
-| `PayloadDispatch` | `PayloadDispatchTests` | Load the actual unified DLL in owned ZZZ/NTE/mixed/partial fixtures; verify exclusive worker startup and activation rejection, including quiet ZZZ activation |
+| `PayloadDispatch` | `PayloadDispatchTests` | Load the actual unified DLL in owned ZZZ/NTE/EF/mixed/partial fixtures; verify exclusive worker startup, wrong EF process rejection and incomplete activation rejection, including quiet activation |
+| `Endfield` | `EndfieldTests` | Fake IL2CPP metadata with a different Touch enum, strict method/field/entry contracts, pending initialization, rejected calls and managed exceptions, real field readback and drift repair, reentry/thread guards, actual MinHook argument forwarding, startup coordination and a worker-scheduled USER32 timer on an owned window thread |
+| `EndfieldPointer` | `EndfieldPointerTests` | Independent enum/instance-field contracts, actual pre-route/Process detours, exact argument/result forwarding, multiple instances, pointer-record isolation model, failed readback, unattached thread, bounded logs, duplicate ownership and conflict preservation |
 
 `LoaderDiagnostics` deliberately writes a non-PE `invalid image.dll` and expects
 Windows error 193. Its test processes set `SEM_FAILCRITICALERRORS` before child
@@ -276,6 +278,7 @@ Commands below assume the affected Release targets have been rebuilt. Add
 | --- | --- | --- |
 | Documentation only | Relative links/anchors, paths, command syntax, `git diff --check`; preset/test enumeration where relevant | No runtime test claims from enumeration |
 | CLI, registry, family rejection, extra arguments | `python launcher/tests/validate_cli.py build/windows-x64-release/Release/TouchUILaunch.exe`; `ctest --preset windows-x64-release --no-tests=error -R '^MobileUI$'` | Update both usage READMEs when behavior changes |
+| EF metadata/state, pointer routing, scheduling or activation | `ctest --preset windows-x64-release --no-tests=error -R '^(Endfield|EndfieldPointer|PayloadDispatch)$'`; CLI checks above | Fixtures are not a real Endfield UI/input acceptance; see [EF internals](EF_INTERNALS.md) |
 | UAC/quoting | `ctest --preset windows-x64-release --no-tests=error -R '^LauncherElevation$'`; CLI checks | Actual UAC cancel/accept scenarios need manual observation if affected |
 | Launcher logs | `ctest --preset windows-x64-release --no-tests=error -R '^LauncherLog$'`; CLI checks | Inspect durable elevated-session logs when that path changes |
 | Active GI UI plan or initializer | `ctest --preset windows-x64-release --no-tests=error -R '^GITouch$'`; `scripts/test.ps1 -GiSample <7.1-exe>` | Read-only sample validation; manual mobile layout and touch acceptance |

@@ -14,6 +14,7 @@ or future client build. Validation scope is defined in [Testing](TESTING.md).
 | `--ZZZ` | `ZenlessZoneZero.exe` | Optional | Normal startup, injected DLL, memory discovery, Windows touch bridge |
 | `--WW` | `Client-Win64-Shipping.exe` | Required | Normal startup with Android cloud UI arguments |
 | `--NTE` | `HTGame.exe` | Required | Official relay or independent CN/Global SDK login host; early shared DLL load, UE mobile predicates and Touch navigation requests |
+| `--EF` | `Endfield.exe` | Required | Verified official parent, early shared DLL, runtime IL2CPP Touch selection and independent UI pointers |
 
 Choose exactly one game; duplicate selectors, even for the same game, are
 rejected. The file must exist and its filename must match the selected family.
@@ -41,12 +42,13 @@ commands and distribution instructions.
 | `--nte-direct` | Compatibility alias for default independent NTE login; conflicts with official relay options |
 | `--nte-region <CN\|Global>` | NTE independent mode only: select installed SDK/login region; otherwise detect a unique region |
 | `--nte-launcher <exe>` | NTE only: select official relay with an explicit launcher path; --nte-official otherwise searches near the game |
-| `--log` | Enable console and launcher file diagnostics; also enable the ZZZ/NTE payload log |
+| `--ef-launcher <Games.exe>` | EF only: select the installed signed GRYPHLINK launcher; otherwise detect under ProgramFiles |
+| `--log` | Enable console and launcher file diagnostics; also enable the ZZZ/NTE/EF payload log |
 | `--ZZZ --probe` | Read-only GameAssembly file diagnostic and payload-existence check; no launch, injection, or elevation |
 | `--probe-auto` | Compatibility alias for `--probe`, restricted to ZZZ |
 | `--help`, `-h` | Print usage without requiring a game or elevation |
 
-Only one probe action is allowed. Probe with GI/SR/WW/NTE is rejected. Unknown or
+Only one probe action is allowed. Probe with GI/SR/WW/NTE/EF is rejected. Unknown or
 incomplete options fail. `--extra` consumes exactly one following launcher
 argument without parsing its contents; quote that value when it contains spaces.
 It is accepted by the read-only ZZZ probe but is not used because no game is
@@ -86,7 +88,7 @@ is neither attached to nor terminated. See
 [process lifetime](ARCHITECTURE.md#launch-and-process-lifetime).
 
 With logging enabled, files reside beside the executable/DLL under `logs/`:
-`launcher-<launcher-pid>.log`, for ZZZ `touch-<game-pid>.log`, and for NTE `nte-<game-pid>.log`.
+`launcher-<launcher-pid>.log`, for ZZZ `touch-<game-pid>.log`, for NTE `nte-<game-pid>.log`, and for EF `ef-<game-pid>.log`.
 An elevated relaunch has a different launcher PID. The payload retains the
 logging event after the launcher exits. See [Troubleshooting](TROUBLESHOOTING.md#collect-the-right-diagnostics).
 
@@ -98,6 +100,7 @@ these are real launches, not automated documentation checks:
 ./dist/TouchUILaunch.exe --SR --game 'C:/Games/SR/StarRail.exe' --log
 ./dist/TouchUILaunch.exe --ZZZ --game 'C:/Games/ZZZ/ZenlessZoneZero.exe' --log
 ./dist/TouchUILaunch.exe --WW --game 'C:/Games/WW/Client/Binaries/Win64/Client-Win64-Shipping.exe' --log
+./dist/TouchUILaunch.exe --EF --game 'C:/Games/Endfield/Endfield.exe' --log
 ./dist/TouchUILaunch.exe --GI --game 'C:/Games/GI/GenshinImpact.exe' --extra '-screen-width 1920 -screen-height 1080' --log
 ```
 
@@ -144,6 +147,26 @@ payload dependency.
 The CLI fixture verifies argument delivery, working directory, and child
 survival on an elevated run, or the elevation guard on a standard-token run.
 Only a real WW session establishes whether a specific build honors the flags.
+
+## EF touch UI selection
+
+`--EF --game <Endfield.exe>` verifies the installed GRYPHLINK launcher and
+creates an owned suspended official parent. A new suspended game uses that
+parent's Windows process attribute. The shared DLL loads before main resumes;
+its window-thread timer later resolves the Touch enum, real input field and
+`ChangeInputType` through IL2CPP. It raises normal game UI notifications,
+checks real state every 250 ms and guards later input-switch requests.
+
+Ready means state readback succeeded; the launcher allows 120 seconds for
+GameAssembly and a fresh 120 seconds for UI. The controller then remains
+running until game exit to retain the official parent. `--ef-launcher` selects
+Games.exe for a custom installation. The parent is x64, signed and verified
+as a GRYPHLINK product; existing launchers are not attached to or terminated.
+
+Native touch uses independent UI pointer records, without mouse emulation.
+Basic UI/movement/camera/team switching is user-accepted. The pointer policy
+targets intermittent menu/story clicks and still needs real-game retesting.
+Implementation, evidence and diagnostics: [EF internals](EF_INTERNALS.md).
 
 ## ZZZ launch and probe
 

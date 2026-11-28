@@ -11,6 +11,7 @@ This project enables touch UI support for several PC games.
 - Zenless Zone Zero
 - Wuthering Waves
 - Neverness to Everness (NTE)
+- Arknights: Endfield (experimental touch UI layout)
 
 ## Usage
 
@@ -18,7 +19,7 @@ This project enables touch UI support for several PC games.
 
    | Package | Release archive name | Contents and when to choose it |
    | --- | --- | --- |
-   | **Standard** | `TouchUILaunch-v<version>-win-x64-standard.zip` | Includes `TouchUILaunch.exe`, the shared `TouchUILaunch.dll`, and license notices. Choose this for Genshin Impact, Honkai: Star Rail, ZZZ, Wuthering Waves, or NTE through the official launcher using `--nte-official`. Does not include `nte-login-host/`. |
+   | **Standard** | `TouchUILaunch-v<version>-win-x64-standard.zip` | Includes `TouchUILaunch.exe`, the shared `TouchUILaunch.dll`, and license notices. Choose this for Genshin Impact, Honkai: Star Rail, ZZZ, Wuthering Waves, Endfield, or NTE through the official launcher using `--nte-official`. Does not include `nte-login-host/`. |
    | **NTE Login** | `TouchUILaunch-v<version>-win-x64-nte-login.zip` | Includes everything in Standard plus the complete `nte-login-host/` directory, its runtime/dependencies, and their license notices. Choose this for independent CN/Global NTE login without starting an official launcher process. It also supports every Standard use case. |
 
    **Selection:** if you want NTE's default independent login, choose **NTE Login**. If you only need the other games, or prefer NTE's official launcher, choose **Standard**. Standard users must select the official NTE route with `--nte-official` or an explicit `--nte-launcher` path; omitting the login host does not automatically switch launch modes. Both packages still require an installed game; NTE independent login also uses SDK/configuration files from that installation.
@@ -37,6 +38,7 @@ The parameters are divided into four categories: **game selection, game path, ga
    - Zenless Zone Zero: `--ZZZ`
    - Wuthering Waves: `--WW`
    - Neverness to Everness: `--NTE`
+   - Arknights: Endfield: `--EF`
 
 2. **Game path (required):**
 
@@ -56,6 +58,8 @@ The parameters are divided into four categories: **game selection, game path, ga
    | `--nte-official` | No | Use the official launcher to start the game. Run this launcher first, then start the game from the official launcher while this launcher is waiting. | None |
    | `--nte-launcher <path-to-exe>` | No | Specify the official launcher path when it cannot be found automatically in official relay mode | String |
 
+   Endfield: `--ef-launcher <Games.exe>` optionally selects the installed signed GRYPHLINK launcher when automatic discovery does not find it.
+
 4. **Other options:**
 
    | Option | Required | Description | Value |
@@ -70,6 +74,7 @@ Examples:
 .\TouchUILaunch.exe --SR --game "path_to_root\StarRail.exe"
 .\TouchUILaunch.exe --ZZZ --game "path_to_root\ZenlessZoneZero.exe"
 .\TouchUILaunch.exe --WW --game "path_to_root\Client\Binaries\Win64\Client-Win64-Shipping.exe"
+.\TouchUILaunch.exe --EF --game "path_to_root\Endfield.exe" --log
 .\TouchUILaunch.exe --NTE --nte-region CN --game "path_to_cn_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
 .\TouchUILaunch.exe --NTE --nte-official --game "path_to_root\Client\WindowsNoEditor\HT\Binaries\Win64\HTGame.exe" --log
 .\TouchUILaunch.exe --GI --game "path_to_root\GenshinImpact.exe" --extra '-screen-width 1920 -screen-height 1080'
@@ -82,6 +87,7 @@ Examples:
 3. If only one NTE region is installed, the client can be detected automatically; `--nte-region` is not required.
 4. Official NTE mode cannot be combined with `--nte-region` or `--nte-direct`.
 5. NTE touch corrections run by default without extra options or environment variables. CN testing with Moonlight + Sunshine native touch confirmed improvements to combat, map dragging, settings clicks and sliders.
+6. Endfield uses an installed signed GRYPHLINK parent and early DLL loading; keep TouchUILaunch running until game exit. A custom launcher installation can be selected with `--ef-launcher "path_to_launcher\Games.exe"`. Native touch uses independent UI pointer records; mouse input is not converted. Basic UI, movement, camera and controlled-member switching are user-accepted; intermittent menu/story clicks still need retesting with the pointer-policy fix. See [Endfield implementation and validation](docs/EF_INTERNALS.md).
 
 ### NTE known issues (0.3.1)
 
@@ -111,7 +117,7 @@ From the repository root, run:
 ```
 
 This script packages one launcher executable and one shared payload DLL.
-ZZZ and NTE both use `TouchUILaunch.dll`; NTE direct login still needs the
+ZZZ, NTE and Endfield use `TouchUILaunch.dll`; NTE direct login still needs the
 separate `nte-login-host/` directory. The installer removes the obsolete
 `TouchUILaunch.NTE.dll` when updating an existing package.
 For NTE direct login, build and verify the optional self-contained host:

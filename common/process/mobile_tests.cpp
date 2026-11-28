@@ -170,7 +170,7 @@ void child_tests() {
               "WW child receives cloud arguments before extra arguments and uses its executable working directory");
         std::filesystem::remove(path.parent_path()/L"ww-launch-passed.txt");
     }
-    for(auto kind:{game::Kind::GI,game::Kind::SR,game::Kind::ZZZ,game::Kind::WW,game::Kind::NTE}) {
+    for(auto kind:{game::Kind::GI,game::Kind::SR,game::Kind::ZZZ,game::Kind::WW,game::Kind::NTE,game::Kind::EF}) {
         std::optional<game::Kind> selected;game::select(selected,kind);check(*selected==kind,"explicit selection");
         rejects([&]{game::select(selected,kind);},"duplicate selection rejected");
         rejects([&]{game::validate(selected,path,true,false);},"wrong executable rejected");

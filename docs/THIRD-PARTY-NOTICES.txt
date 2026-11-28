@@ -5,7 +5,7 @@ license. See licenses/hde64/LICENSE.txt in a packaged distribution.
 
 MinHook
 
-The NTE launcher relay includes MinHook v1.3.4, copyright (C) 2009-2017
+The NTE paths and Endfield input/UI-pointer guards use MinHook v1.3.4, copyright (C) 2009-2017
 Tsuda Kageyu, under its upstream BSD license, including its HDE64 decoder.
 Source: https://github.com/TsudaKageyu/minhook/tree/v1.3.4
 See licenses/minhook/LICENSE.txt in a packaged distribution. Vendored files
@@ -28,3 +28,17 @@ notices under its ThirdParty/ and Assets/ directories. Restored dependency
 metadata, license terms and available third-party notices for Avalonia, Skia,
 HarfBuzz, MicroCom and the .NET runtime are packaged under
 licenses/nte_login_host/packages/ using the resolved NuGet dependency graph.
+
+Endfield research reference
+
+The Endfield features reference the DeviceInfo.ChangeInputType, official
+launcher-parent startup and UI-pointer research in Better-Endfield by Dr-hydra:
+https://github.com/Dr-hydra/Better-Endfield/tree/c33ec5e48742d4d543e8a4edc3607b98a0409a43
+That upstream repository is AGPL-3.0-only. No upstream implementation files are
+included here. This project's EF code implements the runtime interface using
+its own metadata contracts, window-thread scheduling and launch coordination.
+See docs/EF_INTERNALS.md in the source tree for scope and evidence.
+The pointer-state reuse diagnosis is credited there to orangetooth's
+endfield-touch-patch, commit 55a4553a126da4efc29623d03f47e881e4f1fd0e:
+https://github.com/orangetooth/endfield-touch-patch
+No upstream fixed-offset patches or game binary data are included.

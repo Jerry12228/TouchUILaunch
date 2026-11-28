@@ -33,7 +33,8 @@ target_include_directories(TouchUIHeaders INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/games/gi/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/games/sr/include"
   "${CMAKE_CURRENT_SOURCE_DIR}/games/ww/include"
-  "${CMAKE_CURRENT_SOURCE_DIR}/games/nte/include")
+  "${CMAKE_CURRENT_SOURCE_DIR}/games/nte/include"
+  "${CMAKE_CURRENT_SOURCE_DIR}/games/ef/include")
 
 add_library(Hde64 STATIC third_party/hde64/hde64.c)
 target_compile_options(Hde64 PRIVATE /W0)
@@ -65,7 +66,7 @@ add_library(TouchUIWW INTERFACE)
 target_link_libraries(TouchUIWW INTERFACE TouchUIHeaders)
 
 add_library(TouchUILaunchPayload SHARED payload/src/payload.cpp
-  games/zzz/src/payload.cpp games/nte/src/payload.cpp games/nte/src/relay.cpp)
+  games/zzz/src/payload.cpp games/nte/src/payload.cpp games/nte/src/relay.cpp games/ef/src/payload.cpp)
 set_target_properties(TouchUILaunchPayload PROPERTIES OUTPUT_NAME TouchUILaunch)
 target_link_libraries(TouchUILaunchPayload PRIVATE TouchUIZZZDiscovery MinHook RemoteLoaderStubs user32 psapi)
 
@@ -73,7 +74,7 @@ add_library(TouchUINTE INTERFACE)
 target_link_libraries(TouchUINTE INTERFACE TouchUIHeaders Hde64)
 
 add_executable(TouchUILaunch launcher/src/launcher.cpp)
-target_link_libraries(TouchUILaunch PRIVATE TouchUIGI TouchUISR TouchUIWW user32 bcrypt shell32 advapi32 ole32)
+target_link_libraries(TouchUILaunch PRIVATE TouchUIGI TouchUISR TouchUIWW user32 bcrypt shell32 advapi32 ole32 wintrust version)
 
 add_executable(TouchStateTests games/zzz/tests/touch_state_tests.cpp)
 target_link_libraries(TouchStateTests PRIVATE TouchUIHeaders)
@@ -122,6 +123,12 @@ add_executable(PayloadDispatchTests payload/tests/payload_tests.cpp)
 target_link_libraries(PayloadDispatchTests PRIVATE TouchUIHeaders user32)
 add_dependencies(PayloadDispatchTests TouchUILaunchPayload)
 
+add_executable(EndfieldTests games/ef/tests/ef_tests.cpp)
+target_link_libraries(EndfieldTests PRIVATE TouchUIHeaders MinHook RemoteLoaderStubs user32 psapi wintrust version)
+add_dependencies(EndfieldTests TouchUILaunchPayload)
+add_executable(EndfieldPointerTests games/ef/tests/ef_pointer_tests.cpp)
+target_link_libraries(EndfieldPointerTests PRIVATE TouchUIHeaders MinHook user32)
+
 foreach(fixture IN ITEMS Success Reject Slow)
   add_library(Loader${fixture}Fixture SHARED common/process/tests/loader_test_dll.cpp)
   target_link_libraries(Loader${fixture}Fixture PRIVATE TouchUIHeaders)
@@ -154,6 +161,10 @@ add_test(NAME LoaderDiagnostics COMMAND LoaderTests)
 set_tests_properties(LoaderDiagnostics PROPERTIES TIMEOUT 60)
 add_test(NAME PayloadDispatch COMMAND PayloadDispatchTests)
 set_tests_properties(PayloadDispatch PROPERTIES TIMEOUT 60)
+add_test(NAME Endfield COMMAND EndfieldTests)
+set_tests_properties(Endfield PROPERTIES TIMEOUT 30)
+add_test(NAME EndfieldPointer COMMAND EndfieldPointerTests)
+set_tests_properties(EndfieldPointer PROPERTIES TIMEOUT 30)
 
 if(TOUCHUI_ENABLE_EXTERNAL_SAMPLES)
   if(TOUCHUI_SR_SAMPLE)

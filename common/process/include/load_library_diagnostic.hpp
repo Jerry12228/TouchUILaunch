@@ -113,8 +113,10 @@ inline DirectResult load_direct(HANDLE process,const std::filesystem::path& path
     // The exit code truncates HMODULE and can also contain a termination code.
     // A nonzero exit is never used as success evidence.
     const auto loaded=find_module(GetProcessId(process),path.filename());
+    DWORD process_exit{};
+    require(GetExitCodeProcess(process,&process_exit)!=FALSE,"Cannot read owned child state after LoadLibraryW");
     require(loaded&&_wcsicmp(loaded->path.c_str(),path.c_str())==0,
-        "Direct LoadLibraryW did not map expected DLL; thread exit="+hex(exit));
+        "Direct LoadLibraryW did not map expected DLL; thread exit="+hex(exit)+"; child exit="+hex(process_exit));
     return {*loaded,exit};
 }
 struct Context {

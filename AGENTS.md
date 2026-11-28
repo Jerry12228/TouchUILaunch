@@ -16,8 +16,8 @@ a stale description.
 ## Project boundaries
 
 - `launcher/` owns CLI selection, logging, elevation, and launch coordination.
-- `payload/` owns the shared DLL entry and exclusive ZZZ/NTE worker dispatch.
-- `games/{gi,sr,ww,zzz,nte}/` owns game behavior; ZZZ includes discovery and the DLL
+- `payload/` owns the shared DLL entry and exclusive ZZZ/NTE/EF worker dispatch.
+- `games/{gi,sr,ww,zzz,nte,ef}/` owns game behavior; ZZZ includes discovery and the DLL
   touch bridge. Keep game signatures out of the launcher.
 - `common/` contains Windows, binary, process, and test helpers. Keep new shared
   utilities independent of game modules; existing process-layer coupling is
@@ -28,6 +28,10 @@ a stale description.
   fingerprints, and test address oracles outside the production resolver.
 - Preserve callback lifetimes, compare/exchange ownership, window-thread UI
   calls, and consistent touch snapshots. See [ZZZ internals](docs/ZZZ_INTERNALS.md).
+- EF uses attached window-thread IL2CPP metadata resolution and the game's
+  input-type setter/event path, verified official-parent startup and independent
+  UI pointer routing. Verify real state before signaling Ready and preserve
+  native touch delivery. See [EF internals](docs/EF_INTERNALS.md).
 
 ## Commands and generated files
 

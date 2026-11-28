@@ -50,7 +50,8 @@ def main():
         assert b'--nte-direct' in result.stdout
         assert b'--nte-official' in result.stdout
         assert b'--nte-region' in result.stdout
-        assert all(flag in result.stdout for flag in (b'--GI', b'--SR', b'--ZZZ', b'--WW', b'--NTE'))
+        assert b'--ef-launcher' in result.stdout
+        assert all(flag in result.stdout for flag in (b'--GI', b'--SR', b'--ZZZ', b'--WW', b'--NTE', b'--EF'))
         assert b'-CloudGame -CloudGamePlatform=Android' in result.stdout
         for removed in (b'--status', b'--disable', b'--enable', b'--pid', b'--zzz-button-layout'):
             assert removed not in result.stdout
@@ -70,12 +71,16 @@ def main():
                     ['--NTE'], ['--NTE', '--NTE'], ['--NTE', '--ZZZ'],
                     ['--NTE', '--GI'], ['--NTE', '--WW'], ['--NTE', '--SR'],
                     ['--NTE', '--probe'], ['--NTE', '--probe-auto'],
+                    ['--EF'], ['--EF', '--EF'], ['--EF', '--ZZZ'], ['--EF', '--NTE'],
+                    ['--EF', '--GI'], ['--EF', '--SR'], ['--EF', '--WW'],
+                    ['--EF', '--probe'], ['--EF', '--probe-auto'],
+                    ['--ef-launcher'], ['--EF', '--ef-launcher'],
                     ['--ZZZ', '--game', 'a', '--game', 'b']):
         run(options, 2)
         result = run(['--log', *options], 2, logged=True)
         assert b'ERROR:' in result.stderr
         # Diagnostics work even if an invalid option occurs before --log.
-        if options not in (['--game'], ['--extra'], ['--ZZZ', '--extra']):
+        if options not in (['--game'], ['--extra'], ['--ZZZ', '--extra'], ['--ef-launcher'], ['--EF', '--ef-launcher']):
             run([*options, '--log'], 2, logged=True)
 
     missing_game = str(launcher.parent / 'missing-cli-fixture' / 'ZenlessZoneZero.exe')
@@ -84,7 +89,7 @@ def main():
     # Values of --extra are never reinterpreted as launcher options.
     run(['--ZZZ', '--extra', '--log', '--probe', '--game', missing_game], 2)
     for selection, name in (('--GI', 'YuanShen.exe'), ('--SR', 'StarRail.exe'), ('--ZZZ', 'ZenlessZoneZero.exe'),
-                            ('--WW', 'Client-Win64-Shipping.exe'), ('--NTE', 'HTGame.exe')):
+                            ('--WW', 'Client-Win64-Shipping.exe'), ('--NTE', 'HTGame.exe'), ('--EF', 'Endfield.exe')):
         missing = str(launcher.parent / 'missing-cli-fixture' / name)
         run([selection, '--game', missing, '--log'], 2, logged=True)
         result = run([selection, '--game', missing, '--extra', '-screen-width 1920', '--log'], 2, logged=True)
@@ -97,7 +102,7 @@ def main():
     with fixture_directory(launcher.parent) as fixture:
         for selection, name in (('--GI', 'YuanShen.exe'), ('--GI', 'GenshinImpact.exe'),
                                 ('--SR', 'StarRail.exe'), ('--ZZZ', 'ZenlessZoneZero.exe'),
-                                ('--WW', 'Client-Win64-Shipping.exe'), ('--NTE', 'HTGame.exe')):
+                                ('--WW', 'Client-Win64-Shipping.exe'), ('--NTE', 'HTGame.exe'), ('--EF', 'Endfield.exe')):
             exe = fixture / name
             shutil.copyfile(child_fixture, exe)
             for probe in ('--probe', '--probe-auto'):
@@ -127,6 +132,15 @@ def main():
         # or suspended initialization. The relaunch marker prevents real UAC;
         # a standard token must fail its elevation guard before starting WW.
         # NTE relay option validation happens before elevation or process creation.
+        for options in (
+                ['--ZZZ', '--game', str(fixture / 'ZenlessZoneZero.exe'), '--ef-launcher', 'a'],
+                ['--EF', '--game', str(fixture / 'Endfield.exe'), '--ef-launcher', 'a', '--ef-launcher', 'b'],
+                ['--EF', '--game', str(fixture / 'Endfield.exe'), '--ef-launcher', str(fixture / 'not-Games.exe')]):
+            run(['--log', *options], 2, logged=True)
+        unsigned_parent = fixture / 'Games.exe'
+        shutil.copyfile(child_fixture, unsigned_parent)
+        result = run(['--EF', '--game', str(fixture / 'Endfield.exe'), '--ef-launcher', str(unsigned_parent), '--log'], 2, logged=True)
+        assert b'signature is not trusted' in result.stderr
         for options in (
                 ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-direct'],
                 ['--NTE', '--game', str(fixture / 'HTGame.exe'), '--nte-direct', '--nte-launcher', 'a'],
@@ -162,6 +176,10 @@ def main():
         shutil.copyfile(launcher, standalone)
         # A separate launcher with no adjacent NTE DLL fails before UAC/creation.
         result = subprocess.run([str(standalone), '--NTE', '--game', str(fixture / 'HTGame.exe'), '--elevation-relaunch', '--log'],
+                                capture_output=True, timeout=15)
+        assert result.returncode == 2 and b'Selected payload DLL missing' in result.stderr, (result.returncode, result.stderr)
+        checks += 1
+        result = subprocess.run([str(standalone), '--EF', '--game', str(fixture / 'Endfield.exe'), '--elevation-relaunch', '--log'],
                                 capture_output=True, timeout=15)
         assert result.returncode == 2 and b'Selected payload DLL missing' in result.stderr, (result.returncode, result.stderr)
         checks += 1
