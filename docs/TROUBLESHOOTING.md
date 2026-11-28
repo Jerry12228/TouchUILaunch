@@ -99,27 +99,41 @@ spaces, Unicode, quotes, and trailing backslashes. Inspect both launcher logs.
 
 If a newly created game exits after setup fails, consult
 [Child ownership](../launcher/include/game.hpp): failure cleanup deliberately
-terminates the still-owned child. After successful release, launcher exit
-should not terminate it. This distinction is covered by
-[process tests](../common/process/mobile_tests.cpp).
+terminates the still-owned child. After successful release, `Child` no longer
+terminates it. This distinction is covered by
+[process tests](../common/process/mobile_tests.cpp). EF still requires its
+controller to retain the owned official parent until game exit; keep it running.
 
 ## EF startup and intermittent UI clicks
 
-`phase=0` with loader thread status `0xDEADC0DE` in the original late-load
-route means its entry marker was never reached. It does not identify an
-IL2CPP signature failure. The current EF route maps the DLL before main.
+Start with the [Endfield setup](../README.md#endfield-setup-and-current-status)
+or [中文启动说明](../README.zh-CN.md#终末地启动与验证状态). Verify `--help` includes
+`--EF` and `--ef-launcher`, and keep the EXE/DLL from the same build together.
+An older release may not include the current startup or pointer handling.
 
-The installed client's "start through the official launcher" dialog requires
-the verified GRYPHLINK parent startup contract. Use the current launcher and
-`--ef-launcher <installed Games.exe>` for a custom launcher location. Keep
-TouchUILaunch running after Ready; it retains the owned official parent until
-game exit. Existing official launchers are not injected or terminated.
+| Symptom or last marker | Interpretation and next step |
+| --- | --- |
+| `elevated launcher exited with code ...` | The outer launcher is reporting the elevated process result. Inspect the second `launcher-<pid>.log` for its stage/error; the numeric code alone does not establish a UAC or payload cause. |
+| `trusted GRYPHLINK Games.exe not found` | Auto-discovery checks `%ProgramFiles%/GRYPHLINK` and immediate numeric-version folders. For a custom installation, use `--ef-launcher <installed Games.exe>`. |
+| Signature, product or x64 parent rejection | Select the actual installed signed x64 GRYPHLINK launcher. Its trust/product check is repeated at creation; renaming another EXE does not satisfy it. The optional [read-only parent check](TESTING.md#endfield-checks) isolates this from game startup. |
+| “请通过官方启动器打开游戏” / “start through the official launcher” | The direct-start build lacked the required official parent. The current route creates a verified owned parent and loads the DLL before game main; check the actual EXE/DLL and `EF official parent` log path. No manual Play click is required. |
+| `Payload module was not loaded at the expected path` or old `EF: load layout-only payload` stage | These were observed on the superseded late-load route. Use the current early-load build. A current `Direct LoadLibraryW did not map expected DLL` error includes loader-thread and child-process exit values; collect both and the preload stage. |
+| Wait for metadata or DeviceInfo provider/notification | Startup is pending. Inspect the EF payload's elapsed time and real input/provider/notification values. Required contract/export failures are explicit; do not assume a fixed-address mismatch or claim Ready from a loaded DLL. |
+| Layout Ready but no pointer application report | Layout and pointer handling have separate evidence. Check `independent mouse/touch policy ready` and any unavailable/failure message. An already-independent instance or the eight-report limit can also explain no new application report. |
+| Pointer routing unavailable or field readback failed | Layout can still work. The pointer capability remains unavailable/pass-through for that session; retain the exact error and restart normally with a compatible build for a new attempt. No runtime retry toggle exists. |
+| Menu/story taps show only hover feedback | The independent pointer policy targets this reported symptom, but real-game improvement remains unverified. Follow the [manual retest cases](EF_INTERNALS.md#manual-retest), recording screen/control, mouse/touch sequence, attempts/failures and logs. |
+| Controller stays open after `Endfield touch UI state confirmed` | Expected: it retains the official parent until game exit. Do not close it as a way to finish initialization. Its eventual `0` exit does not report the game's exit code. |
 
-For intermittent menu/story clicks that show hover feedback, the candidate
-fix uses independent Unity UI pointers. Check for `UI pointer routing` ready
-and application/readback messages. Missing metadata or field failure leaves
-this capability unavailable/pass-through while layout selection continues.
-Real-game improvement still needs retesting; see [EF evidence](EF_INTERNALS.md).
+In the historical late-load diagnostic, `phase=0` with loader thread status
+`0xDEADC0DE` meant the diagnostic entry marker was never reached, before
+LoadLibrary was called. It did not identify an IL2CPP signature failure. The
+current route uses normal early `LoadLibraryW`, with no late-load fallback.
+
+Preserve the outer/elevated launcher logs and `logs/ef-<game-pid>.log` from the
+same attempt. New DLLs take effect after a normal exit/relaunch, not in an
+already-running session. Existing official launcher processes are not injected
+or terminated by this path. For exact log meanings and degradation behavior,
+see [EF readiness](EF_INTERNALS.md#readiness-and-fallback).
 
 ## NTE payload loading failures
 

@@ -66,6 +66,10 @@ help, probe, and launcher setup return `0`. Elevation can return Windows
 cancellation or the elevated launcher's exit code. Consumers must check exit
 status instead of inferring success from silence.
 
+EF keeps the controller running after successful UI setup to retain its owned
+official parent. It returns `0` after observing game exit; it does not forward
+the game's exit code. Keep the controller alive for the full session.
+
 The [CLI verifier](../launcher/tests/validate_cli.py) protects flag handling,
 default silence, invalid combinations, family rejection, and WW fixture
 behavior. Preserve its `ERROR:` diagnostic expectations when changing logs.
@@ -150,6 +154,11 @@ Only a real WW session establishes whether a specific build honors the flags.
 
 ## EF touch UI selection
 
+User setup: [English](../README.md#endfield-setup-and-current-status) /
+[简体中文](../README.zh-CN.md#终末地启动与验证状态). Both package editions use the
+shared EXE/DLL; no NTE login host is required. The installed official launcher
+must already exist; TouchUILaunch does not install/update the game.
+
 `--EF --game <Endfield.exe>` verifies the installed GRYPHLINK launcher and
 creates an owned suspended official parent. A new suspended game uses that
 parent's Windows process attribute. The shared DLL loads before main resumes;
@@ -166,7 +175,12 @@ as a GRYPHLINK product; existing launchers are not attached to or terminated.
 Native touch uses independent UI pointer records, without mouse emulation.
 Basic UI/movement/camera/team switching is user-accepted. The pointer policy
 targets intermittent menu/story clicks and still needs real-game retesting.
-Implementation, evidence and diagnostics: [EF internals](EF_INTERNALS.md).
+Touch input must reach the native backend; EF does not use the ZZZ conversion
+bridge. The pointer capability can degrade independently while layout still
+reaches Ready. There is no public per-feature switch, attach or reload command.
+Implementation, evidence and diagnostics: [EF internals](EF_INTERNALS.md),
+[readiness markers](EF_INTERNALS.md#readiness-and-fallback) and
+[manual retest](EF_INTERNALS.md#manual-retest).
 
 ## ZZZ launch and probe
 

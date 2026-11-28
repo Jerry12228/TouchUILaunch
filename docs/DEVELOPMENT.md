@@ -119,10 +119,19 @@ the Standard and NTE Login archives, additional release documents, exclusions,
 archive/extraction checks, manifests/checksums, and GitHub publication. The
 build/install scripts do not generate those final release attachments.
 
-Keep the shared `TouchUILaunch.dll` beside the EXE for ZZZ launch/probe and NTE
-launch. GI/SR/WW do not load this DLL. The standard package and verification
-suite expect one launcher EXE and one payload DLL.
-See [Game support](GAME_SUPPORT.md).
+Keep the shared `TouchUILaunch.dll` beside the EXE for ZZZ launch/probe, NTE
+and EF launch. GI/SR/WW do not load this DLL. The standard package and
+verification suite expect one launcher EXE and one payload DLL; there is no
+separate EF payload or login host. EF additionally requires the user's installed
+signed GRYPHLINK `Games.exe` at runtime, not for building/default fixtures.
+Do not redistribute that official binary. See [Game support](GAME_SUPPORT.md)
+and [focused EF verification](TESTING.md#endfield-checks).
+
+The EF module resolves IL2CPP metadata dynamically and needs no generated EF
+profile or metadata dump. WinTrust/version imports belong to the launcher and
+parent-verification fixture; EF pointer/input detours reuse bundled MinHook in
+the shared payload. Keep generated reports in ignored output directories and
+real-game acceptance separate from these build dependencies.
 
 [.gitignore](../.gitignore) excludes `build/`, `dist/`, Python bytecode, and
 `__pycache__/`. Put generated reports under those output roots. A custom output

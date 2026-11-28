@@ -11,7 +11,7 @@
 - 绝区零
 - 鸣潮
 - 异环
-- 明日方舟：终末地（实验性触控 UI 布局）
+- 明日方舟：终末地（实验性触控 UI 与原生 UI 指针处理）
 
 ## 用法
 
@@ -39,7 +39,7 @@
 - 异环：`--NTE`
 - 明日方舟：终末地：`--EF`
 
-2. **游戏路径(必要)：**
+2. **游戏路径（绝区零可省略，其他游戏必填）：**
 使用`--game`指定游戏可执行文件路径，例如：
 ```sh
 --game 'path/to/your/game/xxxx.exe'
@@ -83,7 +83,50 @@
 3. 异环只有一个已安装区域时可自动识别客户端，无须`--nte-region`指定。
 4. 异环官方方式不能与 `--nte-region` 同时使用。
 5. 异环触控修正默认启用，无须额外参数或环境变量。国服 Moonlight + Sunshine 原生触摸已确认战斗、地图拖动、设置点击和滑块操作改善。
-6. 终末地通过已安装且签名有效的 GRYPHLINK 父进程与启动阶段 DLL 加载启动，请保持 TouchUILaunch 运行至游戏退出。自定义启动器安装位置可指定 `--ef-launcher "启动器路径\Games.exe"`。原生触控采用独立 UI 指针记录，不转换鼠标输入。UI、移动、视角及主控队员切换已由用户实测确认；菜单／剧情偶发点击问题仍需使用指针策略修复版复测，详见[终末地实现与验证](docs/EF_INTERNALS.md)。
+
+### 终末地启动与验证状态
+
+请使用 `--help` 中包含 `--EF` 和 `--ef-launcher` 的构建。下载发布包时核对该版说明；
+旧版若尚未包含终末地支持，可[从当前源码构建](#构建)。两个包均使用共用的 EXE／DLL，
+终末地无须 `nte-login-host/`。
+
+1. 通过官方 GRYPHLINK 启动器安装／更新游戏，再正常退出终末地。TouchUILaunch 会创建
+   新游戏进程。
+2. 将同一次构建的 `TouchUILaunch.exe` 和 `TouchUILaunch.dll` 放在一起，运行以下命令，
+   并同意 Windows 管理员授权：
+
+   ```powershell
+   .\TouchUILaunch.exe --EF --game 'C:\Games\Endfield\Endfield.exe' --log
+   ```
+
+3. 默认在 `%ProgramFiles%\GRYPHLINK` 下查找已安装的 `Games.exe`，优先选择有效的最新
+   数字版本目录。安装在其他位置时，指定实际路径：
+
+   ```powershell
+   .\TouchUILaunch.exe --EF --game 'C:\Games\Endfield\Endfield.exe' --ef-launcher 'D:\Apps\GRYPHLINK\1.6.0\Games.exe' --log
+   ```
+
+   两处示例路径均需替换。指定文件必须是受信任且签名有效的 x64 GRYPHLINK `Games.exe`。
+   TouchUILaunch 会自行创建官方父进程，无须再手动点击官方启动器中的“开始游戏”。
+4. 出现 `Endfield touch UI state confirmed` 后，**保持 TouchUILaunch 运行直到游戏退出**。
+   初始化最多等待 GameAssembly 120 秒，再等待 UI 状态 120 秒。确认成功后启动器继续
+   运行属于正常行为。
+
+终末地使用游戏原生触控后端。触摸屏或串流客户端需要向 Windows／游戏传递触摸事件；
+本实现不把鼠标事件转换为手指。内置触控 UI 切换和鼠标／手指独立 UI 指针策略自动启用，
+无须额外开关；`--log` 仅启用诊断。
+
+| 行为 | 当前证据 |
+| --- | --- |
+| 触控 UI、移动、视角、主控队员切换 | 启动／UI 版本已由用户实测确认 |
+| 菜单控件、剧情分支、推进对话 | 曾反馈偶发点击无效且显示悬浮样式；新指针策略仍待实机复测 |
+| 实体／串流触摸、多指、键鼠混用、广泛场景与菜单覆盖 | 尚未单独验收 |
+
+UI 状态确认不代表指针策略已应用或所有控件均已可用。反馈问题时，携带 `--log`，保留
+`logs/launcher-<pid>.log`（提权前后各一份）和 `logs/ef-<游戏pid>.log`。指针策略有独立的
+就绪／应用日志。新 DLL 会在下次正常启动时生效，当前没有运行时重载命令。
+详见[排障说明](docs/TROUBLESHOOTING.md#ef-startup-and-intermittent-ui-clicks)及
+[实现、证据与复测场景](docs/EF_INTERNALS.md)。
 
 ### 异环已知问题（0.3.1）
 
@@ -136,6 +179,8 @@
 
 保留的旧 GI 代码与当前 SR UI 特征及执行逻辑移植自 [Genshin_StarRail_fps_unlocker](https://github.com/winTEuser/Genshin_StarRail_fps_unlocker)，遵循其 [MIT 许可证](third_party/gi_sr/LICENSE.txt)。
 
-异环进程与原生判定钩子使用 [MinHook](third_party/minhook/LICENSE.txt)。
+异环与终末地的原生钩子使用 [MinHook](third_party/minhook/LICENSE.txt)。
 独立登录宿主改编自 MIT 许可的 [Hi3Helper.Plugin.NTE](third_party/nte_login_host/LICENSE)，
 固定来源及修改说明见 [ADAPTATIONS.md](third_party/nte_login_host/ADAPTATIONS.md)。
+终末地的研究参考及致谢见[第三方声明](docs/THIRD-PARTY-NOTICES.txt)与
+[终末地实现文档](docs/EF_INTERNALS.md#reference-and-sample-evidence)。

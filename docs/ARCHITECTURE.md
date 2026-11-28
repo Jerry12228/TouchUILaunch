@@ -8,7 +8,8 @@ loads the shared DLL only in newly created, configured processes.
 
 Read [Game support](GAME_SUPPORT.md) for CLI details,
 [ZZZ internals](ZZZ_INTERNALS.md) for resolver and bridge mechanics, and
-[Development](DEVELOPMENT.md) for build commands.
+[EF internals](EF_INTERNALS.md) for Endfield lifecycle/pointer contracts.
+Use [Development](DEVELOPMENT.md) for build commands.
 
 ## Components and ownership
 
@@ -74,8 +75,8 @@ editing a guide or adding a small fix.
 | `TouchUIProcess` | Header implementation plus decoder, stubs, `user32`, and `psapi` |
 | `TouchUIGI`, `TouchUISR`, `TouchUIWW` | Interface targets connecting game adapters to their dependencies |
 | `TouchUIZZZDiscovery` | Header discovery implementation and HDE64 |
-| `TouchUILaunch` | Launcher EXE; also compiles the explicit ZZZ file diagnostic through included headers |
-| `TouchUILaunchPayload` | Shared production DLL: one dispatcher, ZZZ bridge, NTE worker/relay, EF layout worker, MinHook and owned loader helpers |
+| `TouchUILaunch` | Launcher EXE; also compiles the explicit ZZZ file diagnostic and EF official-parent verification (WinTrust/version) through included headers |
+| `TouchUILaunchPayload` | Shared production DLL: one dispatcher, ZZZ bridge, NTE worker/relay, EF layout/pointer worker, MinHook and owned loader helpers |
 | `TouchUINTE` | Header interface for NTE discovery/callback fixtures |
 | `TouchUIZZZBridgeTestHarness` | Separate object build of the payload with `TOUCHUI_BRIDGE_TESTING=1` |
 
@@ -112,13 +113,18 @@ The common path in [wmain](../launcher/src/launcher.cpp) is:
 
 `game::Child` closes its process/thread handles on destruction. Until
 `release()`, its destructor also terminates the process it created and waits
-briefly for exit. After release, the game survives launcher exit. Never wrap a
-discovered PID in this ownership abstraction.
+briefly for exit. After release, this abstraction no longer terminates the
+game. EF nevertheless retains a separate official parent/controller for the
+whole session; releasing the game is not permission to close that controller.
+Never wrap a discovered PID in this ownership abstraction.
 
 The running-game check uses accepted executable names, including GI's two
 names, rather than only the selected installation path. The mutex coordinates
 launcher copies of the same game type; it does not constitute a universal
 lock against unrelated external launchers.
+EF keeps this mutex while waiting for the released game to exit, along with
+its owned official parent. Existing official launcher instances are outside
+that ownership scope.
 
 ## Remote memory and callback ownership
 
@@ -186,6 +192,12 @@ thread, verifies the thread is already attached, resolves its metadata contract
 and invokes the game's setter. The input-switch detour starts as pass-through
 and enforces Touch only after successful readback. See [EF internals](EF_INTERNALS.md)
 for initialization gates and manual acceptance limits.
+
+EF's Ready event concerns layout state, not optional pointer-policy success.
+The controller then waits for game exit and returns `0` without propagating
+the game's exit code. Its continued presence is intentional. Consult
+[readiness markers](EF_INTERNALS.md#readiness-and-fallback) before interpreting
+the outcome as working menu/story input.
 
 EF pointer hooks apply Unity's AllPointersAsIs setting before routing/Process
 through metadata-resolved instance-field APIs. They retain no instance across

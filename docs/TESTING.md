@@ -278,7 +278,7 @@ Commands below assume the affected Release targets have been rebuilt. Add
 | --- | --- | --- |
 | Documentation only | Relative links/anchors, paths, command syntax, `git diff --check`; preset/test enumeration where relevant | No runtime test claims from enumeration |
 | CLI, registry, family rejection, extra arguments | `python launcher/tests/validate_cli.py build/windows-x64-release/Release/TouchUILaunch.exe`; `ctest --preset windows-x64-release --no-tests=error -R '^MobileUI$'` | Update both usage READMEs when behavior changes |
-| EF metadata/state, pointer routing, scheduling or activation | `ctest --preset windows-x64-release --no-tests=error -R '^(Endfield|EndfieldPointer|PayloadDispatch)$'`; CLI checks above | Fixtures are not a real Endfield UI/input acceptance; see [EF internals](EF_INTERNALS.md) |
+| EF metadata/state, pointer routing, scheduling or activation | [Endfield checks](#endfield-checks); CLI checks above | Fixtures are not a real Endfield UI/input acceptance; see [EF internals](EF_INTERNALS.md) |
 | UAC/quoting | `ctest --preset windows-x64-release --no-tests=error -R '^LauncherElevation$'`; CLI checks | Actual UAC cancel/accept scenarios need manual observation if affected |
 | Launcher logs | `ctest --preset windows-x64-release --no-tests=error -R '^LauncherLog$'`; CLI checks | Inspect durable elevated-session logs when that path changes |
 | Active GI UI plan or initializer | `ctest --preset windows-x64-release --no-tests=error -R '^GITouch$'`; `scripts/test.ps1 -GiSample <7.1-exe>` | Read-only sample validation; manual mobile layout and touch acceptance |
@@ -299,6 +299,45 @@ The grouped filters below are outside the table so their `|` alternation is
 identical in raw Markdown and rendered commands. Focused commands use
 `--no-tests=error` so an empty selection fails. To inspect a selection without
 executing tests, add `--show-only`; enumeration still does not establish a pass.
+
+### Endfield checks
+
+Configure and build the EF fixtures, shared dispatcher, launcher and CLI child:
+
+```powershell
+cmake --preset windows-x64-release
+cmake --build --preset windows-x64-release --target TouchUILaunch EndfieldTests EndfieldPointerTests PayloadDispatchTests MobileUITestChild
+ctest --preset windows-x64-release --no-tests=error -R '^(Endfield|EndfieldPointer|PayloadDispatch)$'
+```
+
+The filter selects three tests. All use owned fixtures and require no game
+installation, GRYPHLINK installation, account or metadata dump. EndfieldTests
+creates its own parent/child processes and exercises early production-DLL
+loading; EndfieldPointerTests executes real detours with synthetic metadata
+and a deliberately small pointer-record model. This is not a Unity/menu
+reproduction. Sources: [EF fixtures](../games/ef/tests/ef_tests.cpp),
+[pointer fixtures](../games/ef/tests/ef_pointer_tests.cpp) and
+[dispatch fixtures](../payload/tests/payload_tests.cpp).
+
+For an installed official launcher, the optional check below validates its
+identity without starting it or the game. Replace the example path/version:
+
+```powershell
+./build/windows-x64-release/Release/EndfieldTests.exe --parent 'C:/Program Files/GRYPHLINK/1.6.0/Games.exe'
+```
+
+After supported games have exited normally, run the complete CLI verifier in
+[Diagnostics and boundary checks](#diagnostics-and-boundary-checks). It also
+covers EF option scope/duplicates, probe rejection, missing payload,
+unsigned/wrong official parents and preservation of an existing game fixture.
+Do not substitute the parent's read-only identity check for real startup
+acceptance. A prepared package can be checked with `./scripts/test.ps1`;
+use `./scripts/full.ps1` when rebuilding is required.
+
+For visible UI/input testing, follow [EF manual retest](EF_INTERNALS.md#manual-retest).
+That chapter records the 2026-11-28 results and which build still needs menu/story
+acceptance. Layout Ready and pointer-policy ready/application are separate
+markers; report each, along with actual observed behavior.
 
 ### Contact-state checks
 
@@ -337,6 +376,8 @@ normally before using the launcher.
 | Launch and elevation | One game starts, cancellation performs no game action, an already-running game is preserved, launcher exit status/logs are coherent |
 | GI/SR | Initialization stages complete, mobile UI visibly appears, input behaves as required, and gameplay remains usable; record each game separately |
 | WW | Correct cloud arguments yield the expected UI/input behavior and the game survives launcher exit |
+| EF startup/lifetime | Verified official parent and early load reach layout Ready; controller remains alive through game exit; see [EF lifecycle](EF_INTERNALS.md#entry-and-ownership) |
+| EF UI/pointers | Distinguish layout confirmation, pointer-policy readiness/application and observed menu/story/mixed-input behavior; use [EF retest cases](EF_INTERNALS.md#manual-retest) |
 | ZZZ startup | Separate startup, discovery, bridge readiness, effective layout, and actual input; inspect payload log after launcher exit |
 | ZZZ contacts | Single tap, hold, move, rapid tap, two or more simultaneous fingers, release ordering, and ID reuse do not leave stuck touches |
 | ZZZ coordinates | Corners, resized windows, full-screen/windowed transitions, and relevant scaling remain aligned |

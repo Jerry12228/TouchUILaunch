@@ -2,8 +2,9 @@
 
 This handbook explains how to work on the standalone TouchUILaunch repository.
 It serves Codex, Claude, other coding assistants, and human maintainers. The
-project enables mobile UI for GI, SR, ZZZ, and WW, with NTE and experimental EF paths; ZZZ additionally implements a
-Windows touch bridge. Their implementations and validation requirements differ.
+project enables mobile UI for GI, SR, ZZZ, and WW, with NTE and experimental EF
+paths; ZZZ additionally implements a Windows touch bridge. EF uses native touch
+with its own UI pointer policy. Their validation requirements differ.
 
 All command examples use PowerShell from the repository root: the directory
 containing `CMakeLists.txt` and `AGENTS.md`. In a larger research workspace that
@@ -37,7 +38,7 @@ tool automatically reads every linked document.
 | Independently inspect the supplied GI 7.1 metadata | [Offline metadata recovery](GI_METADATA_71.md) | [Recovery tool](../games/gi/tools/recover_metadata71.py), [read-only query tool](../games/gi/tools/query_metadata71.py) |
 | Change WW launch behavior | [Game support](GAME_SUPPORT.md#ww-launch) | [WW arguments](../games/ww/include/ww_launch.hpp) |
 | Develop experimental NTE UI/input switching | [NTE internals](NTE_INTERNALS.md), [Testing](TESTING.md) | [NTE discovery](../games/nte/include/nte_discovery.hpp), [payload](../games/nte/src/payload.cpp) |
-| Change Endfield touch UI selection | [EF internals](EF_INTERNALS.md), [Testing](TESTING.md) | [IL2CPP contract and layout pump](../games/ef/include/ef_runtime.hpp), [payload](../games/ef/src/payload.cpp) |
+| Change Endfield startup, UI selection or pointer handling | [EF internals](EF_INTERNALS.md), [EF tests](TESTING.md#endfield-checks) | [Official parent](../games/ef/include/ef_parent.hpp), [IL2CPP contract](../games/ef/include/ef_runtime.hpp), [pointer policy](../games/ef/include/ef_pointer.hpp), [payload](../games/ef/src/payload.cpp) |
 | Diagnose or extend ZZZ discovery | [ZZZ internals](ZZZ_INTERNALS.md#discovery-pipeline), [Testing](TESTING.md#external-sample-tests) | [Memory resolver](../games/zzz/include/profile_resolver.hpp), [semantic discovery](../games/zzz/include/short_discovery.hpp) |
 | Change ZZZ touch or layout behavior | [ZZZ internals](ZZZ_INTERNALS.md#touch-state-and-frame-contract), [Testing](TESTING.md) | [Payload](../games/zzz/src/payload.cpp), [touch state](../games/zzz/include/touch_state.hpp) |
 | Update generated schemas, rules, or evidence | [Development](DEVELOPMENT.md#generated-files), [ZZZ internals](ZZZ_INTERNALS.md#evidence-and-version-adaptation) | [ZZZ tools](../games/zzz/tools), [test data](../games/zzz/testdata/README.md) |
@@ -58,7 +59,8 @@ tool automatically reads every linked document.
 - [ZZZ internals](ZZZ_INTERNALS.md): resolver semantics, field meanings, input
   bridge, thread rules, and failure handling.
 - [EF internals](EF_INTERNALS.md): runtime metadata, window-thread UI selection,
-  startup confirmation and Endfield acceptance scope.
+  official-parent lifetime, independent UI pointers, readiness/fallback and
+  Endfield evidence/retest cases.
 - [Testing](TESTING.md): checks, prerequisites, coverage, and acceptance evidence.
 - [Troubleshooting](TROUBLESHOOTING.md): symptoms, diagnostics, and known tooling
   limitations.

@@ -1,9 +1,29 @@
-# Endfield touch UI selection
+# Endfield touch UI and native pointer handling
 
 The EF module selects the game's built-in Touch UI and applies independent
 UI pointer routing for native touch. It uses the existing Windows/Unity touch
 backend. Mouse conversion, platform/cloud overrides and keyboard binding
 changes are not part of this implementation.
+
+For installation and commands, see the [English](../README.md#endfield-setup-and-current-status)
+or [Chinese](../README.zh-CN.md#终末地启动与验证状态) user guide. This chapter owns the
+runtime contract, evidence and [manual retest cases](#manual-retest).
+
+## Capabilities and source map
+
+| Capability | Implementation | Success boundary |
+| --- | --- | --- |
+| New-game startup | [Registry/child ownership](../launcher/include/game.hpp), [launcher](../launcher/src/launcher.cpp) | Creates only a new Endfield process; rejects an already-running game |
+| Official parent | [ef_parent.hpp](../games/ef/include/ef_parent.hpp) | Verifies and retains an owned installed GRYPHLINK process |
+| Early payload load | [load_library_diagnostic.hpp](../common/process/include/load_library_diagnostic.hpp), [shared dispatcher](../payload/src/payload.cpp) | Expected DLL path is mapped before the game's main thread resumes |
+| Touch UI selection | [ef_runtime.hpp](../games/ef/include/ef_runtime.hpp), [ef_hook.hpp](../games/ef/include/ef_hook.hpp), [window-thread pump](../games/ef/src/payload.cpp) | Reads the actual DeviceInfo input state as Touch and publishes Ready |
+| Independent UI pointers | [ef_pointer.hpp](../games/ef/include/ef_pointer.hpp) | Hooks are enabled and the current callback instance's field is independently checked |
+
+EF relies on Unity/Windows to deliver native touches. ZZZ additionally supplies
+a Windows-to-Unity touch bridge; EF does not reuse that bridge. A physical
+touchscreen still needs UI selection, and pointer-state handling can matter
+when mouse and touch UI records interact. A streaming client must deliver
+native touch, rather than only mouse emulation, to use this path.
 
 ## Entry and ownership
 
@@ -18,6 +38,11 @@ installed `ProgramFiles/GRYPHLINK/<version>/Games.exe`; `--ef-launcher <Games.ex
 selects a custom installation. The image must be x64, have a trusted offline
 Authenticode signature, and identify its signed product as GRYPHLINK. The
 actual creation repeats verification with a replacement-denying file handle.
+Automatic discovery checks the root `Games.exe` and immediate numeric-version
+subdirectories, ordering the latter numerically rather than alphabetically.
+It is not a recursive search of all drives. Verification uses cached trust
+information without online revocation checks. An explicit `--ef-launcher`
+path is verified by the same rules.
 
 An owned suspended official-launcher process supplies the Windows parent
 attribute for a newly created suspended Endfield process. Existing launchers
@@ -29,6 +54,19 @@ The shared DLL is mapped through ordinary `LoadLibraryW` before the game's
 main thread resumes. Its full HMODULE, module path and loader thread result
 are checked. The payload then waits for normal GameAssembly/Unity startup.
 There is no late injection fallback or manual mapping.
+
+```mermaid
+flowchart TD
+    A[Validate CLI, stopped game and installed GRYPHLINK] --> B[Create owned suspended official parent and game]
+    B --> C[Map shared DLL before resuming game main thread]
+    C --> D[Wait for GameAssembly and attached Unity window thread]
+    D --> E[Resolve DeviceInfo and install pass-through input hook]
+    E --> F[Invoke ChangeInputType and read back Touch]
+    E --> P[Try optional independent UI pointer hooks]
+    F --> R[Publish Ready and enforce Touch requests]
+    P --> Q[Check policy before original route and Process calls]
+    R --> G[Keep controller and official parent until game exit]
+```
 
 The EF session has PID-scoped `Log`, `Ready` and `Failed` events under
 `Local\TouchUILaunch.EF.*`. Their presence selects the EF worker independently
@@ -43,6 +81,12 @@ release ownership of the child. A failure before that point terminates only
 the process created by this launch. After Ready the controller stays alive
 until game exit to retain the official parent; keep the launcher running.
 There is no attach or runtime disable CLI.
+
+The launcher returns `0` after its post-Ready wait observes game exit; it does
+not forward the game's exit code or certify that exit was clean. Ending the
+controller early removes the retained official parent. Although `Child` no
+longer terminates the released game, continued game behavior without that
+parent is not an accepted mode. Keep the controller running.
 
 ## Runtime contract
 
@@ -128,6 +172,28 @@ switch. A field access/readback failure makes installed pointer hooks
 pass-through. Partially installed hooks keep their trampolines resident.
 The policy does not synthesize mouse/touch events or change gameplay bindings.
 
+### Readiness and fallback
+
+These are separate observations; one does not imply the next:
+
+| Log marker | Establishes | Still requires observation |
+| --- | --- | --- |
+| `READY: DeviceInfo.inputType read back as Touch` | Layout state was confirmed; the controller may release game ownership | Visible UI, pointer capability and actual input |
+| `UI pointer routing: independent mouse/touch policy ready` | Both optional pointer hooks were enabled | A UI instance using them and successful field application/readback |
+| `UI pointer routing: AllPointersAsIs applied before input` | That callback instance changed to the resolved policy and readback matched | Menu/story clicks, drags and multi-input behavior |
+| `UI pointer routing unavailable; layout selection continues` | The pointer contract or hook installation failed | The layout path may still reach Ready |
+| `UI pointer routing: field access/readback failed; hooks now forward original calls` | Further field enforcement is disabled | The already-applied scalar is not rolled back; restart for another attempt |
+
+An instance already using the independent policy produces no application log.
+Reports for changed instances are bounded to eight; a missing new report after
+that limit is not failure evidence. If the InputSystem assembly is still
+pending, installation is retried on later layout timer ticks, including after
+Ready. A contract/install error instead marks the capability unavailable for
+the session. There is no public per-feature toggle or retry/reload command.
+
+The current startup banner contains `EF touch UI only`. It predates the pointer
+capability and is not a capability report; use the separate markers above.
+
 ## Reference and sample evidence
 
 The UI interface and official-parent startup strategy follow Better-Endfield's research at
@@ -160,12 +226,10 @@ standalone build or default tests.
 
 ## Verification
 
-```powershell
-cmake --preset windows-x64-release
-cmake --build --preset windows-x64-release --target EndfieldTests EndfieldPointerTests TouchUILaunchPayload PayloadDispatchTests
-ctest --preset windows-x64-release --output-on-failure -R '^(Endfield|EndfieldPointer|PayloadDispatch)$'
-./scripts/full.ps1
-```
+Use the [focused Endfield checks](TESTING.md#endfield-checks) to configure/build
+the required targets and run the three EF/dispatch cases. Full verification
+also checks CLI and packaging; it requires the supported games to be stopped.
+Do not stop a user's active session merely to run the complete suite.
 
 The Endfield fixtures supply their own metadata and enum value, exercise
 strict rejection and pending states, test readback/retry/reentry/thread guards,
@@ -191,21 +255,23 @@ unattached-thread behavior, failed field readback, restart and hook conflicts.
 A small pointer-record model checks release/second-finger preservation; it
 does not reproduce Unity or prove the intermittent real-game bug is fixed.
 
-The initial layout-only build on 2026-11-28 passed: 15 CTest
-cases, 232 CLI checks and the existing memory-boundary verification. The EF
-executable reported 52 metadata/state/ABI/coordination checks. The subsequent
-official-parent startup revision passed 15 CTest cases and 240 CLI checks;
-its EF executable reported 62 checks. The pointer-policy revision adds its
-own CTest case. Optional NTE
-SDK-host checks and external GI/ZZZ/SR sample suites were not run. The
-separately supplied EF sample was inspected only as data.
+Recorded verification on 2026-11-28 for the implementation committed as
+`7d6290c`:
 
-The pointer-policy build subsequently passed all 16 CTest cases, including
-151 checks in EndfieldPointerTests, and the payload memory-boundary check.
-The active accepted game session was left running. The complete CLI suite
-was not repeated against that active game; a no-launch CLI smoke check covers
-the final help/validation behavior. Menu/story improvement remains pending
-real-game retesting of this new DLL.
+| Check | Recorded result and scope |
+| --- | --- |
+| Release build and package | Passed; packaged EXE/DLL matched the build outputs |
+| Default CTest | 16/16 passed; EndfieldTests reported 62 checks, EndfieldPointerTests 151 |
+| Payload memory boundary | Passed against the packaged DLL |
+| Complete CLI suite | 240 checks passed for the official-parent startup revision before the pointer addition |
+| Final-build CLI smoke | Four no-launch checks passed: help, duplicate EF selector, missing game path and active-game rejection; the complete CLI suite was not repeated while the accepted game remained running |
+| Installed official parent | Read-only verification passed for signed x64 GRYPHLINK 1.6.0 Games.exe; this check does not create a parent/game |
+| Optional NTE SDK-host and external GI/ZZZ/SR sample suites | Not run for this change |
+| EF 1.5 sample | Read-only export/metadata analysis, separate from live acceptance |
+
+These are results of the implementation run, not a claim that subsequent
+documentation edits reran runtime checks. Menu/story improvement still needs
+real-game retesting of the pointer-policy DLL.
 
 ## Diagnostics and manual acceptance
 
@@ -229,7 +295,7 @@ On 2026-11-28, a late-load diagnostic recorded `phase=0` and thread status
 and resolved its real metadata. Without an official parent the installed
 client displayed its "start through official launcher" dialog and the device
 provider remained pending. The verified parent startup path reached Ready
-in `launcher-52512.log` for the owned game PID 108504.
+and the user then reported the startup/layout results below.
 
 User acceptance for that startup/layout build:
 
@@ -241,8 +307,33 @@ User acceptance for that startup/layout build:
 | New independent pointer policy | Built/tested as a candidate fix; real-game retest pending |
 
 The device/streaming client was not specified, so this is not a separate
-physical-touch or streamed-multitouch certification. Keep the current accepted
-session intact; a newly built DLL is used at the next normal launch. Scene
-transitions, broad menu/story coverage and keyboard mixing still require
-acceptance. The reference records keyboard binding limitations in Touch mode;
-this implementation does not change those bindings.
+physical-touch or streamed-multitouch certification. A newly built DLL is used
+at the next normal launch. Scene transitions, broad menu/story coverage and
+keyboard mixing still require acceptance. The reference records keyboard
+binding limitations in Touch mode; this implementation does not change them.
+
+## Manual retest
+
+After a normal game exit, use the EXE/DLL pair from the build under test and
+launch with `--log`. Record their SHA-256 values, the game build, Windows
+version, device or streaming client/settings, window mode, resolution and
+scaling. Check layout and pointer markers separately. An existing session
+continues using its previously loaded DLL.
+
+| Scenario | Observe and record |
+| --- | --- |
+| Baseline controls | Touch UI, movement, camera and controlled-member switching still work |
+| Menus | Repeatedly open/close several menus; tap buttons, tabs, confirmation/cancel and list items; record hover-only or missed clicks by menu/control name |
+| Story | Tap dialogue advance and each available choice; record whether a tap advances once, selects the intended option, or only highlights it |
+| Contact transitions | Repeat taps, hold/release, drag/release, and two-finger sequences with both release orders; look for stuck, duplicated or lost input |
+| Mouse/touch interaction | Move the mouse before/between touches; test a stationary hover and a second finger while another is held; compare with touch-only behavior |
+| Focus and display | Alt-tab and return, reopen UI, and test supported window/full-screen/scaling transitions for alignment and input recovery |
+| Scene transitions and keyboard | Recheck UI after loading a scene and after keyboard/mouse use; record individual binding failures rather than inferring all bindings work |
+| Lifetime | Keep the controller alive, exit the game normally, observe controller/owned-parent cleanup, then start a fresh session |
+
+For an intermittent failure, retain the launcher logs (including the elevated
+PID) and `ef-<game-pid>.log`, approximate time, exact screen/control, input
+sequence and attempts/failures. Include whether the pointer-ready and
+application markers appeared or the capability degraded. A short recording is
+useful when available. If the problem does not recur, report the cases and
+number of attempts tested rather than calling it universally fixed.

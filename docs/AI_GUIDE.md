@@ -74,6 +74,8 @@ boundary for new shared utilities. See
 | ZZZ resolver | Resolve once from the loaded module; reject ambiguous or incomplete evidence | Fixed version addresses and disk fallbacks invalidate the memory discovery design |
 | ZZZ evidence | Keep manual address oracles and client fingerprints out of production include closures | Fixtures must not become runtime lookup tables |
 | ZZZ bridge | Keep UI calls on the window thread and count/GetTouch on one consistent frame source; restore only owned state | Avoids reentrant UI faults, mixed indices, duplicate input, and overwriting other writers |
+| EF startup and layout | Verify the installed official parent, load before game main, invoke the real setter on the attached window thread, and confirm input state before Ready; retain the parent/controller until game exit | Preserves the startup contract and avoids treating a mapped DLL as visible UI success |
+| EF UI pointers | Resolve enum/instance fields dynamically, retain no managed instance between callbacks, preserve originals, and report pointer capability separately from layout Ready | Independent routing can degrade without preventing UI selection; fixture success does not certify menu/story clicks |
 | Diagnostics | Default silence; explicit `--log`; help/probe do not request elevation | Scripts and tests depend on these public behaviors |
 
 The runtime memory restriction applies to the resolver. The payload can still
@@ -127,7 +129,7 @@ Do not declare real-game compatibility without matching evidence.
 | Module ownership, dependency, process flow | [Architecture](ARCHITECTURE.md), task routing in [index](README.md) |
 | Toolchain, scripts, package contents | [Development](DEVELOPMENT.md), [Testing](TESTING.md), concise commands in AGENTS.md |
 | Resolver, field schema, generated evidence | [ZZZ internals](ZZZ_INTERNALS.md), generation instructions, sample validation coverage |
-| Input ABI, timing, lifecycle, failure handling | [ZZZ internals](ZZZ_INTERNALS.md), touch acceptance and troubleshooting |
+| Input ABI, timing, lifecycle, failure handling | The affected game's internals: [ZZZ](ZZZ_INTERNALS.md), [NTE](NTE_INTERNALS.md) or [EF](EF_INTERNALS.md); touch acceptance and troubleshooting |
 | Test registration, sample inputs, evidence level | [Testing](TESTING.md) and chapters that recommend those checks |
 
 Maintain one substantive source for each topic and link to it elsewhere.

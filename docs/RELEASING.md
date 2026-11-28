@@ -38,7 +38,14 @@ AI 助手；所有命令均从包含 `CMakeLists.txt` 的仓库根目录执行�
 | NTE Login 独立登录包 | `TouchUILaunch-v<version>-win-x64-nte-login.zip` | 标准包全部场景，另支持默认的异环国服／国际服独立 SDK 登录。 |
 
 两个包的 `TouchUILaunch.exe` 和 `TouchUILaunch.dll` 必须来自同一次原生构建，逐字节
-一致。绝区零和异环共用一个载荷 DLL，不再分发 `TouchUILaunch.NTE.dll`。
+一致。绝区零、异环和终末地共用一个载荷 DLL，不再分发 `TouchUILaunch.NTE.dll`，
+也不额外分发终末地专用 DLL。
+
+终末地适用于两个包，无须异环独立登录宿主；运行时使用用户已安装的官方 GRYPHLINK
+`Games.exe`，不得将该官方程序或游戏文件放入发布包。发布说明写明 `--EF`、可选的
+`--ef-launcher` 及保持 TouchUILaunch 运行至游戏退出的要求。触控 UI／基础操作的实测
+与菜单／剧情点击候选修正的验收分别记录，以[终末地证据](EF_INTERNALS.md#verification)
+及[实机复测](EF_INTERNALS.md#manual-retest)为准。
 
 ### Standard 必须包含
 

@@ -11,7 +11,7 @@ This project enables touch UI support for several PC games.
 - Zenless Zone Zero
 - Wuthering Waves
 - Neverness to Everness (NTE)
-- Arknights: Endfield (experimental touch UI layout)
+- Arknights: Endfield (experimental touch UI and native UI pointer handling)
 
 ## Usage
 
@@ -40,7 +40,7 @@ The parameters are divided into four categories: **game selection, game path, ga
    - Neverness to Everness: `--NTE`
    - Arknights: Endfield: `--EF`
 
-2. **Game path (required):**
+2. **Game path (required except for ZZZ):**
 
    Use `--game` to specify the path to the game executable, for example:
 
@@ -87,7 +87,58 @@ Examples:
 3. If only one NTE region is installed, the client can be detected automatically; `--nte-region` is not required.
 4. Official NTE mode cannot be combined with `--nte-region` or `--nte-direct`.
 5. NTE touch corrections run by default without extra options or environment variables. CN testing with Moonlight + Sunshine native touch confirmed improvements to combat, map dragging, settings clicks and sliders.
-6. Endfield uses an installed signed GRYPHLINK parent and early DLL loading; keep TouchUILaunch running until game exit. A custom launcher installation can be selected with `--ef-launcher "path_to_launcher\Games.exe"`. Native touch uses independent UI pointer records; mouse input is not converted. Basic UI, movement, camera and controlled-member switching are user-accepted; intermittent menu/story clicks still need retesting with the pointer-policy fix. See [Endfield implementation and validation](docs/EF_INTERNALS.md).
+
+### Endfield setup and current status
+
+Use a build whose `--help` lists `--EF` and `--ef-launcher`. Check the downloaded
+release's notes; if it predates Endfield support, [build this source](#build).
+Endfield uses the shared EXE/DLL pair in either package edition and does not
+require `nte-login-host/`.
+
+1. Install/update the game through the official GRYPHLINK launcher, then exit
+   Endfield normally. TouchUILaunch starts a new game session.
+2. Keep `TouchUILaunch.exe` and `TouchUILaunch.dll` from the same build together.
+   Run the following command and accept Windows administrator approval:
+
+   ```powershell
+   .\TouchUILaunch.exe --EF --game 'C:\Games\Endfield\Endfield.exe' --log
+   ```
+
+3. The installed GRYPHLINK `Games.exe` is detected under
+   `%ProgramFiles%\GRYPHLINK`, preferring the newest valid numeric version.
+   For another installation location, supply its actual path:
+
+   ```powershell
+   .\TouchUILaunch.exe --EF --game 'C:\Games\Endfield\Endfield.exe' --ef-launcher 'D:\Apps\GRYPHLINK\1.6.0\Games.exe' --log
+   ```
+
+   Replace both example paths. The selected launcher must be a trusted, signed
+   x64 GRYPHLINK `Games.exe`. TouchUILaunch creates its own official parent;
+   no manual click on the official launcher's Play button is required.
+4. Wait for `Endfield touch UI state confirmed`, then **keep TouchUILaunch
+   running until the game exits**. Initialization can wait up to 120 seconds
+   for GameAssembly and a further 120 seconds for UI state. The continuing
+   launcher process after confirmation is expected.
+
+Endfield uses the game's native touch backend. A touch screen or streaming
+client must deliver touch to Windows/the game; mouse events are not converted
+to fingers. The built-in Touch UI is selected automatically, and independent
+mouse/finger UI records are requested without an extra switch. `--log` only
+adds diagnostics.
+
+| Behavior | Current evidence |
+| --- | --- |
+| Touch UI, movement, camera and controlled-member switching | User confirmed working in the startup/UI build |
+| Menu controls, story choices and dialogue advance | Intermittent missed clicks with hover feedback were reported; the new pointer policy still needs real-game retesting |
+| Physical versus streamed touch, multitouch, keyboard mixing and broad scene/menu coverage | Not separately accepted |
+
+Layout confirmation does not confirm that the pointer policy was applied or
+that every control works. With `--log`, collect `logs/launcher-<pid>.log`
+(both PIDs after elevation) and `logs/ef-<game-pid>.log` when reporting a problem.
+The pointer policy has its own readiness/application messages. A new DLL takes
+effect on the next normal launch; there is no runtime reload command.
+See [troubleshooting](docs/TROUBLESHOOTING.md#ef-startup-and-intermittent-ui-clicks)
+and [implementation, evidence and retest cases](docs/EF_INTERNALS.md).
 
 ### NTE known issues (0.3.1)
 
@@ -140,7 +191,10 @@ The bundled HDE64 decoder retains its upstream [license and copyright notice](th
 
 The retained legacy GI and current SR UI signatures and execution logic are adapted from [Genshin_StarRail_fps_unlocker](https://github.com/winTEuser/Genshin_StarRail_fps_unlocker) under its [MIT License](third_party/gi_sr/LICENSE.txt).
 
-The NTE process/predicate hooks use [MinHook](third_party/minhook/LICENSE.txt).
+The NTE and Endfield native hooks use [MinHook](third_party/minhook/LICENSE.txt).
 The independent NTE login host is adapted from MIT-licensed
 [Hi3Helper.Plugin.NTE](third_party/nte_login_host/LICENSE); its pinned source
 and adaptations are documented in [ADAPTATIONS.md](third_party/nte_login_host/ADAPTATIONS.md).
+Endfield research references and credits are recorded in
+[third-party notices](docs/THIRD-PARTY-NOTICES.txt) and
+[EF internals](docs/EF_INTERNALS.md#reference-and-sample-evidence).
