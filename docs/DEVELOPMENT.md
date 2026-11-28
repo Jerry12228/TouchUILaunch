@@ -114,6 +114,11 @@ current rules. The installer removes the obsolete `TouchUILaunch.NTE.dll` from
 an existing destination, but does not otherwise clear old files. Inspect the actual install manifest and destination before
 describing package contents or distributing a build.
 
+For published versions, follow [the release policy](RELEASING.md). It defines
+the Standard and NTE Login archives, additional release documents, exclusions,
+archive/extraction checks, manifests/checksums, and GitHub publication. The
+build/install scripts do not generate those final release attachments.
+
 Keep the shared `TouchUILaunch.dll` beside the EXE for ZZZ launch/probe and NTE
 launch. GI/SR/WW do not load this DLL. The standard package and verification
 suite expect one launcher EXE and one payload DLL.

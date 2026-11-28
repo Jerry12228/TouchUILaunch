@@ -30,6 +30,7 @@ tool automatically reads every linked document.
 | Task | Read next | Start tracing code here |
 | --- | --- | --- |
 | Set up, build, or package | [Development](DEVELOPMENT.md) | [Build script](../scripts/build.ps1), [CMake targets](../CMakeLists.txt) |
+| Prepare or publish a version | [Release policy](RELEASING.md), [Testing](TESTING.md) | [Build/test entry points](../scripts/full.ps1), release notes and verified package contents |
 | Change CLI, logging, UAC, or launch behavior | [Game support](GAME_SUPPORT.md), [Testing](TESTING.md) | [Launcher](../launcher/src/launcher.cpp), [game registry and child ownership](../launcher/include/game.hpp) |
 | Change SR / retained legacy UI initialization | [Game support](GAME_SUPPORT.md#gi-and-sr-initialization) | [Process runtime](../common/process/include/mobile_runtime.hpp), [GI/SR resolver](../games/gi/include/mobile_resolver.hpp) |
 | Change active GI UI discovery or joystick sizing | [GI touch](GI_TOUCH.md), [0.2.0 evidence](GI_TOUCH_71.md) | [Initializer](../games/gi/include/gi_touch.hpp), [discovery plan](../games/gi/include/gi_touch_plan.hpp), [joystick helper](../games/gi/include/gi_joystick_code.hpp) |
@@ -50,6 +51,8 @@ tool automatically reads every linked document.
   lifetime, and ownership boundaries.
 - [Development](DEVELOPMENT.md): environment, build/package commands, generated
   files, source provenance, and coding conventions.
+- [Release policy](RELEASING.md): version/tag naming, the two release editions,
+  archive verification, manifests/checksums, known issues, and public release completion.
 - [Game support](GAME_SUPPORT.md): CLI behavior and per-game implementations.
 - [ZZZ internals](ZZZ_INTERNALS.md): resolver semantics, field meanings, input
   bridge, thread rules, and failure handling.

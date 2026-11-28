@@ -71,6 +71,8 @@ subjects and bodies. Follow the shared [Git workflow and commit-message rules](d
 including authorization for commits/pushes and protection of existing history.
 No consistent Conventional Commits scheme is established. PRs describe affected games,
 behavior changes, linked issues where applicable, and actual verification.
+For authorized version publishing, follow [the release policy](docs/RELEASING.md)
+for package contents, verification, metadata, tags, and GitHub Release publication.
 Include screenshots for visible UI changes. Update both user READMEs when
 usage changes and the relevant handbook chapters when implementation contracts
 change. Preserve third-party attribution and licenses.
